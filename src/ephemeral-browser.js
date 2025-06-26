@@ -32,6 +32,42 @@ const RBI_CONFIG = {
   },
 };
 
+// Known sites that block iframe embedding
+const FRAME_BLOCKED_SITES = [
+  "google.com",
+  "duckduckgo.com",
+  "bing.com",
+  "yahoo.com",
+  "facebook.com",
+  "twitter.com",
+  "youtube.com",
+  "instagram.com",
+  "linkedin.com",
+  "github.com",
+  "stackoverflow.com",
+  "reddit.com",
+  "amazon.com",
+  "ebay.com",
+  "netflix.com",
+  "spotify.com",
+  "dropbox.com",
+  "microsoft.com",
+  "apple.com",
+  "zoom.us",
+  "teams.microsoft.com",
+];
+
+// Sites that work well in iframes
+const FRAME_FRIENDLY_SITES = [
+  "wikipedia.org",
+  "archive.org",
+  "news.ycombinator.com",
+  "example.com",
+  "httpbin.org",
+  "httpstat.us",
+  "jsonplaceholder.typicode.com",
+];
+
 // Initialize the ephemeral browser
 document.addEventListener("DOMContentLoaded", () => {
   initializeEphemeralBrowser();
@@ -257,15 +293,49 @@ function setupEventListeners() {
     urlInput.addEventListener("input", () => {
       validateUrl();
     });
+
+    // Initialize smart URL suggestions
+    createSmartUrlSuggestions(urlInput);
   }
 
   // Quick links
   quickLinks.forEach((link) => {
     link.addEventListener("click", () => {
       const url = link.getAttribute("data-url");
-      if (url) {
-        urlInput.value = url;
-        handleBrowseClick();
+      const searchEngine = link.getAttribute("data-search");
+
+      if (searchEngine) {
+        // Handle search engines - open in new tab
+        const searchUrls = {
+          duckduckgo: "https://duckduckgo.com",
+          startpage: "https://www.startpage.com",
+          searx: "https://searx.be",
+        };
+
+        const searchUrl = searchUrls[searchEngine];
+        if (searchUrl) {
+          showStatus(
+            `🔍 Opening ${searchEngine} in new tab (search engines prevent embedding)`,
+            "info"
+          );
+          window.open(searchUrl, "_blank");
+        }
+      } else if (url) {
+        // Handle regular URLs
+        const isFrameFriendly = isSiteFrameFriendly(url);
+
+        if (isFrameFriendly) {
+          urlInput.value = url;
+          showStatus(
+            `📚 Loading ${new URL(url).hostname} in secure browser...`,
+            "info"
+          );
+          handleBrowseClick();
+        } else {
+          urlInput.value = url;
+          showStatus(`🌐 Loading ${new URL(url).hostname}...`, "info");
+          handleBrowseClick();
+        }
       }
     });
   });
@@ -332,7 +402,25 @@ async function handleBrowseClick() {
     browseBtn.textContent = "Loading...";
     browseBtn.disabled = true;
 
-    showStatus("Opening website securely...", "success");
+    // Check if site is known to block framing and warn user
+    const isBlocked = checkIfSiteBlocksFraming(url);
+    const isFriendly = isSiteFrameFriendly(url);
+
+    if (isBlocked) {
+      showStatus(
+        `⚠️ ${
+          new URL(url).hostname
+        } blocks embedded browsing - will show alternative options`,
+        "warning"
+      );
+    } else if (isFriendly) {
+      showStatus(
+        `📚 ${new URL(url).hostname} should work well in secure browser...`,
+        "success"
+      );
+    } else {
+      showStatus("🌐 Loading website securely...", "info");
+    }
 
     // Navigate to the URL with enhanced privacy
     await navigateSecurely(url);
@@ -611,36 +699,114 @@ function setupLocalBrowserControls(container, initialUrl) {
   const frame = container.querySelector("#localFrame");
   const loading = container.querySelector("#localLoading");
   let currentUrl = initialUrl;
+  let loadTimeout;
+
+  // Check if site is known to block framing
+  const isFrameBlocked = checkIfSiteBlocksFraming(initialUrl);
+
+  if (isFrameBlocked) {
+    handleFrameBlockedSite(container, initialUrl);
+    return;
+  }
+
+  // Set a timeout to detect frame loading issues
+  loadTimeout = setTimeout(() => {
+    // If loading takes too long, likely blocked by X-Frame-Options
+    if (loading.style.display !== "none") {
+      console.log("Frame loading timeout - likely blocked by X-Frame-Options");
+      handleFrameLoadingFailure(container, initialUrl);
+    }
+  }, 8000); // 8 second timeout (reduced from 10 seconds)
 
   // Handle frame load
   frame.addEventListener("load", () => {
-    loading.style.display = "none";
-    showStatus("🔒 Website loaded securely in isolated frame", "success");
+    clearTimeout(loadTimeout);
 
-    // Try to get the actual URL from the frame (may be blocked by CORS)
-    try {
-      if (
-        frame.contentWindow &&
-        frame.contentWindow.location.href !== "about:blank"
-      ) {
-        currentUrl = frame.contentWindow.location.href;
-        updateUrlDisplay(currentUrl);
+    // Check if the frame actually loaded content or was blocked
+    setTimeout(() => {
+      try {
+        // Try to access frame content to detect if it's blocked
+        const frameDoc = frame.contentDocument || frame.contentWindow.document;
+
+        // More lenient check - only fail if completely empty or obvious error page
+        if (!frameDoc) {
+          console.log(
+            "Frame document not accessible - likely CORS/security restriction"
+          );
+          // Don't treat CORS restrictions as failures for legitimate sites
+          loading.style.display = "none";
+          showStatus(
+            "🔒 Website loaded securely (CORS protection active)",
+            "success"
+          );
+          return;
+        }
+
+        const htmlContent = frameDoc.documentElement.innerHTML;
+        const bodyText = frameDoc.body ? frameDoc.body.innerText.trim() : "";
+
+        // Only consider it blocked if there's virtually no content AND it looks like an error
+        if (
+          htmlContent.length < 50 &&
+          (bodyText.includes("refused to connect") ||
+            bodyText.includes("refused connection") ||
+            bodyText.includes("frame") ||
+            htmlContent.includes("x-frame-options"))
+        ) {
+          console.log("Frame contains error message - treating as blocked");
+          handleFrameLoadingFailure(container, initialUrl);
+          return;
+        }
+
+        loading.style.display = "none";
+        showStatus("🔒 Website loaded securely in isolated frame", "success");
+
+        // Try to get the actual URL from the frame (may be blocked by CORS)
+        if (
+          frame.contentWindow &&
+          frame.contentWindow.location.href !== "about:blank"
+        ) {
+          currentUrl = frame.contentWindow.location.href;
+          updateUrlDisplay(currentUrl);
+        }
+      } catch (e) {
+        // CORS blocked or frame restrictions
+        console.log("Frame access blocked:", e.message);
+
+        // Check if frame is actually accessible
+        if (
+          e.name === "SecurityError" &&
+          (e.message.includes("frame") || e.message.includes("access"))
+        ) {
+          // Only treat as blocked if it's clearly a frame-related security error
+          const errorMessage = e.message.toLowerCase();
+          if (
+            errorMessage.includes("x-frame-options") ||
+            errorMessage.includes("refused")
+          ) {
+            handleFrameLoadingFailure(container, initialUrl);
+          } else {
+            // Regular CORS protection - this is normal and expected
+            loading.style.display = "none";
+            showStatus(
+              "🔒 Website loaded securely (CORS protection active)",
+              "success"
+            );
+          }
+        } else {
+          loading.style.display = "none";
+          showStatus(
+            "🔒 Website loaded securely (CORS protection active)",
+            "success"
+          );
+        }
       }
-    } catch (e) {
-      // CORS blocked, which is expected for cross-origin frames
-      console.log("Frame URL access blocked by CORS (expected)");
-    }
+    }, 2000); // Give frame more time to load (increased from 1 second)
   });
 
   frame.addEventListener("error", () => {
-    loading.innerHTML = `
-      <div class="local-error">
-        <h3>🚫 Loading Failed</h3>
-        <p>Unable to load the website. This may be due to security restrictions.</p>
-        <button onclick="location.reload()" class="local-retry-btn">Try Again</button>
-        <button onclick="openInNewTab('${currentUrl}')" class="local-retry-btn">Open in New Tab</button>
-      </div>
-    `;
+    clearTimeout(loadTimeout);
+    handleFrameLoadingFailure(container, initialUrl);
   });
 
   // Setup control buttons
@@ -692,8 +858,24 @@ function updateUrlDisplay(url) {
 }
 
 function openInNewTab(url) {
+  // Show feedback before opening
+  showStatus(`🔗 Opening ${new URL(url).hostname} in new tab...`, "success");
+
   // Open URL in a new tab outside the extension
-  window.open(url, "_blank");
+  try {
+    window.open(url, "_blank", "noopener,noreferrer");
+
+    // Additional feedback
+    setTimeout(() => {
+      showStatus("✅ Site opened in new tab for secure browsing", "success");
+    }, 1000);
+  } catch (error) {
+    console.error("Failed to open new tab:", error);
+    showStatus(
+      "❌ Failed to open new tab. Please check your popup blocker settings.",
+      "error"
+    );
+  }
 }
 
 function enhanceUrlForPrivacy(url) {
@@ -741,11 +923,29 @@ function showStatus(message, type = "success") {
   statusElement.className = `status-message status-${type}`;
   statusElement.style.display = "block";
 
-  // Hide after 5 seconds for success messages
-  if (type === "success") {
+  // Auto-hide based on message type
+  let autoHideDelay = 0;
+  switch (type) {
+    case "success":
+      autoHideDelay = 5000; // 5 seconds
+      break;
+    case "info":
+      autoHideDelay = 4000; // 4 seconds
+      break;
+    case "warning":
+      autoHideDelay = 8000; // 8 seconds for warnings
+      break;
+    case "error":
+      autoHideDelay = 0; // Don't auto-hide errors
+      break;
+  }
+
+  if (autoHideDelay > 0) {
     setTimeout(() => {
-      statusElement.style.display = "none";
-    }, 5000);
+      if (statusElement.style.display !== "none") {
+        statusElement.style.display = "none";
+      }
+    }, autoHideDelay);
   }
 }
 
@@ -784,3 +984,519 @@ document.addEventListener("keydown", (e) => {
 });
 
 console.log("Ephemeral browser initialized successfully");
+
+// Helper functions for detecting frame-blocked sites
+function checkIfSiteBlocksFraming(url) {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
+    return FRAME_BLOCKED_SITES.some(
+      (blockedSite) =>
+        hostname === blockedSite || hostname.endsWith("." + blockedSite)
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
+function isSiteFrameFriendly(url) {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
+    return FRAME_FRIENDLY_SITES.some(
+      (friendlySite) =>
+        hostname === friendlySite || hostname.endsWith("." + friendlySite)
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
+function handleFrameBlockedSite(container, url) {
+  const loading = container.querySelector("#localLoading");
+  const urlObj = new URL(url);
+  const hostname = urlObj.hostname;
+
+  loading.innerHTML = `
+    <div class="frame-blocked-notice">
+      <div class="blocked-icon">🛡️</div>
+      <h3>Site Blocks Embedded Browsing</h3>
+      <p><strong>${hostname}</strong> prevents loading in embedded browsers for security reasons.</p>
+      <div class="blocked-options">
+        <button id="openInNewTabBlocked" class="option-btn primary">
+          🔗 Open in New Tab
+        </button>
+        <button id="tryProxyModeBlocked" class="option-btn">
+          🌐 Try Proxy Mode
+        </button>
+        <button id="backToBrowserBlocked" class="option-btn">
+          ↩️ Back to Browser
+        </button>
+      </div>
+      <div class="security-info">
+        <small>
+          <strong>Why this happens:</strong> ${hostname} uses X-Frame-Options headers to prevent clickjacking attacks. 
+          This is a legitimate security measure.
+        </small>
+      </div>
+    </div>
+  `;
+
+  // Add event listeners to the buttons
+  const openNewTabBtn = loading.querySelector("#openInNewTabBlocked");
+  const proxyModeBtn = loading.querySelector("#tryProxyModeBlocked");
+  const backBtn = loading.querySelector("#backToBrowserBlocked");
+
+  if (openNewTabBtn) {
+    openNewTabBtn.addEventListener("click", () => openInNewTab(url));
+    addButtonClickFeedback(openNewTabBtn);
+  }
+
+  if (proxyModeBtn) {
+    proxyModeBtn.addEventListener("click", () => tryProxyMode(url));
+    addButtonClickFeedback(proxyModeBtn);
+  }
+
+  if (backBtn) {
+    backBtn.addEventListener("click", () => location.reload());
+    addButtonClickFeedback(backBtn);
+  }
+
+  showStatus(
+    `🛡️ ${hostname} blocks embedded browsing - choose an alternative option`,
+    "warning"
+  );
+}
+
+function handleFrameLoadingFailure(container, url) {
+  const loading = container.querySelector("#localLoading");
+  const urlObj = new URL(url);
+  const hostname = urlObj.hostname;
+
+  loading.innerHTML = `
+    <div class="frame-error-notice">
+      <div class="error-icon">⚠️</div>
+      <h3>Unable to Load in Embedded Browser</h3>
+      <p><strong>${hostname}</strong> cannot be displayed in the secure browser frame.</p>
+      <div class="error-details">
+        <p>This could be due to:</p>
+        <ul>
+          <li>X-Frame-Options security headers</li>
+          <li>Content Security Policy restrictions</li>
+          <li>Network connectivity issues</li>
+        </ul>
+      </div>
+      <div class="error-options">
+        <button id="openInNewTabBtn" class="option-btn primary">
+          🔗 Open in New Tab
+        </button>
+        <button id="tryProxyModeBtn" class="option-btn">
+          🌐 Try Proxy Mode
+        </button>
+        <button id="retryWithOptionsBtn" class="option-btn">
+          🔄 Retry
+        </button>
+        <button id="backToBrowserBtn" class="option-btn">
+          ↩️ Back to Browser
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Add event listeners to the buttons
+  const openNewTabBtn = loading.querySelector("#openInNewTabBtn");
+  const proxyModeBtn = loading.querySelector("#tryProxyModeBtn");
+  const retryBtn = loading.querySelector("#retryWithOptionsBtn");
+  const backBtn = loading.querySelector("#backToBrowserBtn");
+
+  if (openNewTabBtn) {
+    openNewTabBtn.addEventListener("click", () => openInNewTab(url));
+    addButtonClickFeedback(openNewTabBtn);
+  }
+
+  if (proxyModeBtn) {
+    proxyModeBtn.addEventListener("click", () => tryProxyMode(url));
+    addButtonClickFeedback(proxyModeBtn);
+  }
+
+  if (retryBtn) {
+    retryBtn.addEventListener("click", () => retryWithOptions(url));
+    addButtonClickFeedback(retryBtn);
+  }
+
+  if (backBtn) {
+    backBtn.addEventListener("click", () => location.reload());
+    addButtonClickFeedback(backBtn);
+  }
+
+  showStatus(`⚠️ ${hostname} cannot be loaded in embedded mode`, "warning");
+}
+
+async function tryProxyMode(url) {
+  showStatus("🌐 Attempting proxy mode...", "info");
+
+  // For demo purposes, show a better message and then open in new tab
+  setTimeout(() => {
+    const proceed = confirm(
+      `Proxy mode would route ${url} through a secure proxy server to bypass frame restrictions.\n\n` +
+        `This feature requires a backend proxy service to be configured.\n\n` +
+        `Would you like to open the site in a new tab instead?`
+    );
+
+    if (proceed) {
+      openInNewTab(url);
+      showStatus("🔗 Opening in new tab as alternative", "success");
+    } else {
+      showStatus("Proxy mode not available in demo", "warning");
+    }
+  }, 1000);
+}
+
+function retryWithOptions(url) {
+  // Go back to the initial browser interface and reload
+  showStatus("🔄 Returning to browser interface for retry...", "info");
+
+  // Clear the current content and restore the initial interface
+  setTimeout(() => {
+    location.reload();
+  }, 1000);
+}
+
+// Add styles for the new elements
+const additionalStyles = `
+  .frame-blocked-notice, .frame-error-notice {
+    padding: 40px 30px;
+    text-align: center;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .blocked-icon, .error-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+  }
+
+  .frame-blocked-notice h3, .frame-error-notice h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 24px;
+  }
+
+  .frame-blocked-notice p, .frame-error-notice p {
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+
+  .blocked-options, .error-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 25px 0;
+  }
+
+  .option-btn {
+    padding: 12px 20px;
+    border: 2px solid #e9ecef;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .option-btn:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+  }
+
+  .option-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(102, 126, 234, 0.3);
+  }
+
+  .option-btn.primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: transparent;
+  }
+
+  .option-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  }
+
+  .option-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .security-info, .error-details {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+    text-align: left;
+  }
+
+  .error-details ul {
+    margin: 10px 0 0 20px;
+    color: #666;
+  }
+
+  .error-details li {
+    margin: 5px 0;
+  }
+`;
+
+// Inject additional styles
+const styleSheet = document.createElement("style");
+styleSheet.textContent = additionalStyles;
+document.head.appendChild(styleSheet);
+
+// Smart URL Suggestions
+createSmartUrlSuggestions(document.getElementById("urlInput"));
+
+function createSmartUrlSuggestions(input) {
+  const container = document.createElement("div");
+  container.className = "url-suggestions";
+  container.style.display = "none";
+
+  // Insert after URL input
+  input.parentElement.insertBefore(container, input.nextSibling);
+
+  let suggestionTimeout;
+
+  input.addEventListener("input", () => {
+    clearTimeout(suggestionTimeout);
+    suggestionTimeout = setTimeout(() => {
+      updateSuggestions(input.value, container);
+    }, 300);
+  });
+
+  input.addEventListener("focus", () => {
+    if (container.innerHTML) {
+      container.style.display = "block";
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!input.contains(e.target) && !container.contains(e.target)) {
+      container.style.display = "none";
+    }
+  });
+}
+
+function updateSuggestions(query, container) {
+  if (!query || query.length < 3) {
+    container.style.display = "none";
+    return;
+  }
+
+  const suggestions = [];
+
+  // Add frame-friendly suggestions
+  const frameFriendlySuggestions = [
+    {
+      url: "https://en.wikipedia.org",
+      name: "Wikipedia",
+      icon: "📚",
+      note: "Frame-friendly",
+    },
+    {
+      url: "https://news.ycombinator.com",
+      name: "Hacker News",
+      icon: "📰",
+      note: "Frame-friendly",
+    },
+    {
+      url: "https://archive.org",
+      name: "Internet Archive",
+      icon: "🏛️",
+      note: "Frame-friendly",
+    },
+    {
+      url: "https://httpbin.org",
+      name: "HTTPBin Testing",
+      icon: "🔧",
+      note: "Frame-friendly",
+    },
+  ];
+
+  // Add search engine suggestions (open in new tab)
+  const searchSuggestions = [
+    {
+      url: "https://duckduckgo.com",
+      name: "DuckDuckGo Search",
+      icon: "🦆",
+      note: "Opens in new tab",
+    },
+    {
+      url: "https://www.startpage.com",
+      name: "Startpage Search",
+      icon: "🔍",
+      note: "Opens in new tab",
+    },
+  ];
+
+  // Filter suggestions based on query
+  const lowerQuery = query.toLowerCase();
+
+  frameFriendlySuggestions.forEach((suggestion) => {
+    if (
+      suggestion.name.toLowerCase().includes(lowerQuery) ||
+      suggestion.url.includes(lowerQuery)
+    ) {
+      suggestions.push(suggestion);
+    }
+  });
+
+  searchSuggestions.forEach((suggestion) => {
+    if (suggestion.name.toLowerCase().includes(lowerQuery)) {
+      suggestions.push(suggestion);
+    }
+  });
+
+  if (suggestions.length === 0) {
+    container.style.display = "none";
+    return;
+  }
+
+  container.innerHTML = suggestions
+    .map(
+      (suggestion) => `
+    <div class="suggestion-item" data-url="${suggestion.url}" data-type="${
+        suggestion.note.includes("new tab") ? "newtab" : "frame"
+      }">
+      <span class="suggestion-icon">${suggestion.icon}</span>
+      <div class="suggestion-info">
+        <div class="suggestion-name">${suggestion.name}</div>
+        <div class="suggestion-note">${suggestion.note}</div>
+      </div>
+    </div>
+  `
+    )
+    .join("");
+
+  container.style.display = "block";
+
+  // Add click handlers
+  container.querySelectorAll(".suggestion-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const url = item.getAttribute("data-url");
+      const type = item.getAttribute("data-type");
+      const urlInput = document.getElementById("urlInput");
+
+      if (type === "newtab") {
+        showStatus(
+          `🔍 Opening in new tab (search engines prevent embedding)`,
+          "info"
+        );
+        window.open(url, "_blank");
+      } else {
+        urlInput.value = url;
+        handleBrowseClick();
+      }
+
+      container.style.display = "none";
+    });
+  });
+}
+
+// Add CSS for suggestions
+const suggestionStyles = `
+  .url-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .suggestion-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f1f1;
+    transition: background-color 0.2s ease;
+  }
+
+  .suggestion-item:hover {
+    background-color: #f8f9fa;
+  }
+
+  .suggestion-item:last-child {
+    border-bottom: none;
+  }
+
+  .suggestion-icon {
+    font-size: 16px;
+    margin-right: 12px;
+  }
+
+  .suggestion-info {
+    flex: 1;
+  }
+
+  .suggestion-name {
+    font-weight: 500;
+    color: #333;
+    font-size: 14px;
+  }
+
+  .suggestion-note {
+    font-size: 12px;
+    color: #666;
+    margin-top: 2px;
+  }
+
+  .url-input-container {
+    position: relative;
+  }
+`;
+
+// Add suggestion styles to the page
+const suggestionStyleSheet = document.createElement("style");
+suggestionStyleSheet.textContent = suggestionStyles;
+document.head.appendChild(suggestionStyleSheet);
+
+// Add click feedback to buttons
+function addButtonClickFeedback(button) {
+  if (!button) return;
+
+  button.addEventListener("click", function () {
+    // Add click animation
+    this.style.transform = "scale(0.95)";
+    this.style.opacity = "0.8";
+
+    setTimeout(() => {
+      this.style.transform = "";
+      this.style.opacity = "";
+    }, 150);
+  });
+}
+
+// Ensure all option buttons get click feedback
+function setupButtonFeedback(container) {
+  const buttons = container.querySelectorAll(".option-btn");
+  buttons.forEach(addButtonClickFeedback);
+}
+
+// Apply click feedback to existing buttons
+document.querySelectorAll(".option-btn").forEach(addButtonClickFeedback);

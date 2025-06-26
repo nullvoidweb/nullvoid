@@ -196,6 +196,7 @@
         grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         gap: 10px;
         margin-top: 15px;
+        margin-bottom: 15px;
       }
 
       .quick-link {
@@ -207,12 +208,34 @@
         transition: all 0.2s ease;
         font-size: 14px;
         color: #495057;
+        text-align: center;
       }
 
       .quick-link:hover {
         background: #667eea;
         color: white;
         transform: translateY(-1px);
+      }
+
+      .quick-link.search-engine {
+        background: #fff3cd;
+        border-color: #ffeaa7;
+        color: #856404;
+      }
+
+      .quick-link.search-engine:hover {
+        background: #ff9800;
+        color: white;
+      }
+
+      .search-notice {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 12px 15px;
+        margin-top: 10px;
+        color: #6c757d;
+        text-align: center;
+        border-left: 3px solid #667eea;
       }
 
       .privacy-features {
@@ -253,6 +276,7 @@
         border-radius: 8px;
         font-size: 14px;
         display: none;
+        font-weight: 500;
       }
 
       .status-success {
@@ -265,6 +289,18 @@
         background: #f8d7da;
         color: #721c24;
         border: 1px solid #f5c6cb;
+      }
+
+      .status-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+      }
+
+      .status-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
       }
 
       @media (max-width: 768px) {
@@ -668,16 +704,55 @@
           </div>
 
           <div class="quick-links">
-            <div class="quick-link" data-url="https://duckduckgo.com">
-              DuckDuckGo
+            <div
+              class="quick-link"
+              data-url="https://en.wikipedia.org"
+              title="Wikipedia works well in frames"
+            >
+              📚 Wikipedia
             </div>
-            <div class="quick-link" data-url="https://startpage.com">
-              Startpage
+            <div
+              class="quick-link"
+              data-url="https://news.ycombinator.com"
+              title="Hacker News - frame friendly"
+            >
+              📰 Hacker News
             </div>
-            <div class="quick-link" data-url="https://searx.be">SearX</div>
-            <div class="quick-link" data-url="https://protonmail.com">
-              ProtonMail
+            <div
+              class="quick-link"
+              data-url="https://archive.org"
+              title="Internet Archive"
+            >
+              🏛️ Archive.org
             </div>
+            <div
+              class="quick-link"
+              data-url="https://httpbin.org"
+              title="HTTP testing service"
+            >
+              🔧 HTTPBin
+            </div>
+            <div
+              class="quick-link search-engine"
+              data-search="duckduckgo"
+              title="DuckDuckGo (opens in new tab)"
+            >
+              🦆 DuckDuckGo
+            </div>
+            <div
+              class="quick-link search-engine"
+              data-search="startpage"
+              title="Startpage (opens in new tab)"
+            >
+              🔍 Startpage
+            </div>
+          </div>
+
+          <div class="search-notice">
+            <small>
+              💡 <strong>Note:</strong> Search engines prevent embedded browsing
+              for security. They'll open in a new tab for your privacy.
+            </small>
           </div>
         </div>
 
