@@ -92,6 +92,9 @@ async function fetchAndDisplayMessages() {
       messages["hydra:member"] &&
       messages["hydra:member"].length > 0
     ) {
+      const messageCount = messages["hydra:member"].length;
+      updateMailCount(messageCount);
+
       if (messageList) {
         messageList.innerHTML = ""; // Clear previous messages
 
@@ -119,11 +122,13 @@ async function fetchAndDisplayMessages() {
       }
       if (noMessagesText) noMessagesText.style.display = "none";
     } else {
+      updateMailCount(0);
       if (messageList) messageList.innerHTML = "";
       if (noMessagesText) noMessagesText.style.display = "block";
     }
   } catch (error) {
     console.error("Error fetching messages:", error);
+    updateMailCount(0); // Reset count on error
     const loadingMessages = document.getElementById("loadingMessages");
     const messageList = document.getElementById("messageList");
     const noMessagesText = document.getElementById("noMessages");
@@ -132,6 +137,23 @@ async function fetchAndDisplayMessages() {
     if (messageList)
       messageList.innerHTML = `<li style="color: red;">Error fetching messages: ${error.message}</li>`;
     if (noMessagesText) noMessagesText.style.display = "none";
+  }
+}
+
+// --- Function to update mail count display ---
+function updateMailCount(count) {
+  const mailCountElement = document.getElementById("mailCount");
+  const inboxTextElement = document.getElementById("inboxText");
+
+  if (mailCountElement && inboxTextElement) {
+    if (count > 0) {
+      mailCountElement.textContent = count;
+      mailCountElement.style.display = "inline-block";
+      inboxTextElement.textContent = "Inbox";
+    } else {
+      mailCountElement.style.display = "none";
+      inboxTextElement.textContent = "Inbox";
+    }
   }
 }
 

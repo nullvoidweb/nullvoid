@@ -123,6 +123,19 @@ body {
   background: #5856eb;
 }
 
+.mail-count {
+  background: #ef4444;
+  color: white;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+  min-width: 18px;
+  text-align: center;
+  display: inline-block;
+}
+
 .location-select {
   flex: 1;
   padding: 8px 12px;
