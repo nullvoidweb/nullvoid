@@ -262,134 +262,145 @@ function showNotification(message, type = "success") {
 
 // --- Main DOM Content Loaded Listener ---
 document.addEventListener("DOMContentLoaded", () => {
-  const disposableEmailInput = document.getElementById("disposableEmail");
-  const copyEmailButton = document.getElementById("copyEmail");
-  const generateEmailButton = document.getElementById("generateEmail");
-  const openEphemeralTabButton = document.getElementById("openEphemeralTab");
-  const openInboxButton = document.getElementById("openInbox");
-  const inboxModal = document.getElementById("inboxModal");
-  const closeInboxButton = document.getElementById("closeInbox");
-  const refreshMessagesButton = document.getElementById("refreshMessages");
-  const generateNewEmailButton = document.getElementById("generateNewEmail");
-  const smartIntegrationsToggle = document.getElementById("smartIntegrations");
+  try {
+    const disposableEmailInput = document.getElementById("disposableEmail");
+    const copyEmailButton = document.getElementById("copyEmail");
+    const generateEmailButton = document.getElementById("generateEmail");
+    const openEphemeralTabButton = document.getElementById("openEphemeralTab");
+    const openInboxButton = document.getElementById("openInbox");
+    const inboxModal = document.getElementById("inboxModal");
+    const closeInboxButton = document.getElementById("closeInbox");
+    const refreshMessagesButton = document.getElementById("refreshMessages");
+    const generateNewEmailButton = document.getElementById("generateNewEmail");
+    const smartIntegrationsToggle =
+      document.getElementById("smartIntegrations");
 
-  // Load saved disposable email on startup
-  browserAPI.storage.local.get(
-    ["disposableEmail", "disposableEmailId", "accountPassword"],
-    async function (result) {
-      if (
-        result.disposableEmail &&
-        result.disposableEmailId &&
-        result.accountPassword
-      ) {
-        currentDisposableEmailAddress = result.disposableEmail;
-        currentDisposableEmailId = result.disposableEmailId;
-        currentAccountPassword = result.accountPassword;
-        updateEmailDisplay(currentDisposableEmailAddress);
-        console.log("Loaded saved email:", currentDisposableEmailAddress);
-        // Start polling for messages
-        intervalId = setInterval(fetchAndDisplayMessages, 5000); // Poll every 5 seconds
+    // Load saved disposable email on startup
+    browserAPI.storage.local.get(
+      ["disposableEmail", "disposableEmailId", "accountPassword"],
+      async function (result) {
+        try {
+          if (
+            result.disposableEmail &&
+            result.disposableEmailId &&
+            result.accountPassword
+          ) {
+            currentDisposableEmailAddress = result.disposableEmail;
+            currentDisposableEmailId = result.disposableEmailId;
+            currentAccountPassword = result.accountPassword;
+            updateEmailDisplay(currentDisposableEmailAddress);
+            console.log("Loaded saved email:", currentDisposableEmailAddress);
+            // Start polling for messages with a delay to prevent immediate API calls
+            setTimeout(() => {
+              intervalId = setInterval(fetchAndDisplayMessages, 5000);
+            }, 1000);
+          }
+        } catch (error) {
+          console.error("Error loading saved email:", error);
+        }
       }
+    );
+
+    // --- Email functionality ---
+    if (generateEmailButton) {
+      generateEmailButton.addEventListener("click", generateNewEmail);
     }
-  );
 
-  // --- Email functionality ---
-  if (generateEmailButton) {
-    generateEmailButton.addEventListener("click", generateNewEmail);
-  }
-
-  if (copyEmailButton) {
-    copyEmailButton.addEventListener("click", () => {
-      if (currentDisposableEmailAddress) {
-        navigator.clipboard
-          .writeText(currentDisposableEmailAddress)
-          .then(() => {
-            showNotification("Email copied to clipboard!");
-          })
-          .catch(() => {
-            // Fallback for older browsers
-            disposableEmailInput.select();
-            document.execCommand("copy");
-            showNotification("Email copied to clipboard!");
-          });
-      } else {
-        showNotification("No email to copy. Generate one first.", "error");
-      }
-    });
-  }
-
-  // --- Inbox Modal functionality ---
-  if (openInboxButton) {
-    openInboxButton.addEventListener("click", () => {
-      inboxModal.style.display = "block";
-      // Fetch messages when opening inbox
-      fetchAndDisplayMessages();
-    });
-  }
-
-  if (closeInboxButton) {
-    closeInboxButton.addEventListener("click", () => {
-      inboxModal.style.display = "none";
-    });
-  }
-
-  if (refreshMessagesButton) {
-    refreshMessagesButton.addEventListener("click", fetchAndDisplayMessages);
-  }
-
-  if (generateNewEmailButton) {
-    generateNewEmailButton.addEventListener("click", () => {
-      generateNewEmail();
-      // Keep modal open to show the new email
-    });
-  }
-
-  // Close modal when clicking outside
-  window.addEventListener("click", (event) => {
-    if (event.target === inboxModal) {
-      inboxModal.style.display = "none";
-    }
-  });
-
-  // --- Ephemeral Tab Functionality ---
-  if (openEphemeralTabButton) {
-    openEphemeralTabButton.addEventListener("click", async () => {
-      try {
-        const newTab = await browserAPI.tabs.create({
-          url: "about:blank",
-          active: true,
-        });
-        // Store the tab ID to monitor it
-        browserAPI.storage.local.set({ ephemeralTabId: newTab.id });
-        showNotification(
-          "Ephemeral tab opened! Data will be cleared when closed."
-        );
-      } catch (error) {
-        console.error("Error opening ephemeral tab:", error);
-        showNotification("Error opening ephemeral tab", "error");
-      }
-    });
-  }
-
-  // --- Smart Integrations Toggle ---
-  if (smartIntegrationsToggle) {
-    // Load saved setting
-    browserAPI.storage.local.get(["smartIntegrations"], (result) => {
-      if (result.smartIntegrations !== undefined) {
-        smartIntegrationsToggle.checked = result.smartIntegrations;
-      }
-    });
-
-    smartIntegrationsToggle.addEventListener("change", () => {
-      browserAPI.storage.local.set({
-        smartIntegrations: smartIntegrationsToggle.checked,
+    if (copyEmailButton) {
+      copyEmailButton.addEventListener("click", () => {
+        if (currentDisposableEmailAddress) {
+          navigator.clipboard
+            .writeText(currentDisposableEmailAddress)
+            .then(() => {
+              showNotification("Email copied to clipboard!");
+            })
+            .catch(() => {
+              // Fallback for older browsers
+              disposableEmailInput.select();
+              document.execCommand("copy");
+              showNotification("Email copied to clipboard!");
+            });
+        } else {
+          showNotification("No email to copy. Generate one first.", "error");
+        }
       });
-      showNotification(
-        `Smart Integrations ${
-          smartIntegrationsToggle.checked ? "enabled" : "disabled"
-        }`
-      );
+    }
+
+    // --- Inbox Modal functionality ---
+    if (openInboxButton) {
+      openInboxButton.addEventListener("click", () => {
+        inboxModal.style.display = "block";
+        // Fetch messages when opening inbox
+        fetchAndDisplayMessages();
+      });
+    }
+
+    if (closeInboxButton) {
+      closeInboxButton.addEventListener("click", () => {
+        inboxModal.style.display = "none";
+      });
+    }
+
+    if (refreshMessagesButton) {
+      refreshMessagesButton.addEventListener("click", fetchAndDisplayMessages);
+    }
+
+    if (generateNewEmailButton) {
+      generateNewEmailButton.addEventListener("click", () => {
+        generateNewEmail();
+        // Keep modal open to show the new email
+      });
+    }
+
+    // Close modal when clicking outside
+    window.addEventListener("click", (event) => {
+      if (event.target === inboxModal) {
+        inboxModal.style.display = "none";
+      }
     });
+
+    // --- Ephemeral Tab Functionality ---
+    if (openEphemeralTabButton) {
+      openEphemeralTabButton.addEventListener("click", async () => {
+        try {
+          const newTab = await browserAPI.tabs.create({
+            url: "about:blank",
+            active: true,
+          });
+          // Store the tab ID to monitor it
+          browserAPI.storage.local.set({ ephemeralTabId: newTab.id });
+          showNotification(
+            "Ephemeral tab opened! Data will be cleared when closed."
+          );
+        } catch (error) {
+          console.error("Error opening ephemeral tab:", error);
+          showNotification("Error opening ephemeral tab", "error");
+        }
+      });
+    }
+
+    // --- Smart Integrations Toggle ---
+    if (smartIntegrationsToggle) {
+      // Load saved setting
+      browserAPI.storage.local.get(["smartIntegrations"], (result) => {
+        if (result.smartIntegrations !== undefined) {
+          smartIntegrationsToggle.checked = result.smartIntegrations;
+        }
+      });
+
+      smartIntegrationsToggle.addEventListener("change", () => {
+        browserAPI.storage.local.set({
+          smartIntegrations: smartIntegrationsToggle.checked,
+        });
+        showNotification(
+          `Smart Integrations ${
+            smartIntegrationsToggle.checked ? "enabled" : "disabled"
+          }`
+        );
+      });
+    }
+  } catch (error) {
+    console.error("Error initializing popup:", error);
   }
 });
 

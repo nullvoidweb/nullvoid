@@ -11,7 +11,8 @@ body {
   min-height: 600px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #333;
-  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
 }
 
 .header {
@@ -54,6 +55,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: 500px;
+  overflow-y: auto;
 }
 
 .feature-card {
@@ -61,11 +64,10 @@ body {
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease;
 }
 
 .feature-card:hover {
-  transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
@@ -155,7 +157,7 @@ body {
   padding: 8px;
   cursor: pointer;
   font-size: 12px;
-  transition: background 0.2s ease;
+  transition: background-color 0.2s ease;
   width: 32px;
   height: 32px;
   display: flex;
@@ -164,7 +166,7 @@ body {
 }
 
 .icon-btn:hover {
-  background: #e5e7eb;
+  background-color: #e5e7eb;
 }
 
 .toggle-switch {
@@ -310,11 +312,10 @@ input:not(:checked) + .slider {
   padding: 16px;
   border-radius: 8px;
   border-left: 4px solid #10b981;
-  transition: transform 0.2s ease;
 }
 
 .message-list li:hover {
-  transform: translateX(4px);
+  background: #f1f5f9;
 }
 
 .message-list li strong {
@@ -381,41 +382,9 @@ input:not(:checked) + .slider {
   background: #a8a8a8;
 }
 
+/* Remove problematic animations */
 /* Animation for card hover */
-@keyframes cardHover {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(-2px);
-  }
-}
+/* Removed to prevent shaking */
 
-/* Responsive adjustments */
-@media (max-width: 420px) {
-  body {
-    width: 100vw;
-  }
-
-  .main-content {
-    padding: 16px;
-  }
-
-  .feature-card {
-    padding: 16px;
-  }
-
-  .feature-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .email-display {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .action-btn {
-    width: 100%;
-  }
-}
+/* Responsive adjustments - Removed to fix sizing issues */
+/* @media queries removed to ensure consistent popup size */
