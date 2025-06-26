@@ -125,6 +125,16 @@ body {
   background: #5856eb;
 }
 
+.action-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.action-btn:disabled:hover {
+  background: #9ca3af;
+}
+
 .mail-count {
   background: #ef4444;
   color: white;
@@ -680,3 +690,21 @@ input:not(:checked) + .slider {
 
 /* Responsive adjustments - Removed to fix sizing issues */
 /* @media queries removed to ensure consistent popup size */
+
+/* File viewer styles */
+.file-upload-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.file-name {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

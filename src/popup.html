@@ -1,12 +1,4 @@
-<!  <head>
-    <meta charset="UTF-8">
-    <title>NULL VOID</title>
-    <link rel="stylesheet" href="popup.css" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
-  </head>ml>
+<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -66,7 +58,17 @@
           </div>
         </div>
         <div class="feature-controls">
-          <button class="action-btn">Start</button>
+          <div class="file-upload-area">
+            <input
+              type="file"
+              id="fileInput"
+              accept="*/*"
+              style="display: none"
+            />
+            <button class="action-btn" id="selectFile">Select File</button>
+            <span class="file-name" id="fileName" style="display: none"></span>
+          </div>
+          <button class="action-btn" id="viewFile" disabled>View Safely</button>
         </div>
       </div>
 
@@ -97,7 +99,11 @@
           </div>
           <button class="action-btn" id="openInbox">
             <span id="inboxText">Inbox</span>
-            <span id="mailCount" class="mail-count" style="display: none;"></span>
+            <span
+              id="mailCount"
+              class="mail-count"
+              style="display: none"
+            ></span>
           </button>
         </div>
       </div>
@@ -134,7 +140,9 @@
         <div class="modal-header">
           <h3>Email Inbox</h3>
           <div class="inbox-header-controls">
-            <button id="refreshMessages" class="refresh-btn" title="Refresh">🔄</button>
+            <button id="refreshMessages" class="refresh-btn" title="Refresh">
+              🔄
+            </button>
             <span class="close-modal" id="closeInbox">&times;</span>
           </div>
         </div>
@@ -149,10 +157,16 @@
                   <span id="currentEmailDisplay">No email generated</span>
                 </div>
                 <div class="email-list-container">
-                  <div id="loadingMessages" class="loading" style="display: none">
+                  <div
+                    id="loadingMessages"
+                    class="loading"
+                    style="display: none"
+                  >
                     Loading messages...
                   </div>
-                  <div id="noMessages" class="no-messages">No messages yet.</div>
+                  <div id="noMessages" class="no-messages">
+                    No messages yet.
+                  </div>
                   <div id="emailList" class="email-list"></div>
                 </div>
                 <div class="inbox-controls">
@@ -165,7 +179,11 @@
           </div>
 
           <!-- Email detail view (full screen when viewing email) -->
-          <div id="emailDetailFullView" class="email-detail-full-view" style="display: none;">
+          <div
+            id="emailDetailFullView"
+            class="email-detail-full-view"
+            style="display: none"
+          >
             <div class="email-detail-header">
               <button id="backToList" class="back-btn" title="Back to inbox">
                 ← Back to Inbox

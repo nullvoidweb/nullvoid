@@ -504,6 +504,14 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("smartIntegrations");
     const backToListButton = document.getElementById("backToList");
 
+    // File viewer elements
+    const selectFileButton = document.getElementById("selectFile");
+    const fileInput = document.getElementById("fileInput");
+    const viewFileButton = document.getElementById("viewFile");
+    const fileNameDisplay = document.getElementById("fileName");
+
+    let currentFile = null;
+
     // Load saved disposable email on startup
     browserAPI.storage.local.get(
       ["disposableEmail", "disposableEmailId", "accountPassword"],
@@ -550,6 +558,42 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         } else {
           showNotification("No email to copy. Generate one first.", "error");
+        }
+      });
+    }
+
+    // --- File Viewer functionality ---
+    if (selectFileButton && fileInput) {
+      selectFileButton.addEventListener("click", () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          currentFile = file;
+
+          // Show file name
+          if (fileNameDisplay) {
+            fileNameDisplay.textContent = file.name;
+            fileNameDisplay.style.display = "inline";
+          }
+
+          // Enable view button
+          if (viewFileButton) {
+            viewFileButton.disabled = false;
+            viewFileButton.textContent = "View Safely";
+          }
+
+          showNotification(`File "${file.name}" selected for safe viewing`);
+        }
+      });
+    }
+
+    if (viewFileButton) {
+      viewFileButton.addEventListener("click", () => {
+        if (currentFile) {
+          openFileViewer(currentFile);
         }
       });
     }
@@ -652,3 +696,89 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error("Error initializing popup:", error);
   }
 });
+
+// --- File Viewer Helper Functions ---
+async function openFileViewer(file) {
+  try {
+    // Show loading state in the button
+    const viewBtn = document.getElementById("viewFile");
+    if (viewBtn) {
+      viewBtn.disabled = true;
+      viewBtn.textContent = "Opening file...";
+    }
+
+    // Read file data
+    const reader = new FileReader();
+    const fileData = await new Promise((resolve, reject) => {
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Failed to read file"));
+
+      // Read as data URL for universal compatibility
+      reader.readAsDataURL(file);
+    });
+
+    // Prepare file data for the new tab
+    const fileInfo = {
+      file: {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified,
+      },
+      data: fileData,
+    };
+
+    // Store file data temporarily
+    await browserAPI.storage.local.set({ pendingFileData: fileInfo });
+
+    // Open file viewer in new tab
+    const tab = await browserAPI.tabs.create({
+      url: browserAPI.runtime.getURL("file-viewer.html"),
+      active: true,
+    });
+
+    console.log("File viewer opened in new tab:", tab.id);
+
+    // Show success notification
+    showNotification(`File "${file.name}" opened in secure viewer`);
+
+    // Reset button state
+    if (viewBtn) {
+      viewBtn.disabled = false;
+      viewBtn.textContent = "View Safely";
+    }
+  } catch (error) {
+    console.error("Error opening file viewer:", error);
+
+    // Reset button state
+    const viewBtn = document.getElementById("viewFile");
+    if (viewBtn) {
+      viewBtn.disabled = false;
+      viewBtn.textContent = "View Safely";
+    }
+
+    // Show error notification
+    showNotification(`Error opening file: ${error.message}`, true);
+  }
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+}
+
+function escapeHtml(text) {
+  const map = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  };
+  return text.replace(/[&<>"']/g, function (m) {
+    return map[m];
+  });
+}
