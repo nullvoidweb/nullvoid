@@ -66,7 +66,7 @@ async function fetchAndDisplayMessages() {
     const loadingMessages = document.getElementById("loadingMessages");
     const messageList = document.getElementById("messageList");
     const noMessagesText = document.getElementById("noMessages");
-    
+
     if (loadingMessages) loadingMessages.style.display = "block";
     if (messageList) messageList.innerHTML = "";
     if (noMessagesText) noMessagesText.style.display = "none";
@@ -116,9 +116,10 @@ async function fetchAndDisplayMessages() {
     const loadingMessages = document.getElementById("loadingMessages");
     const messageList = document.getElementById("messageList");
     const noMessagesText = document.getElementById("noMessages");
-    
+
     if (loadingMessages) loadingMessages.style.display = "none";
-    if (messageList) messageList.innerHTML = `<li style="color: red;">Error fetching messages: ${error.message}</li>`;
+    if (messageList)
+      messageList.innerHTML = `<li style="color: red;">Error fetching messages: ${error.message}</li>`;
     if (noMessagesText) noMessagesText.style.display = "none";
   }
 }
@@ -127,7 +128,7 @@ async function fetchAndDisplayMessages() {
 function updateEmailDisplay(email) {
   const disposableEmailInput = document.getElementById("disposableEmail");
   const currentEmailDisplay = document.getElementById("currentEmailDisplay");
-  
+
   if (disposableEmailInput) {
     disposableEmailInput.value = email || "Click 'Generate' to get an email";
   }
@@ -145,7 +146,7 @@ async function generateNewEmail() {
   }
 
   updateEmailDisplay("Generating...");
-  
+
   // Clear messages in modal if open
   const messageList = document.getElementById("messageList");
   const noMessagesText = document.getElementById("noMessages");
@@ -156,11 +157,18 @@ async function generateNewEmail() {
     // Step 1: Get available domains
     console.log("Attempting to fetch domains...");
     const domains = await makeApiRequest("/domains");
-    if (!domains || !domains["hydra:member"] || domains["hydra:member"].length === 0) {
+    if (
+      !domains ||
+      !domains["hydra:member"] ||
+      domains["hydra:member"].length === 0
+    ) {
       console.error("No domains available from API response:", domains);
       throw new Error("No domains available from API.");
     }
-    const randomDomain = domains["hydra:member"][Math.floor(Math.random() * domains["hydra:member"].length)].domain;
+    const randomDomain =
+      domains["hydra:member"][
+        Math.floor(Math.random() * domains["hydra:member"].length)
+      ].domain;
     console.log("Selected domain:", randomDomain);
 
     // Step 2: Create a new account/email address
@@ -198,28 +206,32 @@ async function generateNewEmail() {
 
     // Start polling for messages
     intervalId = setInterval(fetchAndDisplayMessages, 5000); // Poll every 5 seconds
-    
+
     // Show success message
-    showNotification("Disposable email generated! Inbox will refresh every 5 seconds.");
-    
+    showNotification(
+      "Disposable email generated! Inbox will refresh every 5 seconds."
+    );
   } catch (error) {
     console.error("Error generating email:", error);
     updateEmailDisplay("Error generating email");
-    showNotification(`Error generating email: ${error.message}. Check console.`, 'error');
+    showNotification(
+      `Error generating email: ${error.message}. Check console.`,
+      "error"
+    );
   }
 }
 
 // --- Function to show notifications ---
-function showNotification(message, type = 'success') {
+function showNotification(message, type = "success") {
   // Create notification element
-  const notification = document.createElement('div');
+  const notification = document.createElement("div");
   notification.className = `notification ${type}`;
   notification.textContent = message;
   notification.style.cssText = `
     position: fixed;
     top: 20px;
     right: 20px;
-    background: ${type === 'error' ? '#ef4444' : '#10b981'};
+    background: ${type === "error" ? "#ef4444" : "#10b981"};
     color: white;
     padding: 12px 20px;
     border-radius: 8px;
@@ -229,17 +241,17 @@ function showNotification(message, type = 'success') {
     transform: translateX(100%);
     transition: transform 0.3s ease;
   `;
-  
+
   document.body.appendChild(notification);
-  
+
   // Animate in
   setTimeout(() => {
-    notification.style.transform = 'translateX(0)';
+    notification.style.transform = "translateX(0)";
   }, 100);
-  
+
   // Remove after delay
   setTimeout(() => {
-    notification.style.transform = 'translateX(100%)';
+    notification.style.transform = "translateX(100%)";
     setTimeout(() => {
       if (notification.parentNode) {
         notification.parentNode.removeChild(notification);
@@ -289,16 +301,19 @@ document.addEventListener("DOMContentLoaded", () => {
   if (copyEmailButton) {
     copyEmailButton.addEventListener("click", () => {
       if (currentDisposableEmailAddress) {
-        navigator.clipboard.writeText(currentDisposableEmailAddress).then(() => {
-          showNotification("Email copied to clipboard!");
-        }).catch(() => {
-          // Fallback for older browsers
-          disposableEmailInput.select();
-          document.execCommand("copy");
-          showNotification("Email copied to clipboard!");
-        });
+        navigator.clipboard
+          .writeText(currentDisposableEmailAddress)
+          .then(() => {
+            showNotification("Email copied to clipboard!");
+          })
+          .catch(() => {
+            // Fallback for older browsers
+            disposableEmailInput.select();
+            document.execCommand("copy");
+            showNotification("Email copied to clipboard!");
+          });
       } else {
-        showNotification("No email to copy. Generate one first.", 'error');
+        showNotification("No email to copy. Generate one first.", "error");
       }
     });
   }
@@ -346,10 +361,12 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         // Store the tab ID to monitor it
         browserAPI.storage.local.set({ ephemeralTabId: newTab.id });
-        showNotification("Ephemeral tab opened! Data will be cleared when closed.");
+        showNotification(
+          "Ephemeral tab opened! Data will be cleared when closed."
+        );
       } catch (error) {
         console.error("Error opening ephemeral tab:", error);
-        showNotification("Error opening ephemeral tab", 'error');
+        showNotification("Error opening ephemeral tab", "error");
       }
     });
   }
@@ -357,18 +374,20 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Smart Integrations Toggle ---
   if (smartIntegrationsToggle) {
     // Load saved setting
-    browserAPI.storage.local.get(['smartIntegrations'], (result) => {
+    browserAPI.storage.local.get(["smartIntegrations"], (result) => {
       if (result.smartIntegrations !== undefined) {
         smartIntegrationsToggle.checked = result.smartIntegrations;
       }
     });
 
     smartIntegrationsToggle.addEventListener("change", () => {
-      browserAPI.storage.local.set({ 
-        smartIntegrations: smartIntegrationsToggle.checked 
+      browserAPI.storage.local.set({
+        smartIntegrations: smartIntegrationsToggle.checked,
       });
       showNotification(
-        `Smart Integrations ${smartIntegrationsToggle.checked ? 'enabled' : 'disabled'}`
+        `Smart Integrations ${
+          smartIntegrationsToggle.checked ? "enabled" : "disabled"
+        }`
       );
     });
   }
