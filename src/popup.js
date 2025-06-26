@@ -64,6 +64,15 @@ async function fetchAndDisplayMessages() {
   }
 
   try {
+    // Ensure we're in list view when refreshing
+    const inboxListView = document.getElementById("inboxListView");
+    const emailDetailFullView = document.getElementById("emailDetailFullView");
+
+    if (inboxListView && emailDetailFullView) {
+      inboxListView.style.display = "block";
+      emailDetailFullView.style.display = "none";
+    }
+
     // Show loading state
     const loadingMessages = document.getElementById("loadingMessages");
     const emailList = document.getElementById("emailList");
@@ -106,9 +115,6 @@ async function fetchAndDisplayMessages() {
       updateMailCount(0);
       if (emailList) emailList.innerHTML = "";
       if (noMessagesText) noMessagesText.style.display = "block";
-
-      // Clear detail view
-      displayEmailDetail(null);
     }
   } catch (error) {
     console.error("Error fetching messages:", error);
@@ -243,7 +249,9 @@ async function showFullScreenEmail(message) {
       // Display the email in full-screen view
       emailFullContent.innerHTML = `
         <div class="email-header">
-          <div class="email-subject-display">${message.subject || "(No Subject)"}</div>
+          <div class="email-subject-display">${
+            message.subject || "(No Subject)"
+          }</div>
           <div class="email-meta">
             <div class="email-meta-row">
               <span class="email-meta-label">From:</span>
@@ -255,7 +263,9 @@ async function showFullScreenEmail(message) {
             </div>
             <div class="email-meta-row">
               <span class="email-meta-label">Date:</span>
-              <span class="email-meta-value">${new Date(message.createdAt).toLocaleString()}</span>
+              <span class="email-meta-value">${new Date(
+                message.createdAt
+              ).toLocaleString()}</span>
             </div>
           </div>
         </div>
@@ -266,7 +276,9 @@ async function showFullScreenEmail(message) {
     console.error("Error loading email content:", error);
     emailFullContent.innerHTML = `
       <div class="email-header">
-        <div class="email-subject-display">${message.subject || "(No Subject)"}</div>
+        <div class="email-subject-display">${
+          message.subject || "(No Subject)"
+        }</div>
         <div class="email-meta">
           <div class="email-meta-row">
             <span class="email-meta-label">From:</span>
@@ -294,7 +306,7 @@ function goBackToEmailList() {
     // Show list view and hide detail view
     inboxListView.style.display = "block";
     emailDetailFullView.style.display = "none";
-    
+
     // Clear selection
     document.querySelectorAll(".email-item").forEach((item) => {
       item.classList.remove("selected");
@@ -360,7 +372,7 @@ async function generateNewEmail() {
 
   if (emailList) emailList.innerHTML = "";
   if (noMessagesText) noMessagesText.style.display = "block";
-  
+
   // Ensure we're in list view (not detail view)
   if (inboxListView && emailDetailFullView) {
     inboxListView.style.display = "block";
@@ -546,6 +558,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (openInboxButton) {
       openInboxButton.addEventListener("click", () => {
         inboxModal.style.display = "block";
+
+        // Ensure we start in list view
+        const inboxListView = document.getElementById("inboxListView");
+        const emailDetailFullView = document.getElementById(
+          "emailDetailFullView"
+        );
+
+        if (inboxListView && emailDetailFullView) {
+          inboxListView.style.display = "block";
+          emailDetailFullView.style.display = "none";
+        }
+
         // Fetch messages when opening inbox
         fetchAndDisplayMessages();
       });
@@ -554,6 +578,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (closeInboxButton) {
       closeInboxButton.addEventListener("click", () => {
         inboxModal.style.display = "none";
+        // Reset to list view when closing
+        goBackToEmailList();
       });
     }
 
@@ -577,6 +603,8 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("click", (event) => {
       if (event.target === inboxModal) {
         inboxModal.style.display = "none";
+        // Reset to list view when closing
+        goBackToEmailList();
       }
     });
 

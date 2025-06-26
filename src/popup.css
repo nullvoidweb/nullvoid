@@ -557,27 +557,80 @@ input:not(:checked) + .slider {
   border-color: #9ca3af;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
+.generate-btn {
+  background: #6366f1;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
+.generate-btn:hover {
+  background: #5856eb;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
+/* Enhanced email content styles for full-screen view */
+.email-full-content .email-header {
+  padding: 32px;
+  border-bottom: 2px solid #e5e7eb;
+  background: #f8fafc;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+.email-full-content .email-subject-display {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 20px;
+  line-height: 1.4;
 }
 
-/* Remove problematic animations */
-/* Animation for card hover */
-/* Removed to prevent shaking */
+.email-full-content .email-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
-/* Responsive adjustments - Removed to fix sizing issues */
-/* @media queries removed to ensure consistent popup size */
+.email-full-content .email-meta-row {
+  display: flex;
+  font-size: 15px;
+  align-items: flex-start;
+}
+
+.email-full-content .email-meta-label {
+  font-weight: 600;
+  color: #6b7280;
+  width: 80px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.email-full-content .email-meta-value {
+  color: #374151;
+  flex: 1;
+  word-break: break-word;
+}
+
+.email-full-content .email-content {
+  padding: 32px;
+  line-height: 1.8;
+  font-size: 16px;
+  color: #374151;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-width: none;
+}
+
+/* Loading state for full-screen view */
+.email-full-content .loading-email-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: #6b7280;
+  font-style: italic;
+  font-size: 16px;
+}
