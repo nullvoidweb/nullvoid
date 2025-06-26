@@ -130,29 +130,50 @@
 
     <!-- Inbox Modal -->
     <div id="inboxModal" class="modal">
-      <div class="modal-content">
+      <div class="modal-content inbox-modal">
         <div class="modal-header">
           <h3>Email Inbox</h3>
-          <span class="close-modal" id="closeInbox">&times;</span>
+          <div class="inbox-header-controls">
+            <button id="refreshMessages" class="refresh-btn" title="Refresh">🔄</button>
+            <span class="close-modal" id="closeInbox">&times;</span>
+          </div>
         </div>
         <div class="modal-body">
-          <div class="inbox-content">
-            <div class="current-email">
-              <strong>Current Email:</strong>
-              <span id="currentEmailDisplay">No email generated</span>
-            </div>
-            <div class="messages-container">
-              <div id="loadingMessages" class="loading" style="display: none">
-                Loading messages...
+          <!-- Main inbox view (list view) -->
+          <div id="inboxListView" class="inbox-view">
+            <div class="inbox-layout">
+              <!-- Email list pane (full width when in list view) -->
+              <div class="email-list-pane full-width">
+                <div class="current-email-info">
+                  <strong>Current Email:</strong>
+                  <span id="currentEmailDisplay">No email generated</span>
+                </div>
+                <div class="email-list-container">
+                  <div id="loadingMessages" class="loading" style="display: none">
+                    Loading messages...
+                  </div>
+                  <div id="noMessages" class="no-messages">No messages yet.</div>
+                  <div id="emailList" class="email-list"></div>
+                </div>
+                <div class="inbox-controls">
+                  <button id="generateNewEmail" class="generate-btn">
+                    Generate New Email
+                  </button>
+                </div>
               </div>
-              <div id="noMessages" class="no-messages">No messages yet.</div>
-              <ul id="messageList" class="message-list"></ul>
             </div>
-            <div class="inbox-controls">
-              <button id="refreshMessages" class="refresh-btn">Refresh</button>
-              <button id="generateNewEmail" class="generate-btn">
-                Generate New Email
+          </div>
+
+          <!-- Email detail view (full screen when viewing email) -->
+          <div id="emailDetailFullView" class="email-detail-full-view" style="display: none;">
+            <div class="email-detail-header">
+              <button id="backToList" class="back-btn" title="Back to inbox">
+                ← Back to Inbox
               </button>
+              <div class="email-detail-title">Email Details</div>
+            </div>
+            <div id="emailFullContent" class="email-full-content">
+              <!-- Email content will be loaded here -->
             </div>
           </div>
         </div>

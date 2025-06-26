@@ -7,6 +7,8 @@ let currentDisposableEmailAddress = "";
 let currentDisposableEmailId = "";
 let currentAccountPassword = ""; // Store password for authentication
 let intervalId = null;
+let selectedEmailId = null; // Track currently selected email
+let currentMessages = []; // Cache messages for detail view
 
 // --- Utility function to make API requests ---
 async function makeApiRequest(
@@ -64,11 +66,11 @@ async function fetchAndDisplayMessages() {
   try {
     // Show loading state
     const loadingMessages = document.getElementById("loadingMessages");
-    const messageList = document.getElementById("messageList");
+    const emailList = document.getElementById("emailList");
     const noMessagesText = document.getElementById("noMessages");
 
     if (loadingMessages) loadingMessages.style.display = "block";
-    if (messageList) messageList.innerHTML = "";
+    if (emailList) emailList.innerHTML = "";
     if (noMessagesText) noMessagesText.style.display = "none";
 
     // Authenticate with Mail.tm API
@@ -93,49 +95,31 @@ async function fetchAndDisplayMessages() {
       messages["hydra:member"].length > 0
     ) {
       const messageCount = messages["hydra:member"].length;
+      currentMessages = messages["hydra:member"];
+
       updateMailCount(messageCount);
+      displayEmailList(currentMessages);
 
-      if (messageList) {
-        messageList.innerHTML = ""; // Clear previous messages
-
-        // Process each message and fetch full content
-        for (const msg of messages["hydra:member"]) {
-          const li = document.createElement("li");
-          li.className = "message-item";
-
-          // Initial display with loading indicator for body
-          li.innerHTML = `
-            <div class="message-header">
-              <strong>From:</strong> ${msg.from.address}<br>
-              <strong>Subject:</strong> ${msg.subject}<br>
-              <em>${new Date(msg.createdAt).toLocaleString()}</em>
-            </div>
-            <div class="message-body">
-              <div class="loading-body">Loading message content...</div>
-            </div>
-          `;
-          messageList.appendChild(li);
-
-          // Fetch full message content
-          fetchMessageContent(msg.id, authToken, li);
-        }
-      }
       if (noMessagesText) noMessagesText.style.display = "none";
     } else {
+      currentMessages = [];
       updateMailCount(0);
-      if (messageList) messageList.innerHTML = "";
+      if (emailList) emailList.innerHTML = "";
       if (noMessagesText) noMessagesText.style.display = "block";
+
+      // Clear detail view
+      displayEmailDetail(null);
     }
   } catch (error) {
     console.error("Error fetching messages:", error);
-    updateMailCount(0); // Reset count on error
+    updateMailCount(0);
     const loadingMessages = document.getElementById("loadingMessages");
-    const messageList = document.getElementById("messageList");
+    const emailList = document.getElementById("emailList");
     const noMessagesText = document.getElementById("noMessages");
 
     if (loadingMessages) loadingMessages.style.display = "none";
-    if (messageList)
-      messageList.innerHTML = `<li style="color: red;">Error fetching messages: ${error.message}</li>`;
+    if (emailList)
+      emailList.innerHTML = `<div style="color: red; padding: 16px;">Error fetching messages: ${error.message}</div>`;
     if (noMessagesText) noMessagesText.style.display = "none";
   }
 }
@@ -157,61 +141,195 @@ function updateMailCount(count) {
   }
 }
 
-// --- Function to fetch individual message content ---
-async function fetchMessageContent(messageId, authToken, listItem) {
+// --- Function to display email list ---
+function displayEmailList(messages) {
+  const emailList = document.getElementById("emailList");
+  if (!emailList) return;
+
+  emailList.innerHTML = "";
+
+  messages.forEach((message, index) => {
+    const emailItem = document.createElement("div");
+    emailItem.className = "email-item";
+    emailItem.dataset.messageId = message.id;
+
+    // Extract preview text (first 100 chars)
+    let previewText = "No preview available";
+    if (message.text) {
+      previewText = message.text.substring(0, 100);
+    } else if (message.intro) {
+      previewText = message.intro;
+    }
+
+    emailItem.innerHTML = `
+      <div class="email-from">${message.from.address}</div>
+      <div class="email-subject">${message.subject || "(No Subject)"}</div>
+      <div class="email-preview">${previewText}${
+      previewText.length >= 100 ? "..." : ""
+    }</div>
+      <div class="email-date">${new Date(
+        message.createdAt
+      ).toLocaleString()}</div>
+    `;
+
+    emailItem.addEventListener("click", () => {
+      // Remove selection from other items
+      document.querySelectorAll(".email-item").forEach((item) => {
+        item.classList.remove("selected");
+      });
+
+      // Add selection to clicked item
+      emailItem.classList.add("selected");
+      selectedEmailId = message.id;
+
+      // Show full-screen email detail
+      showFullScreenEmail(message);
+    });
+
+    emailList.appendChild(emailItem);
+  });
+}
+
+// --- Function to show full-screen email view ---
+async function showFullScreenEmail(message) {
+  const inboxListView = document.getElementById("inboxListView");
+  const emailDetailFullView = document.getElementById("emailDetailFullView");
+  const emailFullContent = document.getElementById("emailFullContent");
+
+  if (!inboxListView || !emailDetailFullView || !emailFullContent) return;
+
+  // Hide list view and show detail view
+  inboxListView.style.display = "none";
+  emailDetailFullView.style.display = "flex";
+
+  // Show loading state
+  emailFullContent.innerHTML = `
+    <div class="loading-email-content">
+      Loading email content...
+    </div>
+  `;
+
   try {
-    const messageContent = await makeApiRequest(
-      `/messages/${messageId}`,
+    // Get auth token
+    const tokenData = await makeApiRequest("/token", "POST", {
+      address: currentDisposableEmailAddress,
+      password: currentAccountPassword,
+    });
+
+    if (!tokenData || !tokenData.token) {
+      throw new Error("Failed to get authentication token.");
+    }
+
+    // Fetch full message content
+    const fullMessage = await makeApiRequest(
+      `/messages/${message.id}`,
       "GET",
       null,
-      authToken
+      tokenData.token
     );
 
-    if (messageContent) {
-      const messageBodyDiv = listItem.querySelector(".message-body");
-      if (messageBodyDiv) {
-        // Extract text content (prefer text over HTML for security)
-        let bodyContent = "";
-
-        if (messageContent.text) {
-          bodyContent = messageContent.text;
-        } else if (messageContent.html) {
-          // Strip HTML tags for security and clean display
-          bodyContent = messageContent.html.replace(/<[^>]*>/g, "");
-        } else {
-          bodyContent = "No message content available.";
-        }
-
-        // Truncate if too long and add expand option
-        if (bodyContent.length > 200) {
-          const truncated = bodyContent.substring(0, 200) + "...";
-          messageBodyDiv.innerHTML = `
-            <div class="message-content">
-              <div class="message-preview">${truncated}</div>
-              <button class="expand-btn" onclick="this.style.display='none'; this.nextElementSibling.style.display='block'">Show Full Message</button>
-              <div class="message-full" style="display: none;">${bodyContent}</div>
-            </div>
-          `;
-        } else {
-          messageBodyDiv.innerHTML = `
-            <div class="message-content">
-              <div class="message-preview">${bodyContent}</div>
-            </div>
-          `;
-        }
+    if (fullMessage) {
+      // Extract content
+      let emailContent = "";
+      if (fullMessage.text) {
+        emailContent = fullMessage.text;
+      } else if (fullMessage.html) {
+        // Strip HTML tags for security and clean display
+        emailContent = fullMessage.html.replace(/<[^>]*>/g, "");
+      } else {
+        emailContent = "No message content available.";
       }
-    }
-  } catch (error) {
-    console.error("Error fetching message content:", error);
-    const messageBodyDiv = listItem.querySelector(".message-body");
-    if (messageBodyDiv) {
-      messageBodyDiv.innerHTML = `
-        <div class="message-content error">
-          <em>Error loading message content: ${error.message}</em>
+
+      // Display the email in full-screen view
+      emailFullContent.innerHTML = `
+        <div class="email-header">
+          <div class="email-subject-display">${message.subject || "(No Subject)"}</div>
+          <div class="email-meta">
+            <div class="email-meta-row">
+              <span class="email-meta-label">From:</span>
+              <span class="email-meta-value">${message.from.address}</span>
+            </div>
+            <div class="email-meta-row">
+              <span class="email-meta-label">To:</span>
+              <span class="email-meta-value">${currentDisposableEmailAddress}</span>
+            </div>
+            <div class="email-meta-row">
+              <span class="email-meta-label">Date:</span>
+              <span class="email-meta-value">${new Date(message.createdAt).toLocaleString()}</span>
+            </div>
+          </div>
         </div>
+        <div class="email-content">${emailContent}</div>
       `;
     }
+  } catch (error) {
+    console.error("Error loading email content:", error);
+    emailFullContent.innerHTML = `
+      <div class="email-header">
+        <div class="email-subject-display">${message.subject || "(No Subject)"}</div>
+        <div class="email-meta">
+          <div class="email-meta-row">
+            <span class="email-meta-label">From:</span>
+            <span class="email-meta-value">${message.from.address}</span>
+          </div>
+          <div class="email-meta-row">
+            <span class="email-meta-label">Error:</span>
+            <span class="email-meta-value" style="color: #dc2626;">Failed to load content</span>
+          </div>
+        </div>
+      </div>
+      <div class="email-content" style="color: #dc2626;">
+        Error loading email content: ${error.message}
+      </div>
+    `;
   }
+}
+
+// --- Function to go back to email list ---
+function goBackToEmailList() {
+  const inboxListView = document.getElementById("inboxListView");
+  const emailDetailFullView = document.getElementById("emailDetailFullView");
+
+  if (inboxListView && emailDetailFullView) {
+    // Show list view and hide detail view
+    inboxListView.style.display = "block";
+    emailDetailFullView.style.display = "none";
+    
+    // Clear selection
+    document.querySelectorAll(".email-item").forEach((item) => {
+      item.classList.remove("selected");
+    });
+    selectedEmailId = null;
+  }
+}
+
+// --- Function to start background email polling ---
+function startBackgroundEmailPolling() {
+  if (
+    currentDisposableEmailId &&
+    currentDisposableEmailAddress &&
+    currentAccountPassword
+  ) {
+    console.log("Starting background email polling...");
+
+    // Get current message count to send to background
+    const currentCount = currentMessages ? currentMessages.length : 0;
+
+    browserAPI.runtime.sendMessage({
+      action: "startEmailPolling",
+      emailId: currentDisposableEmailId,
+      emailAddress: currentDisposableEmailAddress,
+      password: currentAccountPassword,
+      initialCount: currentCount,
+    });
+  }
+}
+
+// --- Function to stop background email polling ---
+function stopBackgroundEmailPolling() {
+  browserAPI.runtime.sendMessage({
+    action: "stopEmailPolling",
+  });
 }
 
 // --- Function to update email display in all places ---
@@ -229,19 +347,25 @@ function updateEmailDisplay(email) {
 
 // --- Function to generate new email ---
 async function generateNewEmail() {
-  // Clear previous interval if any
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
-  }
+  // Stop previous background polling if any
+  stopBackgroundEmailPolling();
 
   updateEmailDisplay("Generating...");
 
-  // Clear messages in modal if open
-  const messageList = document.getElementById("messageList");
+  // Clear messages in modal if open and ensure we're in list view
+  const emailList = document.getElementById("emailList");
   const noMessagesText = document.getElementById("noMessages");
-  if (messageList) messageList.innerHTML = "";
+  const inboxListView = document.getElementById("inboxListView");
+  const emailDetailFullView = document.getElementById("emailDetailFullView");
+
+  if (emailList) emailList.innerHTML = "";
   if (noMessagesText) noMessagesText.style.display = "block";
+  
+  // Ensure we're in list view (not detail view)
+  if (inboxListView && emailDetailFullView) {
+    inboxListView.style.display = "block";
+    emailDetailFullView.style.display = "none";
+  }
 
   try {
     // Step 1: Get available domains
@@ -294,13 +418,13 @@ async function generateNewEmail() {
       currentDisposableEmailId
     );
 
-    // Start polling for messages
-    intervalId = setInterval(fetchAndDisplayMessages, 5000); // Poll every 5 seconds
-
     // Show success message
     showNotification(
-      "Disposable email generated! Inbox will refresh every 5 seconds."
+      "Disposable email generated! Background notifications enabled."
     );
+
+    // Start background polling
+    startBackgroundEmailPolling();
   } catch (error) {
     console.error("Error generating email:", error);
     updateEmailDisplay("Error generating email");
@@ -353,6 +477,8 @@ function showNotification(message, type = "success") {
 // --- Main DOM Content Loaded Listener ---
 document.addEventListener("DOMContentLoaded", () => {
   try {
+    console.log("NULL VOID Extension loaded");
+
     const disposableEmailInput = document.getElementById("disposableEmail");
     const copyEmailButton = document.getElementById("copyEmail");
     const generateEmailButton = document.getElementById("generateEmail");
@@ -364,6 +490,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const generateNewEmailButton = document.getElementById("generateNewEmail");
     const smartIntegrationsToggle =
       document.getElementById("smartIntegrations");
+    const backToListButton = document.getElementById("backToList");
 
     // Load saved disposable email on startup
     browserAPI.storage.local.get(
@@ -380,10 +507,9 @@ document.addEventListener("DOMContentLoaded", () => {
             currentAccountPassword = result.accountPassword;
             updateEmailDisplay(currentDisposableEmailAddress);
             console.log("Loaded saved email:", currentDisposableEmailAddress);
-            // Start polling for messages with a delay to prevent immediate API calls
-            setTimeout(() => {
-              intervalId = setInterval(fetchAndDisplayMessages, 5000);
-            }, 1000);
+
+            // Start background polling
+            startBackgroundEmailPolling();
           }
         } catch (error) {
           console.error("Error loading saved email:", error);
@@ -442,6 +568,11 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
+    // Back to list button functionality
+    if (backToListButton) {
+      backToListButton.addEventListener("click", goBackToEmailList);
+    }
+
     // Close modal when clicking outside
     window.addEventListener("click", (event) => {
       if (event.target === inboxModal) {
@@ -491,13 +622,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   } catch (error) {
     console.error("Error initializing popup:", error);
-  }
-});
-
-// Clean up interval when popup closes (good practice, though service worker might handle persistence)
-window.addEventListener("beforeunload", () => {
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
   }
 });
