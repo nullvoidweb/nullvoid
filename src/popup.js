@@ -656,18 +656,48 @@ document.addEventListener("DOMContentLoaded", () => {
     if (openEphemeralTabButton) {
       openEphemeralTabButton.addEventListener("click", async () => {
         try {
+          // Get selected location
+          const locationSelect = document.querySelector(".location-select");
+          const selectedLocation = locationSelect
+            ? locationSelect.value
+            : "singapore";
+
+          // Show loading state
+          openEphemeralTabButton.textContent = "Starting...";
+          openEphemeralTabButton.disabled = true;
+
+          // Create the ephemeral browsing tab with enhanced privacy
+          const ephemeralUrl = createEphemeralBrowsingUrl(selectedLocation);
+
           const newTab = await browserAPI.tabs.create({
-            url: "about:blank",
+            url: ephemeralUrl,
             active: true,
           });
-          // Store the tab ID to monitor it
-          browserAPI.storage.local.set({ ephemeralTabId: newTab.id });
+
+          // Store the tab ID and location info to monitor it
+          await browserAPI.storage.local.set({
+            ephemeralTabId: newTab.id,
+            ephemeralLocation: selectedLocation,
+            ephemeralStartTime: Date.now(),
+          });
+
+          // Reset button state
+          openEphemeralTabButton.textContent = "Start";
+          openEphemeralTabButton.disabled = false;
+
           showNotification(
-            "Ephemeral tab opened! Data will be cleared when closed."
+            `Secure disposable browser started from ${getLocationName(
+              selectedLocation
+            )}!`
           );
+
+          // Close popup after starting
+          window.close();
         } catch (error) {
           console.error("Error opening ephemeral tab:", error);
-          showNotification("Error opening ephemeral tab", "error");
+          openEphemeralTabButton.textContent = "Start";
+          openEphemeralTabButton.disabled = false;
+          showNotification("Error starting disposable browser", "error");
         }
       });
     }
@@ -781,4 +811,21 @@ function escapeHtml(text) {
   return text.replace(/[&<>"']/g, function (m) {
     return map[m];
   });
+}
+
+// --- Ephemeral Browser Helper Functions ---
+function createEphemeralBrowsingUrl(location) {
+  // Create a landing page for the disposable browser
+  const baseUrl = chrome.runtime.getURL("ephemeral-browser.html");
+  return `${baseUrl}?location=${encodeURIComponent(location)}`;
+}
+
+function getLocationName(locationCode) {
+  const locationNames = {
+    singapore: "Singapore",
+    usa: "United States",
+    uk: "United Kingdom",
+    canada: "Canada",
+  };
+  return locationNames[locationCode] || "Singapore";
 }

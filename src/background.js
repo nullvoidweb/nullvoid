@@ -191,43 +191,82 @@ browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // --- Ephemeral Tab Cleanup ---
 // Listen for when a tab is closed
 browserAPI.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
-  const result = await browserAPI.storage.local.get("ephemeralTabId");
+  const result = await browserAPI.storage.local.get([
+    "ephemeralTabId",
+    "ephemeralLocation",
+    "ephemeralStartTime",
+  ]);
   if (result.ephemeralTabId === tabId) {
+    console.log(`Ephemeral tab ${tabId} closed. Clearing browsing data...`);
+
+    const duration = result.ephemeralStartTime
+      ? Date.now() - result.ephemeralStartTime
+      : 0;
+    const location = result.ephemeralLocation || "unknown";
+
     console.log(
-      `Ephemeral tab ${tabId} closed. Attempting to clear Browse data.`
+      `Ephemeral session duration: ${Math.round(
+        duration / 1000
+      )}s, Location: ${location}`
     );
 
-    // In a real scenario, you'd want to clear data *only for the origin*
-    // visited in that ephemeral tab. This is complex as browsers don't
-    // expose the history of a closed tab easily to extensions.
-    // For simplicity, we'll try to clear general data types.
-    // CAUTION: browserAPI.BrowseData.remove() can be broad.
-    // For production, you'd need a more sophisticated method, potentially
-    // by listening to webNavigation events within the ephemeral tab
-    // to collect origins.
-
     try {
+      // Clear browsing data for the ephemeral session
       await browserAPI.BrowseData.remove(
         {
-          since: 0, // Clear all time
+          since: result.ephemeralStartTime || 0,
         },
         {
           cookies: true,
           history: true,
           localStorage: true,
+          sessionStorage: true,
           cache: true,
+          cacheStorage: true,
+          downloads: false, // Keep downloads but clear other data
+          formData: true,
+          indexedDB: true,
+          pluginData: true,
+          passwords: false, // Don't clear saved passwords
+          webSQL: true,
         }
       );
-      console.log(`Browse data for tab ${tabId} (potentially) cleared.`);
-    } catch (e) {
+
+      console.log(`Browsing data cleared for ephemeral session ${tabId}`);
+
+      // Show notification about cleanup
+      try {
+        await browserAPI.notifications.create({
+          type: "basic",
+          iconUrl: "icons/icon48.png",
+          title: "NULL VOID - Session Ended",
+          message: `Disposable browser session ended. All browsing data has been securely cleared.`,
+        });
+      } catch (notificationError) {
+        console.log("Could not show notification:", notificationError);
+      }
+    } catch (error) {
       console.error(
-        `Failed to clear Browse data for ephemeral tab ${tabId}:`,
-        e
+        `Failed to clear browsing data for ephemeral tab ${tabId}:`,
+        error
       );
     }
 
-    // Clear the stored ephemeral tab ID
-    await browserAPI.storage.local.remove("ephemeralTabId");
+    // Clear the stored ephemeral tab info
+    await browserAPI.storage.local.remove([
+      "ephemeralTabId",
+      "ephemeralLocation",
+      "ephemeralStartTime",
+    ]);
+  }
+});
+
+// Listen for messages from ephemeral browser
+browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "ephemeralSessionEnding") {
+    console.log("Ephemeral session ending notification received:", request);
+    // Could perform additional cleanup here
+    sendResponse({ received: true });
   }
 });
 
