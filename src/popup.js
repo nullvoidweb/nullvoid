@@ -94,17 +94,28 @@ async function fetchAndDisplayMessages() {
     ) {
       if (messageList) {
         messageList.innerHTML = ""; // Clear previous messages
-        messages["hydra:member"].forEach((msg) => {
+
+        // Process each message and fetch full content
+        for (const msg of messages["hydra:member"]) {
           const li = document.createElement("li");
+          li.className = "message-item";
+
+          // Initial display with loading indicator for body
           li.innerHTML = `
-            <div>
+            <div class="message-header">
               <strong>From:</strong> ${msg.from.address}<br>
               <strong>Subject:</strong> ${msg.subject}<br>
               <em>${new Date(msg.createdAt).toLocaleString()}</em>
             </div>
+            <div class="message-body">
+              <div class="loading-body">Loading message content...</div>
+            </div>
           `;
           messageList.appendChild(li);
-        });
+
+          // Fetch full message content
+          fetchMessageContent(msg.id, authToken, li);
+        }
       }
       if (noMessagesText) noMessagesText.style.display = "none";
     } else {
@@ -121,6 +132,63 @@ async function fetchAndDisplayMessages() {
     if (messageList)
       messageList.innerHTML = `<li style="color: red;">Error fetching messages: ${error.message}</li>`;
     if (noMessagesText) noMessagesText.style.display = "none";
+  }
+}
+
+// --- Function to fetch individual message content ---
+async function fetchMessageContent(messageId, authToken, listItem) {
+  try {
+    const messageContent = await makeApiRequest(
+      `/messages/${messageId}`,
+      "GET",
+      null,
+      authToken
+    );
+
+    if (messageContent) {
+      const messageBodyDiv = listItem.querySelector(".message-body");
+      if (messageBodyDiv) {
+        // Extract text content (prefer text over HTML for security)
+        let bodyContent = "";
+
+        if (messageContent.text) {
+          bodyContent = messageContent.text;
+        } else if (messageContent.html) {
+          // Strip HTML tags for security and clean display
+          bodyContent = messageContent.html.replace(/<[^>]*>/g, "");
+        } else {
+          bodyContent = "No message content available.";
+        }
+
+        // Truncate if too long and add expand option
+        if (bodyContent.length > 200) {
+          const truncated = bodyContent.substring(0, 200) + "...";
+          messageBodyDiv.innerHTML = `
+            <div class="message-content">
+              <div class="message-preview">${truncated}</div>
+              <button class="expand-btn" onclick="this.style.display='none'; this.nextElementSibling.style.display='block'">Show Full Message</button>
+              <div class="message-full" style="display: none;">${bodyContent}</div>
+            </div>
+          `;
+        } else {
+          messageBodyDiv.innerHTML = `
+            <div class="message-content">
+              <div class="message-preview">${bodyContent}</div>
+            </div>
+          `;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching message content:", error);
+    const messageBodyDiv = listItem.querySelector(".message-body");
+    if (messageBodyDiv) {
+      messageBodyDiv.innerHTML = `
+        <div class="message-content error">
+          <em>Error loading message content: ${error.message}</em>
+        </div>
+      `;
+    }
   }
 }
 

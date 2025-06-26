@@ -327,6 +327,63 @@ input:not(:checked) + .slider {
   font-size: 12px;
 }
 
+.message-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.message-body {
+  margin-top: 8px;
+}
+
+.loading-body {
+  color: #666;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.message-content {
+  background: #f9fafb;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.message-preview {
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.message-full {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.expand-btn {
+  background: #6366f1;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.expand-btn:hover {
+  background: #5856eb;
+}
+
+.message-content.error {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
 .inbox-controls {
   display: flex;
   gap: 12px;
