@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NULL VOID</title>
+    <link rel="stylesheet" href="popup.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="brand">
+                <img src="icons/icon48.png" alt="NULL VOID" class="logo">
+                <span class="brand-name">NULL VOID</span>
+            </div>
+            <div class="tagline">Be Fearless Online</div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- Disposable Browser Section -->
+        <div class="feature-card">
+            <div class="feature-header">
+                <img src="icons/icon16.png" alt="Browser" class="feature-icon">
+                <div class="feature-info">
+                    <h3>Disposable Browser</h3>
+                    <p>Fast, secure, and anonymous browsing from any worldwide location. Open suspicious websites fearlessly!</p>
+                </div>
+            </div>
+            <div class="feature-controls">
+                <select class="location-select">
+                    <option value="singapore">Singapore</option>
+                    <option value="usa">United States</option>
+                    <option value="uk">United Kingdom</option>
+                    <option value="canada">Canada</option>
+                </select>
+                <button class="action-btn" id="openEphemeralTab">Start</button>
+            </div>
+        </div>
+
+        <!-- Disposable File Viewer Section -->
+        <div class="feature-card">
+            <div class="feature-header">
+                <img src="icons/icon16.png" alt="File Viewer" class="feature-icon">
+                <div class="feature-info">
+                    <h3>Disposable File Viewer</h3>
+                    <p>Safely view suspicious documents on the web or in your email. You never have to worry about file malware ever again!</p>
+                </div>
+            </div>
+            <div class="feature-controls">
+                <button class="action-btn">Start</button>
+            </div>
+        </div>
+
+        <!-- Disposable Email Section -->
+        <div class="feature-card">
+            <div class="feature-header">
+                <img src="icons/icon16.png" alt="Email" class="feature-icon">
+                <div class="feature-info">
+                    <h3>Disposable Email</h3>
+                    <p>Temporary, anonymous, and secure email inboxes. Eliminate spam, unwanted ads, and malicious threats!</p>
+                </div>
+            </div>
+            <div class="feature-controls">
+                <div class="email-display">
+                    <input type="text" id="disposableEmail" value="Click 'Generate' to get an email" readonly>
+                    <button class="icon-btn" id="copyEmail" title="Copy">📋</button>
+                    <button class="icon-btn" id="generateEmail" title="Regenerate">🔄</button>
+                    <button class="icon-btn" id="editEmail" title="Edit">✏️</button>
+                </div>
+                <button class="action-btn" id="openInbox">Inbox</button>
+            </div>
+        </div>
+
+        <!-- Smart Integrations Section -->
+        <div class="feature-card">
+            <div class="feature-header">
+                <img src="icons/icon16.png" alt="Smart Integrations" class="feature-icon">
+                <div class="feature-info">
+                    <h3>Smart Integrations</h3>
+                    <p>Enable in-browser detection and mitigation of online threats. Protects you against malicious websites, files, content and networks!</p>
+                </div>
+            </div>
+            <div class="feature-controls">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="smartIntegrations" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inbox Modal -->
+    <div id="inboxModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Email Inbox</h3>
+                <span class="close-modal" id="closeInbox">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="inbox-content">
+                    <div class="current-email">
+                        <strong>Current Email:</strong> <span id="currentEmailDisplay">No email generated</span>
+                    </div>
+                    <div class="messages-container">
+                        <div id="loadingMessages" class="loading" style="display: none;">Loading messages...</div>
+                        <div id="noMessages" class="no-messages">No messages yet.</div>
+                        <ul id="messageList" class="message-list"></ul>
+                    </div>
+                    <div class="inbox-controls">
+                        <button id="refreshMessages" class="refresh-btn">Refresh</button>
+                        <button id="generateNewEmail" class="generate-btn">Generate New Email</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

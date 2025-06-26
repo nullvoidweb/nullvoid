@@ -1,0 +1,19 @@
+{
+  "name": "my-security-extension",
+  "version": "1.0.0",
+  "description": "A simplified browser extension with disposable email and ephemeral tab features.",
+  "main": "background.js",
+  "scripts": {
+    "build:chrome": "node build.js chrome",
+    "build:firefox": "node build.js firefox",
+    "clean": "rm -rf build/* src/manifest.json",
+    "dev:chrome": "npm run build:chrome && echo 'Load src/ as unpacked extension in Chrome/Edge'",
+    "dev:firefox": "npm run build:firefox && echo 'Load src/ as unpacked extension in Firefox'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "fs-extra": "^11.3.0"
+  }
+}
