@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Simplified Secure Browser",
+  "name": "NULL VOID",
   "version": "1.0",
-  "description": "A simplified browser extension with disposable email and ephemeral tab features.",
+  "description": "Enterprise-grade Remote Browser Isolation with disposable email and secure file viewing.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -18,15 +18,31 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": [
-    "activeTab",
-    "storage",
-    "scripting",
-    "tabs",
-    "BrowseData"
-  ],
+  "permissions": ["activeTab", "storage", "scripting", "tabs", "browsingData"],
   "host_permissions": [
-    "<all_urls>", 
-    "https://api.mail.tm/*" 
+    "<all_urls>",
+    "https://api.mail.tm/*",
+    "https://production-sfo.browserless.io/*",
+    "https://chrome.browserless.io/*",
+    "https://chrome-eu.browserless.io/*",
+    "https://sg-rbi-api.nullvoid.com/*",
+    "https://us-rbi-api.nullvoid.com/*",
+    "https://uk-rbi-api.nullvoid.com/*",
+    "https://ca-rbi-api.nullvoid.com/*",
+    "wss://sg-rbi-stream.nullvoid.com/*",
+    "wss://us-rbi-stream.nullvoid.com/*",
+    "wss://uk-rbi-stream.nullvoid.com/*",
+    "wss://ca-rbi-stream.nullvoid.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "rbi-browser.html",
+        "file-viewer.html",
+        "common/*",
+        "icons/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
   ]
 }

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NULL VOID - Remote Browser Isolation</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #333;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 15px 30px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+
+      .logo-section {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .logo {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+      }
+
+      .brand-text {
+        font-size: 20px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 20px;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+      }
+
+      #urlInput {
+        flex: 1;
+        padding: 10px 15px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      #urlInput:focus {
+        border-color: #667eea;
+      }
+
+      .toolbar-btn {
+        background: transparent;
+        border: none;
+        padding: 8px;
+        cursor: pointer;
+        font-size: 18px;
+        color: #555;
+        border-radius: 6px;
+        transition: background-color 0.2s;
+      }
+
+      .toolbar-btn:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+
+      .location-badge {
+        background: #e8f5e8;
+        color: #2d7d32;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        border: 1px solid #c8e6c9;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .browser-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #browserCanvas {
+        flex: 1;
+        width: 100%;
+        height: calc(100vh - 120px);
+        background: white;
+        overflow: hidden;
+        border: none;
+        position: relative;
+      }
+
+      .status-message {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 1000;
+      }
+
+      .status-message.show {
+        opacity: 1;
+      }
+
+      .status-message.success {
+        background: #e8f5e8;
+        color: #2d7d32;
+        border: 1px solid #c8e6c9;
+      }
+
+      .status-message.error {
+        background: #fdecea;
+        color: #d32f2f;
+        border: 1px solid #ffcdd2;
+      }
+
+      .status-message.info {
+        background: #e3f2fd;
+        color: #1976d2;
+        border: 1px solid #bbdefb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="logo-section">
+        <img src="icons/icon48.png" alt="NULL VOID" class="logo" />
+        <div class="brand-text">NULL VOID</div>
+      </div>
+      <div id="locationBadge" class="location-badge">
+        <span class="location-flag">🇸🇬</span>
+        <span class="location-name">Singapore</span>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button id="backBtn" class="toolbar-btn" title="Go Back">←</button>
+      <button id="forwardBtn" class="toolbar-btn" title="Go Forward">→</button>
+      <button id="refreshBtn" class="toolbar-btn" title="Refresh">↻</button>
+      <input
+        type="text"
+        id="urlInput"
+        placeholder="Enter URL to browse securely..."
+      />
+      <button id="goBtn" class="toolbar-btn" title="Go">→</button>
+    </div>
+
+    <div class="browser-container">
+      <div id="browserCanvas"></div>
+    </div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <script src="common/utils.js"></script>
+    <script src="common/rbi-service.js"></script>
+    <script src="common/browserless-rbi-service.js"></script>
+    <script src="rbi-browser.js"></script>
+  </body>
+</html>

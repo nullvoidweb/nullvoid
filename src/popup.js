@@ -48,714 +48,320 @@ async function makeApiRequest(
     console.log("[API Response] Data:", jsonData);
     return jsonData;
   } catch (error) {
-    console.error("API request failed:", error);
-    alert(`Error: ${error.message}. Check console for details.`);
-    return null;
+    console.error("[API Error]", error);
+    throw error;
   }
 }
 
-// --- Function to fetch and display messages ---
-async function fetchAndDisplayMessages() {
-  if (!currentDisposableEmailId || !currentAccountPassword) {
-    console.log(
-      "No disposable email ID or password available to fetch messages."
-    );
-    return;
-  }
+// Initialize UI when popup opens
+document.addEventListener("DOMContentLoaded", async () => {
+  initializeUI();
+  await initializeEmailFeatures();
+});
 
-  try {
-    // Ensure we're in list view when refreshing
-    const inboxListView = document.getElementById("inboxListView");
-    const emailDetailFullView = document.getElementById("emailDetailFullView");
+function initializeUI() {
+  // Initialize the RBI browser button
+  const openRBIButton = document.getElementById("openRBIBrowser");
+  if (openRBIButton) {
+    openRBIButton.addEventListener("click", async () => {
+      try {
+        showStatusText("Connecting to Remote Browser...");
 
-    if (inboxListView && emailDetailFullView) {
-      inboxListView.style.display = "block";
-      emailDetailFullView.style.display = "none";
-    }
+        // Get selected location
+        const locationSelect = document.querySelector(".location-select");
+        const selectedLocation = locationSelect
+          ? locationSelect.value
+          : "singapore";
 
-    // Show loading state
-    const loadingMessages = document.getElementById("loadingMessages");
-    const emailList = document.getElementById("emailList");
-    const noMessagesText = document.getElementById("noMessages");
+        // Check for active RBI tab
+        const storage = await browserAPI.storage.local.get(["rbiTabId"]);
+        if (storage.rbiTabId) {
+          try {
+            const tab = await browserAPI.tabs.get(storage.rbiTabId);
+            if (tab) {
+              await browserAPI.tabs.update(tab.id, { active: true });
+              window.close();
+              return;
+            }
+          } catch (error) {
+            await browserAPI.storage.local.remove(["rbiTabId"]);
+          }
+        }
 
-    if (loadingMessages) loadingMessages.style.display = "block";
-    if (emailList) emailList.innerHTML = "";
-    if (noMessagesText) noMessagesText.style.display = "none";
+        // Create new RBI browser tab
+        const rbiUrl = `${browserAPI.runtime.getURL(
+          "rbi-browser.html"
+        )}?location=${selectedLocation}`;
+        const newTab = await browserAPI.tabs.create({
+          url: rbiUrl,
+          active: true,
+        });
 
-    // Authenticate with Mail.tm API
-    const tokenData = await makeApiRequest("/token", "POST", {
-      address: currentDisposableEmailAddress,
-      password: currentAccountPassword,
-    });
+        // Store tab info
+        await browserAPI.storage.local.set({
+          rbiTabId: newTab.id,
+          rbiLocation: selectedLocation,
+        });
 
-    if (!tokenData || !tokenData.token) {
-      throw new Error("Failed to get authentication token for inbox.");
-    }
-    const authToken = tokenData.token;
-
-    // Fetch messages using the correct endpoint
-    const messages = await makeApiRequest(`/messages`, "GET", null, authToken);
-
-    if (loadingMessages) loadingMessages.style.display = "none";
-
-    if (
-      messages &&
-      messages["hydra:member"] &&
-      messages["hydra:member"].length > 0
-    ) {
-      const messageCount = messages["hydra:member"].length;
-      currentMessages = messages["hydra:member"];
-
-      updateMailCount(messageCount);
-      displayEmailList(currentMessages);
-
-      if (noMessagesText) noMessagesText.style.display = "none";
-    } else {
-      currentMessages = [];
-      updateMailCount(0);
-      if (emailList) emailList.innerHTML = "";
-      if (noMessagesText) noMessagesText.style.display = "block";
-    }
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    updateMailCount(0);
-    const loadingMessages = document.getElementById("loadingMessages");
-    const emailList = document.getElementById("emailList");
-    const noMessagesText = document.getElementById("noMessages");
-
-    if (loadingMessages) loadingMessages.style.display = "none";
-    if (emailList)
-      emailList.innerHTML = `<div style="color: red; padding: 16px;">Error fetching messages: ${error.message}</div>`;
-    if (noMessagesText) noMessagesText.style.display = "none";
-  }
-}
-
-// --- Function to update mail count display ---
-function updateMailCount(count) {
-  const mailCountElement = document.getElementById("mailCount");
-  const inboxTextElement = document.getElementById("inboxText");
-
-  if (mailCountElement && inboxTextElement) {
-    if (count > 0) {
-      mailCountElement.textContent = count;
-      mailCountElement.style.display = "inline-block";
-      inboxTextElement.textContent = "Inbox";
-    } else {
-      mailCountElement.style.display = "none";
-      inboxTextElement.textContent = "Inbox";
-    }
-  }
-}
-
-// --- Function to display email list ---
-function displayEmailList(messages) {
-  const emailList = document.getElementById("emailList");
-  if (!emailList) return;
-
-  emailList.innerHTML = "";
-
-  messages.forEach((message, index) => {
-    const emailItem = document.createElement("div");
-    emailItem.className = "email-item";
-    emailItem.dataset.messageId = message.id;
-
-    // Extract preview text (first 100 chars)
-    let previewText = "No preview available";
-    if (message.text) {
-      previewText = message.text.substring(0, 100);
-    } else if (message.intro) {
-      previewText = message.intro;
-    }
-
-    emailItem.innerHTML = `
-      <div class="email-from">${message.from.address}</div>
-      <div class="email-subject">${message.subject || "(No Subject)"}</div>
-      <div class="email-preview">${previewText}${
-      previewText.length >= 100 ? "..." : ""
-    }</div>
-      <div class="email-date">${new Date(
-        message.createdAt
-      ).toLocaleString()}</div>
-    `;
-
-    emailItem.addEventListener("click", () => {
-      // Remove selection from other items
-      document.querySelectorAll(".email-item").forEach((item) => {
-        item.classList.remove("selected");
-      });
-
-      // Add selection to clicked item
-      emailItem.classList.add("selected");
-      selectedEmailId = message.id;
-
-      // Show full-screen email detail
-      showFullScreenEmail(message);
-    });
-
-    emailList.appendChild(emailItem);
-  });
-}
-
-// --- Function to show full-screen email view ---
-async function showFullScreenEmail(message) {
-  const inboxListView = document.getElementById("inboxListView");
-  const emailDetailFullView = document.getElementById("emailDetailFullView");
-  const emailFullContent = document.getElementById("emailFullContent");
-
-  if (!inboxListView || !emailDetailFullView || !emailFullContent) return;
-
-  // Hide list view and show detail view
-  inboxListView.style.display = "none";
-  emailDetailFullView.style.display = "flex";
-
-  // Show loading state
-  emailFullContent.innerHTML = `
-    <div class="loading-email-content">
-      Loading email content...
-    </div>
-  `;
-
-  try {
-    // Get auth token
-    const tokenData = await makeApiRequest("/token", "POST", {
-      address: currentDisposableEmailAddress,
-      password: currentAccountPassword,
-    });
-
-    if (!tokenData || !tokenData.token) {
-      throw new Error("Failed to get authentication token.");
-    }
-
-    // Fetch full message content
-    const fullMessage = await makeApiRequest(
-      `/messages/${message.id}`,
-      "GET",
-      null,
-      tokenData.token
-    );
-
-    if (fullMessage) {
-      // Extract content
-      let emailContent = "";
-      if (fullMessage.text) {
-        emailContent = fullMessage.text;
-      } else if (fullMessage.html) {
-        // Strip HTML tags for security and clean display
-        emailContent = fullMessage.html.replace(/<[^>]*>/g, "");
-      } else {
-        emailContent = "No message content available.";
+        window.close();
+      } catch (error) {
+        console.error("Error opening RBI browser:", error);
+        showStatusText("Failed to open Remote Browser", "error");
       }
+    });
+  }
 
-      // Display the email in full-screen view
-      emailFullContent.innerHTML = `
-        <div class="email-header">
-          <div class="email-subject-display">${
-            message.subject || "(No Subject)"
-          }</div>
-          <div class="email-meta">
-            <div class="email-meta-row">
-              <span class="email-meta-label">From:</span>
-              <span class="email-meta-value">${message.from.address}</span>
-            </div>
-            <div class="email-meta-row">
-              <span class="email-meta-label">To:</span>
-              <span class="email-meta-value">${currentDisposableEmailAddress}</span>
-            </div>
-            <div class="email-meta-row">
-              <span class="email-meta-label">Date:</span>
-              <span class="email-meta-value">${new Date(
-                message.createdAt
-              ).toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
-        <div class="email-content">${emailContent}</div>
-      `;
+  // Initialize file viewer functionality
+  const fileInput = document.getElementById("fileInput");
+  const selectFileBtn = document.getElementById("selectFile");
+  const viewFileBtn = document.getElementById("viewFile");
+  const fileNameSpan = document.getElementById("fileName");
+
+  if (fileInput && selectFileBtn && viewFileBtn) {
+    selectFileBtn.addEventListener("click", () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        // Show file name and enable view button
+        fileNameSpan.textContent = file.name;
+        fileNameSpan.style.display = "inline";
+        viewFileBtn.disabled = false;
+
+        // Store file reference
+        fileInput.fileData = file;
+      }
+    });
+
+    viewFileBtn.addEventListener("click", async () => {
+      const file = fileInput.fileData;
+      if (file) {
+        viewFileBtn.disabled = true;
+        viewFileBtn.textContent = "Processing...";
+        await handleFileUpload(file);
+      }
+    });
+  }
+
+  // Add status text element
+  if (!document.getElementById("statusText")) {
+    const statusText = document.createElement("div");
+    statusText.id = "statusText";
+    statusText.className = "status-text";
+    document.body.appendChild(statusText);
+  }
+}
+
+async function initializeEmailFeatures() {
+  try {
+    // Check for existing email
+    const storage = await browserAPI.storage.local.get([
+      "disposableEmail",
+      "disposableEmailId",
+      "authToken",
+    ]);
+
+    if (
+      storage.disposableEmail &&
+      storage.disposableEmailId &&
+      storage.authToken
+    ) {
+      currentDisposableEmailAddress = storage.disposableEmail;
+      currentDisposableEmailId = storage.disposableEmailId;
+      await updateUIWithEmail(storage.disposableEmail);
+      await startEmailPolling();
     }
   } catch (error) {
-    console.error("Error loading email content:", error);
-    emailFullContent.innerHTML = `
-      <div class="email-header">
-        <div class="email-subject-display">${
-          message.subject || "(No Subject)"
-        }</div>
-        <div class="email-meta">
-          <div class="email-meta-row">
-            <span class="email-meta-label">From:</span>
-            <span class="email-meta-value">${message.from.address}</span>
-          </div>
-          <div class="email-meta-row">
-            <span class="email-meta-label">Error:</span>
-            <span class="email-meta-value" style="color: #dc2626;">Failed to load content</span>
-          </div>
-        </div>
-      </div>
-      <div class="email-content" style="color: #dc2626;">
-        Error loading email content: ${error.message}
-      </div>
-    `;
+    console.error("Error initializing email features:", error);
+    showStatusText("Error loading email features", "error");
   }
 }
 
-// --- Function to go back to email list ---
-function goBackToEmailList() {
-  const inboxListView = document.getElementById("inboxListView");
-  const emailDetailFullView = document.getElementById("emailDetailFullView");
+function showStatusText(message, type = "info") {
+  const statusText = document.getElementById("statusText");
+  if (statusText) {
+    statusText.textContent = message;
+    statusText.className = `status-text ${type}`;
+    statusText.style.opacity = "1";
 
-  if (inboxListView && emailDetailFullView) {
-    // Show list view and hide detail view
-    inboxListView.style.display = "block";
-    emailDetailFullView.style.display = "none";
-
-    // Clear selection
-    document.querySelectorAll(".email-item").forEach((item) => {
-      item.classList.remove("selected");
-    });
-    selectedEmailId = null;
+    setTimeout(() => {
+      statusText.style.opacity = "0";
+    }, 3000);
   }
 }
 
-// --- Function to start background email polling ---
-function startBackgroundEmailPolling() {
-  if (
-    currentDisposableEmailId &&
-    currentDisposableEmailAddress &&
-    currentAccountPassword
-  ) {
-    console.log("Starting background email polling...");
+// --- Email Management Functions ---
 
-    // Get current message count to send to background
-    const currentCount = currentMessages ? currentMessages.length : 0;
-
-    browserAPI.runtime.sendMessage({
-      action: "startEmailPolling",
-      emailId: currentDisposableEmailId,
-      emailAddress: currentDisposableEmailAddress,
-      password: currentAccountPassword,
-      initialCount: currentCount,
-    });
-  }
-}
-
-// --- Function to stop background email polling ---
-function stopBackgroundEmailPolling() {
-  browserAPI.runtime.sendMessage({
-    action: "stopEmailPolling",
-  });
-}
-
-// --- Function to update email display in all places ---
-function updateEmailDisplay(email) {
-  const disposableEmailInput = document.getElementById("disposableEmail");
-  const currentEmailDisplay = document.getElementById("currentEmailDisplay");
-
-  if (disposableEmailInput) {
-    disposableEmailInput.value = email || "Click 'Generate' to get an email";
-  }
-  if (currentEmailDisplay) {
-    currentEmailDisplay.textContent = email || "No email generated";
-  }
-}
-
-// --- Function to generate new email ---
-async function generateNewEmail() {
-  // Stop previous background polling if any
-  stopBackgroundEmailPolling();
-
-  updateEmailDisplay("Generating...");
-
-  // Clear messages in modal if open and ensure we're in list view
-  const emailList = document.getElementById("emailList");
-  const noMessagesText = document.getElementById("noMessages");
-  const inboxListView = document.getElementById("inboxListView");
-  const emailDetailFullView = document.getElementById("emailDetailFullView");
-
-  if (emailList) emailList.innerHTML = "";
-  if (noMessagesText) noMessagesText.style.display = "block";
-
-  // Ensure we're in list view (not detail view)
-  if (inboxListView && emailDetailFullView) {
-    inboxListView.style.display = "block";
-    emailDetailFullView.style.display = "none";
-  }
-
+async function generateDisposableEmail() {
   try {
-    // Step 1: Get available domains
-    console.log("Attempting to fetch domains...");
+    showStatusText("Generating new email address...");
+
+    // Get available domains
     const domains = await makeApiRequest("/domains");
-    if (
-      !domains ||
-      !domains["hydra:member"] ||
-      domains["hydra:member"].length === 0
-    ) {
-      console.error("No domains available from API response:", domains);
-      throw new Error("No domains available from API.");
+    if (!domains || domains.length === 0) {
+      throw new Error("No available email domains");
     }
-    const randomDomain =
-      domains["hydra:member"][
-        Math.floor(Math.random() * domains["hydra:member"].length)
-      ].domain;
-    console.log("Selected domain:", randomDomain);
 
-    // Step 2: Create a new account/email address
-    const username = `temp-${Date.now()}`;
-    const password = Math.random().toString(36).substring(2, 15);
-    const newAddress = `${username}@${randomDomain}`;
+    const domain = domains[0].domain;
+    const randomPrefix = Math.random().toString(36).substring(2, 12);
+    const email = `${randomPrefix}@${domain}`;
+    const password = Math.random().toString(36).substring(2, 12);
 
-    console.log(`Attempting to create account: ${newAddress}`);
-    const accountData = await makeApiRequest("/accounts", "POST", {
-      address: newAddress,
+    // Create account
+    const account = await makeApiRequest("/accounts", "POST", {
+      address: email,
       password: password,
     });
 
-    if (!accountData || !accountData.address || !accountData.id) {
-      throw new Error("Failed to create disposable email account.");
-    }
-
-    currentDisposableEmailAddress = accountData.address;
-    currentDisposableEmailId = accountData.id;
-    currentAccountPassword = password; // Store password for authentication
-
-    updateEmailDisplay(currentDisposableEmailAddress);
-    browserAPI.storage.local.set({
-      disposableEmail: currentDisposableEmailAddress,
-      disposableEmailId: currentDisposableEmailId,
-      accountPassword: currentAccountPassword,
+    // Get auth token
+    const auth = await makeApiRequest("/token", "POST", {
+      address: email,
+      password: password,
     });
 
-    console.log(
-      "Generated disposable email:",
-      currentDisposableEmailAddress,
-      "ID:",
-      currentDisposableEmailId
-    );
+    // Save credentials
+    currentDisposableEmailAddress = email;
+    currentDisposableEmailId = account.id;
+    currentAccountPassword = password;
 
-    // Show success message
-    showNotification(
-      "Disposable email generated! Background notifications enabled."
-    );
+    await browserAPI.storage.local.set({
+      disposableEmail: email,
+      disposableEmailId: account.id,
+      authToken: auth.token,
+    });
 
-    // Start background polling
-    startBackgroundEmailPolling();
+    await updateUIWithEmail(email);
+    await startEmailPolling();
+
+    showStatusText("New email address generated!", "success");
   } catch (error) {
     console.error("Error generating email:", error);
-    updateEmailDisplay("Error generating email");
-    showNotification(
-      `Error generating email: ${error.message}. Check console.`,
-      "error"
-    );
+    showStatusText("Failed to generate email address", "error");
   }
 }
 
-// --- Function to show notifications ---
-function showNotification(message, type = "success") {
-  // Create notification element
-  const notification = document.createElement("div");
-  notification.className = `notification ${type}`;
-  notification.textContent = message;
-  notification.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: ${type === "error" ? "#ef4444" : "#10b981"};
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    z-index: 10000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    transform: translateX(100%);
-    transition: transform 0.3s ease;
+async function updateUIWithEmail(email) {
+  const emailDisplay = document.querySelector(".email-display");
+  if (emailDisplay) {
+    emailDisplay.textContent = email;
+  }
+
+  const copyBtn = document.querySelector(".copy-btn");
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(email);
+      showStatusText("Email copied to clipboard!", "success");
+    };
+  }
+
+  await updateInboxDisplay();
+}
+
+async function startEmailPolling() {
+  if (intervalId) {
+    clearInterval(intervalId);
+  }
+
+  // Poll for new emails every 10 seconds
+  intervalId = setInterval(async () => {
+    await updateInboxDisplay();
+  }, 10000);
+
+  // Initial update
+  await updateInboxDisplay();
+}
+
+async function updateInboxDisplay() {
+  try {
+    const storage = await browserAPI.storage.local.get(["authToken"]);
+    if (!storage.authToken) return;
+
+    const messages = await makeApiRequest(
+      "/messages",
+      "GET",
+      null,
+      storage.authToken
+    );
+    currentMessages = messages;
+
+    const inboxList = document.querySelector(".inbox-list");
+    if (!inboxList) return;
+
+    inboxList.innerHTML = "";
+
+    messages.forEach((message) => {
+      const item = document.createElement("div");
+      item.className = "inbox-item";
+      item.onclick = () => showEmailDetails(message.id);
+
+      item.innerHTML = `
+        <div class="email-subject">${message.subject || "No Subject"}</div>
+        <div class="email-from">${message.from.address}</div>
+        <div class="email-time">${new Date(
+          message.createdAt
+        ).toLocaleTimeString()}</div>
+      `;
+
+      inboxList.appendChild(item);
+    });
+  } catch (error) {
+    console.error("Error updating inbox:", error);
+  }
+}
+
+async function showEmailDetails(messageId) {
+  const message = currentMessages.find((m) => m.id === messageId);
+  if (!message) return;
+
+  selectedEmailId = messageId;
+
+  const detailView = document.querySelector(".email-detail-view");
+  if (!detailView) return;
+
+  detailView.innerHTML = `
+    <div class="detail-header">
+      <button class="back-btn">← Back</button>
+      <h3>${message.subject || "No Subject"}</h3>
+      <div class="detail-meta">
+        From: ${message.from.address}<br>
+        Time: ${new Date(message.createdAt).toLocaleString()}
+      </div>
+    </div>
+    <div class="detail-body">${message.html || message.text}</div>
   `;
 
-  document.body.appendChild(notification);
-
-  // Animate in
-  setTimeout(() => {
-    notification.style.transform = "translateX(0)";
-  }, 100);
-
-  // Remove after delay
-  setTimeout(() => {
-    notification.style.transform = "translateX(100%)";
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.parentNode.removeChild(notification);
-      }
-    }, 300);
-  }, 3000);
+  const backBtn = detailView.querySelector(".back-btn");
+  if (backBtn) {
+    backBtn.onclick = () => {
+      selectedEmailId = null;
+      detailView.innerHTML = "";
+    };
+  }
 }
 
-// --- Main DOM Content Loaded Listener ---
-document.addEventListener("DOMContentLoaded", () => {
+async function handleFileUpload(file) {
   try {
-    console.log("NULL VOID Extension loaded");
+    showStatusText("Processing file...");
 
-    const disposableEmailInput = document.getElementById("disposableEmail");
-    const copyEmailButton = document.getElementById("copyEmail");
-    const generateEmailButton = document.getElementById("generateEmail");
-    const openEphemeralTabButton = document.getElementById("openEphemeralTab");
-    const openInboxButton = document.getElementById("openInbox");
-    const inboxModal = document.getElementById("inboxModal");
-    const closeInboxButton = document.getElementById("closeInbox");
-    const refreshMessagesButton = document.getElementById("refreshMessages");
-    const generateNewEmailButton = document.getElementById("generateNewEmail");
-    const smartIntegrationsToggle =
-      document.getElementById("smartIntegrations");
-    const backToListButton = document.getElementById("backToList");
-
-    // File viewer elements
-    const selectFileButton = document.getElementById("selectFile");
-    const fileInput = document.getElementById("fileInput");
-    const viewFileButton = document.getElementById("viewFile");
-    const fileNameDisplay = document.getElementById("fileName");
-
-    let currentFile = null;
-
-    // Load saved disposable email on startup
-    browserAPI.storage.local.get(
-      ["disposableEmail", "disposableEmailId", "accountPassword"],
-      async function (result) {
-        try {
-          if (
-            result.disposableEmail &&
-            result.disposableEmailId &&
-            result.accountPassword
-          ) {
-            currentDisposableEmailAddress = result.disposableEmail;
-            currentDisposableEmailId = result.disposableEmailId;
-            currentAccountPassword = result.accountPassword;
-            updateEmailDisplay(currentDisposableEmailAddress);
-            console.log("Loaded saved email:", currentDisposableEmailAddress);
-
-            // Start background polling
-            startBackgroundEmailPolling();
-          }
-        } catch (error) {
-          console.error("Error loading saved email:", error);
-        }
-      }
-    );
-
-    // --- Email functionality ---
-    if (generateEmailButton) {
-      generateEmailButton.addEventListener("click", generateNewEmail);
+    // Validate file size (limit to 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      showStatusText("File too large. Maximum size is 10MB.", "error");
+      return;
     }
 
-    if (copyEmailButton) {
-      copyEmailButton.addEventListener("click", () => {
-        if (currentDisposableEmailAddress) {
-          navigator.clipboard
-            .writeText(currentDisposableEmailAddress)
-            .then(() => {
-              showNotification("Email copied to clipboard!");
-            })
-            .catch(() => {
-              // Fallback for older browsers
-              disposableEmailInput.select();
-              document.execCommand("copy");
-              showNotification("Email copied to clipboard!");
-            });
-        } else {
-          showNotification("No email to copy. Generate one first.", "error");
-        }
-      });
-    }
+    // Read file content
+    const fileContent = await readFileAsDataURL(file);
 
-    // --- File Viewer functionality ---
-    if (selectFileButton && fileInput) {
-      selectFileButton.addEventListener("click", () => {
-        fileInput.click();
-      });
-
-      fileInput.addEventListener("change", (event) => {
-        const file = event.target.files[0];
-        if (file) {
-          currentFile = file;
-
-          // Show file name
-          if (fileNameDisplay) {
-            fileNameDisplay.textContent = file.name;
-            fileNameDisplay.style.display = "inline";
-          }
-
-          // Enable view button
-          if (viewFileButton) {
-            viewFileButton.disabled = false;
-            viewFileButton.textContent = "View Safely";
-          }
-
-          showNotification(`File "${file.name}" selected for safe viewing`);
-        }
-      });
-    }
-
-    if (viewFileButton) {
-      viewFileButton.addEventListener("click", () => {
-        if (currentFile) {
-          openFileViewer(currentFile);
-        }
-      });
-    }
-
-    // --- Inbox Modal functionality ---
-    if (openInboxButton) {
-      openInboxButton.addEventListener("click", () => {
-        inboxModal.style.display = "block";
-
-        // Ensure we start in list view
-        const inboxListView = document.getElementById("inboxListView");
-        const emailDetailFullView = document.getElementById(
-          "emailDetailFullView"
-        );
-
-        if (inboxListView && emailDetailFullView) {
-          inboxListView.style.display = "block";
-          emailDetailFullView.style.display = "none";
-        }
-
-        // Fetch messages when opening inbox
-        fetchAndDisplayMessages();
-      });
-    }
-
-    if (closeInboxButton) {
-      closeInboxButton.addEventListener("click", () => {
-        inboxModal.style.display = "none";
-        // Reset to list view when closing
-        goBackToEmailList();
-      });
-    }
-
-    if (refreshMessagesButton) {
-      refreshMessagesButton.addEventListener("click", fetchAndDisplayMessages);
-    }
-
-    if (generateNewEmailButton) {
-      generateNewEmailButton.addEventListener("click", () => {
-        generateNewEmail();
-        // Keep modal open to show the new email
-      });
-    }
-
-    // Back to list button functionality
-    if (backToListButton) {
-      backToListButton.addEventListener("click", goBackToEmailList);
-    }
-
-    // Close modal when clicking outside
-    window.addEventListener("click", (event) => {
-      if (event.target === inboxModal) {
-        inboxModal.style.display = "none";
-        // Reset to list view when closing
-        goBackToEmailList();
-      }
-    });
-
-    // --- Ephemeral Tab Functionality ---
-    if (openEphemeralTabButton) {
-      openEphemeralTabButton.addEventListener("click", async () => {
-        try {
-          // Get selected location
-          const locationSelect = document.querySelector(".location-select");
-          const selectedLocation = locationSelect
-            ? locationSelect.value
-            : "singapore";
-
-          // Show loading state
-          openEphemeralTabButton.textContent = "Starting...";
-          openEphemeralTabButton.disabled = true;
-
-          // Create the ephemeral browsing tab with enhanced privacy
-          const ephemeralUrl = createEphemeralBrowsingUrl(selectedLocation);
-
-          const newTab = await browserAPI.tabs.create({
-            url: ephemeralUrl,
-            active: true,
-          });
-
-          // Store the tab ID and location info to monitor it
-          await browserAPI.storage.local.set({
-            ephemeralTabId: newTab.id,
-            ephemeralLocation: selectedLocation,
-            ephemeralStartTime: Date.now(),
-          });
-
-          // Reset button state
-          openEphemeralTabButton.textContent = "Start";
-          openEphemeralTabButton.disabled = false;
-
-          showNotification(
-            `Secure disposable browser started from ${getLocationName(
-              selectedLocation
-            )}!`
-          );
-
-          // Close popup after starting
-          window.close();
-        } catch (error) {
-          console.error("Error opening ephemeral tab:", error);
-          openEphemeralTabButton.textContent = "Start";
-          openEphemeralTabButton.disabled = false;
-          showNotification("Error starting disposable browser", "error");
-        }
-      });
-    }
-
-    // --- Smart Integrations Toggle ---
-    if (smartIntegrationsToggle) {
-      // Load saved setting
-      browserAPI.storage.local.get(["smartIntegrations"], (result) => {
-        if (result.smartIntegrations !== undefined) {
-          smartIntegrationsToggle.checked = result.smartIntegrations;
-        }
-      });
-
-      smartIntegrationsToggle.addEventListener("change", () => {
-        browserAPI.storage.local.set({
-          smartIntegrations: smartIntegrationsToggle.checked,
-        });
-        showNotification(
-          `Smart Integrations ${
-            smartIntegrationsToggle.checked ? "enabled" : "disabled"
-          }`
-        );
-      });
-    }
-  } catch (error) {
-    console.error("Error initializing popup:", error);
-  }
-});
-
-// --- File Viewer Helper Functions ---
-async function openFileViewer(file) {
-  try {
-    // Show loading state in the button
-    const viewBtn = document.getElementById("viewFile");
-    if (viewBtn) {
-      viewBtn.disabled = true;
-      viewBtn.textContent = "Opening file...";
-    }
-
-    // Read file data
-    const reader = new FileReader();
-    const fileData = await new Promise((resolve, reject) => {
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error("Failed to read file"));
-
-      // Read as data URL for universal compatibility
-      reader.readAsDataURL(file);
-    });
-
-    // Prepare file data for the new tab
+    // Create file info object
     const fileInfo = {
-      file: {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: file.lastModified,
-      },
-      data: fileData,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      content: fileContent,
+      uploadedAt: new Date().toISOString(),
     };
 
     // Store file data temporarily
@@ -770,62 +376,20 @@ async function openFileViewer(file) {
     console.log("File viewer opened in new tab:", tab.id);
 
     // Show success notification
-    showNotification(`File "${file.name}" opened in secure viewer`);
+    showStatusText(`File "${file.name}" opened in secure viewer`, "success");
 
-    // Reset button state
-    if (viewBtn) {
-      viewBtn.disabled = false;
-      viewBtn.textContent = "View Safely";
-    }
+    window.close();
   } catch (error) {
-    console.error("Error opening file viewer:", error);
-
-    // Reset button state
-    const viewBtn = document.getElementById("viewFile");
-    if (viewBtn) {
-      viewBtn.disabled = false;
-      viewBtn.textContent = "View Safely";
-    }
-
-    // Show error notification
-    showNotification(`Error opening file: ${error.message}`, true);
+    console.error("Error handling file upload:", error);
+    showStatusText("Failed to process file", "error");
   }
 }
 
-function formatFileSize(bytes) {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-}
-
-function escapeHtml(text) {
-  const map = {
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;",
-  };
-  return text.replace(/[&<>"']/g, function (m) {
-    return map[m];
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target.result);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
   });
-}
-
-// --- Ephemeral Browser Helper Functions ---
-function createEphemeralBrowsingUrl(location) {
-  // Create a landing page for the disposable browser
-  const baseUrl = chrome.runtime.getURL("ephemeral-browser.html");
-  return `${baseUrl}?location=${encodeURIComponent(location)}`;
-}
-
-function getLocationName(locationCode) {
-  const locationNames = {
-    singapore: "Singapore",
-    usa: "United States",
-    uk: "United Kingdom",
-    canada: "Canada",
-  };
-  return locationNames[locationCode] || "Singapore";
 }
