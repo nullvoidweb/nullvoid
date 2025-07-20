@@ -132,6 +132,14 @@ function setupEventListeners() {
 async function navigateToUrl(url) {
   if (!url) return;
 
+  // Prevent multiple simultaneous navigation calls
+  if (navigateToUrl.isNavigating) {
+    console.log("Navigation already in progress, skipping");
+    return;
+  }
+
+  navigateToUrl.isNavigating = true;
+
   try {
     // Normalize URL
     if (!url.startsWith("http")) {
@@ -150,7 +158,21 @@ async function navigateToUrl(url) {
     }
   } catch (error) {
     console.error("Navigation failed:", error);
-    showStatus("Invalid URL or navigation failed", "error");
+
+    // More specific error handling
+    if (error.message && error.message.includes("429")) {
+      showStatus(
+        "Rate limited - please wait before navigating again",
+        "warning"
+      );
+    } else {
+      showStatus("Invalid URL or navigation failed", "error");
+    }
+  } finally {
+    // Reset navigation flag after a short delay
+    setTimeout(() => {
+      navigateToUrl.isNavigating = false;
+    }, 1000);
   }
 }
 

@@ -8,14 +8,15 @@ class BrowserlessRBIService {
 
     // Browserless endpoints
     this.endpoints = {
-      base: "https://production-sfo.browserless.io",
-      fallbackBase: "https://chrome.browserless.io",
+      base: "https://chrome.browserless.io", // Start with the more reliable endpoint
+      fallbackBase: "https://production-sfo.browserless.io",
       screenshot: "/screenshot",
       content: "/content",
       pdf: "/pdf",
       scrape: "/scrape",
-      function: "/function",
-      puppeteer: "/puppeteer", // Direct puppeteer endpoint
+      function: "/function", // Main endpoint for script execution
+      json: "/json", // For API testing
+      cdn: "https://cdn.browserless.io", // CDN endpoint for static assets
     };
 
     // Container element to display content
@@ -30,8 +31,9 @@ class BrowserlessRBIService {
     this.currentUrl = "";
     this.sessionId = `nullvoid-session-${Date.now()}`;
     this.isConnected = false;
-    this.screenshotInterval = null;
-    this.refreshRate = options.refreshRate || 4000; // Increased refresh rate to avoid rate limiting
+    this.isNavigating = false; // Prevent multiple simultaneous navigations
+    this.liveUpdateInterval = null;
+    this.refreshRate = options.refreshRate || 2000; // Slower refresh to reduce API calls
 
     // Set default viewport dimensions
     this.viewportWidth =
@@ -41,16 +43,29 @@ class BrowserlessRBIService {
       options.height ||
       (this.containerElement ? this.containerElement.clientHeight : 768);
 
+    // Live interaction parameters
+    this.lastUpdateTime = 0;
+    this.minTimeBetweenUpdates = 2000; // Increased to 2 seconds between updates
+    this.retryDelay = 2000; // Increased initial retry delay
+    this.maxRetryDelay = 30000; // Increased max retry delay
+    this.isRetrying = false;
+    this.isLiveMode = true; // Enable live interaction mode
+
     // Rate limiting parameters
-    this.lastScreenshotTime = 0;
-    this.minTimeBetweenRequests = 2000; // Minimum 2 seconds between API calls
-    this.retryDelay = 2000; // Initial retry delay
-    this.maxRetryDelay = 30000; // Max retry delay of 30 seconds
-    this.isRetrying = false; // Flag to track if we're in a retry state
+    this.lastApiCall = 0;
+    this.minApiCallInterval = 1500; // Minimum 1.5 seconds between API calls
+    this.apiCallQueue = [];
+    this.isProcessingApiQueue = false;
 
     // User interaction state
     this.lastClickTime = 0;
-    this.clickCooldown = 1000; // Prevent multiple clicks within 1 second
+    this.clickCooldown = 1000; // Increased cooldown to 1 second
+    this.pendingInteractions = []; // Queue for pending interactions
+    this.isProcessingInteraction = false;
+
+    // Browser session management
+    this.browserSession = null;
+    this.pageSession = null;
 
     // Region support
     this.region = options.region || "us";
@@ -60,14 +75,16 @@ class BrowserlessRBIService {
     };
 
     console.log(
-      `[Browserless RBI] Service initialized for region: ${this.regionData.name}`
+      `[Browserless RBI] Live interaction service initialized for region: ${this.regionData.name}`
     );
   }
 
-  // Initialize the RBI service
+  // Initialize the RBI service with live interaction
   async initialize() {
     try {
-      console.log("[Browserless RBI] Connecting to service...");
+      console.log(
+        "[Browserless RBI] Connecting to live interaction service..."
+      );
 
       if (!this.containerElement) {
         throw new Error("Container element is required for RBI initialization");
@@ -86,32 +103,85 @@ class BrowserlessRBIService {
       // Show initial loading indicator
       this.showLoadingIndicator();
 
-      // Test connection by taking a simple screenshot
+      // Verify the API connection with a simple endpoint test
+      try {
+        const testResponse = await fetch(
+          `${this.endpoints.base}/json?token=${this.apiKey}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "no-cache",
+            },
+          }
+        );
+
+        if (!testResponse.ok) {
+          console.log(
+            `[Browserless RBI] API test failed with status: ${testResponse.status}`
+          );
+
+          // Try the fallback base if the main one fails
+          if (this.endpoints.base !== this.endpoints.fallbackBase) {
+            this.endpoints.base = this.endpoints.fallbackBase;
+            console.log(
+              `[Browserless RBI] Switching to fallback endpoint: ${this.endpoints.base}`
+            );
+          }
+        }
+      } catch (apiError) {
+        console.warn(
+          `[Browserless RBI] API test request failed: ${apiError.message}`
+        );
+
+        // Switch to fallback endpoint if API test fails
+        if (this.endpoints.base !== this.endpoints.fallbackBase) {
+          this.endpoints.base = this.endpoints.fallbackBase;
+          console.log(
+            `[Browserless RBI] Switching to fallback endpoint: ${this.endpoints.base}`
+          );
+        }
+      }
+
+      // Test connection by navigating to a simple page
       const testUrl = "https://example.com";
-      await this.takeScreenshot(testUrl);
+      await this.navigateToUrl(testUrl);
 
       this.isConnected = true;
       this.onConnectionStatus("connected");
 
-      console.log("[Browserless RBI] Connection established successfully");
+      console.log(
+        "[Browserless RBI] Live interaction service connected successfully"
+      );
       return true;
     } catch (error) {
-      console.error("[Browserless RBI] Connection failed:", error);
+      console.error(
+        "[Browserless RBI] Live interaction connection failed:",
+        error
+      );
       this.onConnectionStatus("disconnected");
       this.onError(
         "connection_failed",
-        "Failed to connect to remote browser service"
+        "Failed to connect to live interaction service"
       );
       this.hideLoadingIndicator();
       throw error;
     }
   }
 
-  // Navigate to a URL
+  // Navigate to a URL with live interaction
   async navigate(url) {
     if (!this.isConnected) {
       throw new Error("RBI service not connected");
     }
+
+    // Prevent multiple simultaneous navigations
+    if (this.isNavigating) {
+      console.log("[Browserless RBI] Navigation already in progress, skipping");
+      return false;
+    }
+
+    this.isNavigating = true;
 
     try {
       console.log(`[Browserless RBI] Navigating to: ${url}`);
@@ -128,49 +198,214 @@ class BrowserlessRBIService {
       this.currentUrl = url;
       this.onNavigationChange({ url: this.currentUrl, title: "" });
 
-      // Reset any rate limiting state when navigating
+      // Reset interaction state
       this.isRetrying = false;
       this.retryDelay = 2000;
-      this.lastScreenshotTime = 0;
+      this.lastUpdateTime = 0;
+      this.pendingInteractions = [];
 
-      // Take screenshot of the URL - this is the initial load
-      await this.takeScreenshot(url);
+      // Navigate to the URL using live interaction
+      await this.navigateToUrl(url);
 
-      // Start screenshot refresh interval with a delay to avoid immediate rate limiting
+      // Start live updates with a delay to prevent immediate rate limiting
       setTimeout(() => {
-        this.startScreenshotRefresh();
-      }, 1000);
+        this.startLiveUpdates();
+      }, 2000);
 
       return true;
     } catch (error) {
       console.error("[Browserless RBI] Navigation failed:", error);
-      this.onError(
-        "navigation_failed",
-        `Failed to navigate to ${url}: ${error.message}`
+
+      // Handle rate limiting gracefully
+      if (error.message && error.message.includes("429")) {
+        this.onError(
+          "rate_limited",
+          "Navigation rate limited. Please wait before trying again."
+        );
+      } else {
+        this.onError(
+          "navigation_failed",
+          `Failed to navigate to ${url}: ${error.message}`
+        );
+      }
+      throw error;
+    } finally {
+      this.isNavigating = false;
+    }
+  }
+
+  // Navigate to URL with live session
+  async navigateToUrl(url) {
+    try {
+      console.log(`[Browserless RBI] Live navigation to: ${url}`);
+
+      // Check rate limiting
+      const now = Date.now();
+      const timeSinceLastApiCall = now - this.lastApiCall;
+
+      if (timeSinceLastApiCall < this.minApiCallInterval) {
+        const waitTime = this.minApiCallInterval - timeSinceLastApiCall;
+        console.log(
+          `[Browserless RBI] Rate limiting: waiting ${waitTime}ms before API call`
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+
+      // Use a simpler approach if this is the first navigation attempt
+      if (!this.isConnected) {
+        // For the first navigation, use the more reliable screenshot API
+        try {
+          await this.takeScreenshot(url);
+          return true;
+        } catch (screenshotError) {
+          console.error(
+            "[Browserless RBI] Initial screenshot failed, falling back to function API"
+          );
+        }
+      }
+
+      this.lastApiCall = Date.now();
+
+      const navigationScript = `
+        async function navigateToUrl() {
+          const browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+          });
+          
+          const page = await browser.newPage();
+          
+          // Set viewport
+          await page.setViewport({ 
+            width: ${this.viewportWidth}, 
+            height: ${this.viewportHeight} 
+          });
+          
+          // Navigate to URL
+          await page.goto('${url}', { 
+            waitUntil: ['load', 'networkidle2'],
+            timeout: 30000 
+          });
+          
+          // Wait for page to be fully loaded
+          await page.waitForTimeout(1000);
+          
+          // Get page title
+          const title = await page.title();
+          
+          // Take initial screenshot
+          const screenshot = await page.screenshot({ 
+            encoding: 'base64',
+            fullPage: false,
+            clip: { x: 0, y: 0, width: ${this.viewportWidth}, height: ${this.viewportHeight} }
+          });
+          
+          await browser.close();
+          
+          return { 
+            success: true, 
+            title: title,
+            screenshot: screenshot,
+            url: '${url}',
+            timestamp: Date.now()
+          };
+        }
+      `;
+
+      // Use the function endpoint instead of direct puppeteer access
+      const response = await fetch(
+        `${this.endpoints.base}${this.endpoints.function}?token=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+          },
+          body: JSON.stringify({
+            code: navigationScript,
+            context: {
+              url: url,
+              gotoOptions: {
+                waitUntil: "networkidle2",
+                timeout: 30000,
+              },
+            },
+          }),
+        }
       );
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          // Rate limit error - implement exponential backoff
+          const waitTime = Math.min(this.retryDelay * 2, this.maxRetryDelay);
+          console.log(
+            `[Browserless RBI] Rate limited (429). Waiting ${waitTime}ms before retry...`
+          );
+
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
+          this.retryDelay = waitTime;
+
+          // Try again with a fallback approach
+          console.log(
+            "[Browserless RBI] Retrying with screenshot API due to rate limit"
+          );
+          await this.takeScreenshot(url);
+          return true;
+        }
+        throw new Error(`Navigation failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result && result.screenshot) {
+        console.log("[Browserless RBI] Live navigation successful");
+
+        // Update display with new screenshot
+        const imageUrl = `data:image/png;base64,${result.screenshot}`;
+        this.updateDisplay(imageUrl);
+
+        // Update navigation info
+        this.onNavigationChange({
+          url: result.url,
+          title: result.title || "",
+        });
+      } else {
+        throw new Error("Navigation failed: No screenshot received");
+      }
+    } catch (error) {
+      console.error("[Browserless RBI] Live navigation failed:", error);
       throw error;
     }
   }
 
-  // Start refreshing screenshots regularly with rate limiting
-  startScreenshotRefresh() {
+  // Start live updates for real-time interaction
+  startLiveUpdates() {
     // Clear any existing interval
-    if (this.screenshotInterval) {
-      clearInterval(this.screenshotInterval);
+    if (this.liveUpdateInterval) {
+      clearInterval(this.liveUpdateInterval);
     }
 
-    // Set new interval with rate limiting
-    this.screenshotInterval = setInterval(async () => {
-      if (this.currentUrl && this.isConnected) {
+    console.log("[Browserless RBI] Starting live updates...");
+
+    // Set new interval for live updates with conservative timing
+    this.liveUpdateInterval = setInterval(async () => {
+      if (
+        this.currentUrl &&
+        this.isConnected &&
+        !this.isProcessingInteraction &&
+        !this.isNavigating
+      ) {
         // Check if we need to respect rate limits
         const now = Date.now();
-        const timeSinceLastScreenshot = now - this.lastScreenshotTime;
+        const timeSinceLastUpdate = now - this.lastUpdateTime;
+        const timeSinceLastApiCall = now - this.lastApiCall;
 
-        if (timeSinceLastScreenshot < this.minTimeBetweenRequests) {
-          // Too soon since the last request, skip this one
-          console.log(
-            `[Browserless RBI] Rate limiting: skipping screenshot (${timeSinceLastScreenshot}ms since last)`
-          );
+        // More conservative rate limiting
+        if (
+          timeSinceLastUpdate < this.minTimeBetweenUpdates ||
+          timeSinceLastApiCall < this.minApiCallInterval
+        ) {
+          // Too soon since the last update or API call, skip this one
           return;
         }
 
@@ -180,19 +415,22 @@ class BrowserlessRBIService {
         }
 
         try {
-          this.lastScreenshotTime = now;
-          await this.takeScreenshot(this.currentUrl);
+          this.lastUpdateTime = now;
+          this.lastApiCall = now;
 
-          // Reset retry delay after successful request
+          // Skip live updates temporarily to avoid rate limiting
+          // Only do updates if user is actively interacting
+          if (this.pendingInteractions.length > 0) {
+            await this.getLiveUpdate();
+          }
+
+          // Reset retry delay after successful update
           this.retryDelay = 2000;
         } catch (error) {
-          console.error("[Browserless RBI] Screenshot refresh failed:", error);
+          console.error("[Browserless RBI] Live update failed:", error);
 
           // If this was a rate limit error (429), implement backoff
-          if (
-            error.message &&
-            error.message.includes("429 Too Many Requests")
-          ) {
+          if (error.message && error.message.includes("429")) {
             this.isRetrying = true;
 
             // Exponential backoff
@@ -202,7 +440,6 @@ class BrowserlessRBIService {
               }s`
             );
 
-            // Schedule a single retry after the backoff period
             setTimeout(() => {
               this.isRetrying = false;
               this.retryDelay = Math.min(
@@ -211,17 +448,134 @@ class BrowserlessRBIService {
               );
             }, this.retryDelay);
           }
-          // Don't throw here to keep interval running
         }
       }
     }, this.refreshRate);
   }
 
-  // Stop screenshot refresh
-  stopScreenshotRefresh() {
-    if (this.screenshotInterval) {
-      clearInterval(this.screenshotInterval);
-      this.screenshotInterval = null;
+  // Stop live updates
+  stopLiveUpdates() {
+    if (this.liveUpdateInterval) {
+      clearInterval(this.liveUpdateInterval);
+      this.liveUpdateInterval = null;
+      console.log("[Browserless RBI] Live updates stopped");
+    }
+  }
+
+  // Get live update of current page state
+  async getLiveUpdate() {
+    if (!this.currentUrl) return;
+
+    // Additional rate limiting check
+    const now = Date.now();
+    const timeSinceLastApiCall = now - this.lastApiCall;
+
+    if (timeSinceLastApiCall < this.minApiCallInterval) {
+      console.log(
+        `[Browserless RBI] Skipping live update due to rate limiting`
+      );
+      return;
+    }
+
+    try {
+      const updateScript = `
+        async function getLiveUpdate() {
+          const browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+          });
+          
+          const page = await browser.newPage();
+          
+          // Set viewport
+          await page.setViewport({ 
+            width: ${this.viewportWidth}, 
+            height: ${this.viewportHeight} 
+          });
+          
+          // Navigate to current URL
+          await page.goto('${this.currentUrl}', { 
+            waitUntil: ['load', 'networkidle2'],
+            timeout: 15000 
+          });
+          
+          // Check for any dynamic content changes
+          await page.waitForTimeout(500);
+          
+          // Get current page info
+          const title = await page.title();
+          const url = page.url();
+          
+          // Take screenshot
+          const screenshot = await page.screenshot({ 
+            encoding: 'base64',
+            fullPage: false,
+            clip: { x: 0, y: 0, width: ${this.viewportWidth}, height: ${this.viewportHeight} }
+          });
+          
+          await browser.close();
+          
+          return { 
+            success: true, 
+            title: title,
+            screenshot: screenshot,
+            url: url,
+            timestamp: Date.now()
+          };
+        }
+      `;
+
+      const response = await fetch(
+        `${this.endpoints.base}${this.endpoints.function}?token=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+          },
+          body: JSON.stringify({
+            code: updateScript,
+            context: {
+              url: this.currentUrl,
+              gotoOptions: {
+                waitUntil: "networkidle2",
+                timeout: 15000,
+              },
+            },
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+
+        if (result && result.screenshot) {
+          // Update display with new screenshot
+          const imageUrl = `data:image/png;base64,${result.screenshot}`;
+          this.updateDisplay(imageUrl);
+
+          // Update navigation info if URL changed
+          if (result.url !== this.currentUrl) {
+            this.currentUrl = result.url;
+            this.onNavigationChange({
+              url: result.url,
+              title: result.title || "",
+            });
+          }
+        }
+      } else if (response.status === 429) {
+        // Rate limit - don't throw error, just log it
+        console.log(
+          `[Browserless RBI] Live update rate limited, skipping this update`
+        );
+        this.isRetrying = true;
+        setTimeout(() => {
+          this.isRetrying = false;
+        }, this.retryDelay);
+      }
+    } catch (error) {
+      console.error("[Browserless RBI] Live update failed:", error);
+      // Don't throw error for live updates to avoid disrupting the service
     }
   }
 
@@ -572,7 +926,7 @@ class BrowserlessRBIService {
         // Show a loading overlay to indicate the click is being processed
         self.showLoadingOverlay();
 
-        // Forward the click event to the remote browser
+        // Forward the click event to the live interaction system
         self.sendMouseEvent(event);
 
         // Show a temporary visual feedback for the click
@@ -581,7 +935,7 @@ class BrowserlessRBIService {
         clickFeedback.style.width = "20px";
         clickFeedback.style.height = "20px";
         clickFeedback.style.borderRadius = "50%";
-        clickFeedback.style.backgroundColor = "rgba(66, 133, 244, 0.5)";
+        clickFeedback.style.backgroundColor = "rgba(0, 255, 0, 0.6)"; // Green for live interaction
         clickFeedback.style.transform = "translate(-50%, -50%)";
         clickFeedback.style.left = event.clientX + "px";
         clickFeedback.style.top = event.clientY + "px";
@@ -679,13 +1033,61 @@ class BrowserlessRBIService {
     );
   }
 
-  // Send mouse event
+  // Enhanced live mouse event handling
   async sendMouseEvent(event) {
     if (!this.currentUrl || !this.isConnected) {
       console.log("[Browserless RBI] Cannot send mouse event: no active page");
       return;
     }
 
+    // Add to pending interactions queue
+    const interaction = {
+      type: "click",
+      event: event,
+      timestamp: Date.now(),
+    };
+
+    this.pendingInteractions.push(interaction);
+
+    // Process interactions if not already processing
+    if (!this.isProcessingInteraction) {
+      this.processInteractions();
+    }
+  }
+
+  // Process pending interactions
+  async processInteractions() {
+    if (this.isProcessingInteraction || this.pendingInteractions.length === 0) {
+      return;
+    }
+
+    this.isProcessingInteraction = true;
+
+    try {
+      // Get the next interaction
+      const interaction = this.pendingInteractions.shift();
+
+      if (interaction.type === "click") {
+        await this.processClickInteraction(interaction.event);
+      }
+
+      // Add small delay between interactions
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error("[Browserless RBI] Interaction processing failed:", error);
+      this.hideLoadingIndicator();
+    } finally {
+      this.isProcessingInteraction = false;
+
+      // Process next interaction if any
+      if (this.pendingInteractions.length > 0) {
+        setTimeout(() => this.processInteractions(), 50);
+      }
+    }
+  }
+
+  // Process click interaction with live response
+  async processClickInteraction(event) {
     try {
       // Calculate relative coordinates from the event
       const rect = this.containerElement.getBoundingClientRect();
@@ -693,201 +1095,180 @@ class BrowserlessRBIService {
       const relY = (event.clientY - rect.top) / rect.height;
 
       console.log(
-        `[Browserless RBI] Mouse event at relative position: ${relX.toFixed(
+        `[Browserless RBI] Processing live click at: ${relX.toFixed(
           2
         )}, ${relY.toFixed(2)}`
       );
 
-      // Try a faster approach using direct Puppeteer API for clicks
-      // This bypasses the function API which can be slower
-      try {
-        const viewportWidth = this.containerElement.clientWidth || 1366;
-        const viewportHeight = this.containerElement.clientHeight || 768;
+      // Calculate absolute coordinates
+      const pageX = Math.floor(relX * this.viewportWidth);
+      const pageY = Math.floor(relY * this.viewportHeight);
 
-        // Calculate absolute coordinates
-        const pageX = Math.floor(relX * viewportWidth);
-        const pageY = Math.floor(relY * viewportHeight);
+      console.log(
+        `[Browserless RBI] Live click coordinates: ${pageX}, ${pageY}`
+      );
 
-        console.log(
-          `[Browserless RBI] Sending direct click at: ${pageX}, ${pageY}`
-        );
-
-        // Construct a puppeteer script to perform the click
-        const apiUrl = `${this.endpoints.base}/puppeteer?token=${this.apiKey}`;
-
-        const puppeteerScript = `
-          async function browserlessFunc() {
-            const browser = await puppeteer.launch();
-            const page = await browser.newPage();
+      // Create live interaction script
+      const liveClickScript = `
+        async function processLiveClick() {
+          const browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+          });
+          
+          const page = await browser.newPage();
+          
+          // Set viewport
+          await page.setViewport({ 
+            width: ${this.viewportWidth}, 
+            height: ${this.viewportHeight} 
+          });
+          
+          // Navigate to current URL
+          await page.goto('${this.currentUrl}', { 
+            waitUntil: ['load', 'networkidle2'],
+            timeout: 20000 
+          });
+          
+          // Wait for page to be interactive
+          await page.waitForTimeout(500);
+          
+          // Get element info at click position
+          const elementInfo = await page.evaluate((x, y) => {
+            const element = document.elementFromPoint(x, y);
+            if (!element) return null;
             
-            // Set a reasonable timeout for actions
-            await page.setDefaultNavigationTimeout(20000);
-            await page.setDefaultTimeout(10000);
-            
-            // Set viewport to match the container
-            await page.setViewport({ width: ${viewportWidth}, height: ${viewportHeight} });
-            
-            // Navigate to URL and wait for network to be idle
-            await page.goto('${this.currentUrl}', { 
-              waitUntil: ['load', 'networkidle2']
-            });
-            
-            // First identify what element is at the click position
-            const elementInfo = await page.evaluate((x, y) => {
-              const element = document.elementFromPoint(x, y);
-              if (!element) return null;
-              
-              // Get useful information about the element
-              return {
-                tagName: element.tagName,
-                id: element.id || '',
-                className: element.className || '',
-                type: element.getAttribute('type') || '',
-                isInput: ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName),
-                isInteractive: ['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(element.tagName) ||
-                              element.hasAttribute('onclick') || element.hasAttribute('role') === 'button'
-              };
-            }, ${pageX}, ${pageY});
-            
-            console.log('Element at click position:', elementInfo);
-            
-            // For interactive elements, wait for them to be ready
-            if (elementInfo && elementInfo.isInteractive) {
-              try {
-                // Wait for element to be visible and ready for interaction
-                await page.waitForFunction((x, y) => {
-                  const element = document.elementFromPoint(x, y);
-                  return element && 
-                         !element.disabled && 
-                         element.offsetParent !== null &&
-                         window.getComputedStyle(element).visibility !== 'hidden';
-                }, { timeout: 3000 }, ${pageX}, ${pageY});
-              } catch (e) {
-                console.log('Wait for interactive element timed out, proceeding anyway');
-              }
-            }
-            
-            // Perform a click at the specified coordinates
-            await page.mouse.move(${pageX}, ${pageY});
-            await page.mouse.click(${pageX}, ${pageY});
-            
-            // For input elements, wait for potential focus effects
-            if (elementInfo && elementInfo.isInput) {
-              await page.waitForTimeout(200);
-            }
-            
-            // Wait for any navigation or Ajax requests to complete
-            try {
-              await Promise.race([
-                page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 2000 }).catch(() => {}),
-                page.waitForTimeout(1000)
-              ]);
-            } catch (e) {
-              // Ignore timeout errors, we'll take a screenshot anyway
-            }
-            
-            // Take a screenshot to return the updated state
-            const screenshot = await page.screenshot({ encoding: 'base64' });
-            
-            await browser.close();
-            return { success: true, screenshot: screenshot, elementInfo };
+            return {
+              tagName: element.tagName,
+              id: element.id || '',
+              className: element.className || '',
+              type: element.getAttribute('type') || '',
+              isInput: ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName),
+              isInteractive: ['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(element.tagName) ||
+                            element.hasAttribute('onclick') || element.getAttribute('role') === 'button',
+              text: element.textContent ? element.textContent.substring(0, 50) : ''
+            };
+          }, ${pageX}, ${pageY});
+          
+          console.log('Element at click position:', elementInfo);
+          
+          // Perform click with enhanced interaction
+          await page.mouse.move(${pageX}, ${pageY});
+          await page.mouse.click(${pageX}, ${pageY});
+          
+          // Wait for any changes to occur
+          if (elementInfo && elementInfo.isInteractive) {
+            // Wait longer for interactive elements
+            await page.waitForTimeout(800);
+          } else {
+            await page.waitForTimeout(300);
           }
-        `;
+          
+          // Wait for navigation or network activity
+          try {
+            await Promise.race([
+              page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 3000 }),
+              page.waitForTimeout(1000)
+            ]);
+          } catch (e) {
+            // Continue if navigation doesn't occur
+          }
+          
+          // Get updated page info
+          const title = await page.title();
+          const url = page.url();
+          
+          // Take screenshot of current state
+          const screenshot = await page.screenshot({ 
+            encoding: 'base64',
+            fullPage: false,
+            clip: { x: 0, y: 0, width: ${this.viewportWidth}, height: ${this.viewportHeight} }
+          });
+          
+          await browser.close();
+          
+          return { 
+            success: true, 
+            elementInfo: elementInfo,
+            title: title,
+            url: url,
+            screenshot: screenshot,
+            timestamp: Date.now()
+          };
+        }
+      `;
 
-        const response = await fetch(apiUrl, {
+      const response = await fetch(
+        `${this.endpoints.base}${this.endpoints.function}?token=${this.apiKey}`,
+        {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Cache-Control": "no-cache",
           },
-          body: JSON.stringify({ code: puppeteerScript }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-
-          if (result && result.screenshot) {
-            console.log(
-              "[Browserless RBI] Direct click successful, updating display"
-            );
-            // Update the display with the new screenshot
-            const imageUrl = `data:image/png;base64,${result.screenshot}`;
-            this.updateDisplay(imageUrl);
-            return; // Early return if successful
-          }
+          body: JSON.stringify({
+            code: liveClickScript,
+            context: {
+              url: this.currentUrl,
+              gotoOptions: {
+                waitUntil: "networkidle2",
+                timeout: 15000,
+              },
+            },
+          }),
         }
+      );
 
-        // If we get here, the direct approach failed, fall back to the function API
-        console.log(
-          "[Browserless RBI] Direct click failed, falling back to function API"
-        );
-      } catch (directError) {
-        console.warn(
-          "[Browserless RBI] Direct click method failed:",
-          directError
-        );
-        // Continue to fallback method
-      }
+      if (response.ok) {
+        const result = await response.json();
 
-      // Fallback to the original function API method
-      await this.runFunction(
-        this.currentUrl,
-        (x, y) => {
-          const viewportWidth = window.innerWidth;
-          const viewportHeight = window.innerHeight;
+        if (result && result.screenshot) {
+          console.log(
+            "[Browserless RBI] Live click successful:",
+            result.elementInfo
+          );
 
-          // Calculate page coordinates
-          const pageX = Math.floor(x * viewportWidth);
-          const pageY = Math.floor(y * viewportHeight);
+          // Update display immediately with new screenshot
+          const imageUrl = `data:image/png;base64,${result.screenshot}`;
+          this.updateDisplay(imageUrl);
 
-          console.log(`Clicking at coordinates: ${pageX}, ${pageY}`);
-
-          // Create and dispatch a mouse click event
-          try {
-            // Find element at position
-            const element = document.elementFromPoint(pageX, pageY);
-            if (element) {
-              // Focus the element first if it's an input
-              if (
-                element.tagName === "INPUT" ||
-                element.tagName === "TEXTAREA"
-              ) {
-                element.focus();
-              }
-              // Click the element
-              element.click();
-              return {
-                success: true,
-                element: element.tagName,
-                id: element.id,
-              };
-            } else {
-              return { success: false, error: "No element found at position" };
-            }
-          } catch (err) {
-            return { success: false, error: err.toString() };
+          // Update current URL if it changed
+          if (result.url !== this.currentUrl) {
+            this.currentUrl = result.url;
+            this.onNavigationChange({
+              url: result.url,
+              title: result.title || "",
+            });
           }
-        },
-        relX,
-        relY
-      ).then((result) => {
-        console.log("[Browserless RBI] Click result:", result);
 
-        // Take a new screenshot immediately to show the result of the click
-        setTimeout(() => this.takeScreenshot(this.currentUrl), 300);
-      });
+          return result;
+        }
+      } else {
+        console.error("[Browserless RBI] Live click failed:", response.status);
+      }
     } catch (error) {
-      console.error("[Browserless RBI] Mouse event failed:", error);
-      // Hide loading indicator on error
-      this.hideLoadingIndicator();
+      console.error("[Browserless RBI] Live click processing failed:", error);
+      throw error;
     }
   }
 
   // Clean up resources
   async cleanup() {
-    console.log("[Browserless RBI] Cleaning up resources");
-    this.stopScreenshotRefresh();
+    console.log("[Browserless RBI] Cleaning up live interaction resources");
+
+    // Stop live updates
+    this.stopLiveUpdates();
+
+    // Clear pending interactions
+    this.pendingInteractions = [];
+    this.isProcessingInteraction = false;
+
+    // Reset connection state
     this.isConnected = false;
+    this.isNavigating = false;
+    this.isRetrying = false;
+    this.browserSession = null;
+    this.pageSession = null;
 
     if (this.containerElement) {
       this.containerElement.innerHTML = "";

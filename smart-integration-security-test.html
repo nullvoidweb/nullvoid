@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Integration Security Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .test-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+      }
+      .test-section h3 {
+        margin-top: 0;
+        color: #333;
+      }
+      .test-button {
+        background: #6366f1;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px;
+        text-decoration: none;
+        display: inline-block;
+      }
+      .test-button:hover {
+        background: #5856eb;
+      }
+      .dangerous {
+        background: #e74c3c;
+      }
+      .dangerous:hover {
+        background: #c0392b;
+      }
+      .ad-container {
+        background: #ffeb3b;
+        padding: 15px;
+        margin: 10px 0;
+        text-align: center;
+        border: 2px solid #ffc107;
+      }
+      .suspicious-content {
+        background: #ffe0e0;
+        padding: 15px;
+        border-left: 4px solid #e74c3c;
+        margin: 10px 0;
+      }
+      .instructions {
+        background: #e3f2fd;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        border-left: 4px solid #2196f3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🛡️ NULL VOID Smart Integration Security Test</h1>
+
+      <div class="instructions">
+        <strong>How to test:</strong>
+        <ol>
+          <li>
+            Make sure NULL VOID extension is installed and Smart Integration is
+            enabled (toggle switch)
+          </li>
+          <li>Try the different test scenarios below</li>
+          <li>
+            Check if the security system blocks or warns about dangerous content
+          </li>
+          <li>You can disable Smart Integration to see the difference</li>
+        </ol>
+      </div>
+
+      <!-- File Download Protection Test -->
+      <div class="test-section">
+        <h3>🗂️ File Download Protection Test</h3>
+        <p>
+          These links simulate dangerous file downloads that should be blocked:
+        </p>
+        <a
+          href="javascript:void(0)"
+          onclick="testFileDownload('malware.exe')"
+          class="test-button dangerous"
+          >Download .exe file</a
+        >
+        <a
+          href="javascript:void(0)"
+          onclick="testFileDownload('virus.bat')"
+          class="test-button dangerous"
+          >Download .bat file</a
+        >
+        <a
+          href="javascript:void(0)"
+          onclick="testFileDownload('script.vbs')"
+          class="test-button dangerous"
+          >Download .vbs file</a
+        >
+        <a
+          href="javascript:void(0)"
+          onclick="testFileDownload('document.pdf')"
+          class="test-button"
+          >Download .pdf file (safe)</a
+        >
+      </div>
+
+      <!-- Ad Blocking Test -->
+      <div class="test-section">
+        <h3>🚫 Ad Blocking Test</h3>
+        <p>These elements test the stealth ad blocking system:</p>
+
+        <div
+          class="test-ad-container"
+          style="
+            background: #fffbf0;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px dashed #ffa500;
+          "
+        >
+          <p>
+            <strong>Test Area:</strong> Ad blocking elements will appear below
+            when you <strong>disable</strong> Smart Integration
+          </p>
+
+          <div id="ad-test-elements" style="display: none">
+            <div
+              class="ad banner-ad"
+              style="
+                background: #ffeb3b;
+                padding: 15px;
+                margin: 10px 0;
+                text-align: center;
+                border: 2px solid #ffc107;
+              "
+            >
+              🎯 Simulated Banner Ad - Should be hidden when enabled
+            </div>
+
+            <div
+              id="google_ads_test"
+              style="
+                background: #ffeb3b;
+                padding: 15px;
+                margin: 10px 0;
+                text-align: center;
+                border: 2px solid #ffc107;
+              "
+            >
+              📢 Simulated Google Ad - Should be hidden when enabled
+            </div>
+
+            <div
+              class="advertisement sponsored-content"
+              style="
+                background: #ffeb3b;
+                padding: 15px;
+                margin: 10px 0;
+                text-align: center;
+                border: 2px solid #ffc107;
+              "
+            >
+              💰 Simulated Advertisement - Should be hidden when enabled
+            </div>
+          </div>
+
+          <button
+            onclick="toggleAdTestElements()"
+            class="test-button"
+            id="adTestToggle"
+          >
+            Show Test Ads (Disable Smart Integration First)
+          </button>
+        </div>
+
+        <p style="color: #666; font-size: 14px">
+          <strong>Instructions:</strong><br />
+          1. Turn OFF Smart Integration in the NULL VOID extension<br />
+          2. Click "Show Test Ads" button above<br />
+          3. Turn ON Smart Integration to see ads disappear<br />
+          4. Turn OFF again to see ads reappear
+        </p>
+      </div>
+
+      <!-- Suspicious Content Test -->
+      <div class="test-section">
+        <h3>⚠️ Suspicious Content Detection Test</h3>
+        <p>This content contains patterns commonly used in scams:</p>
+
+        <div class="suspicious-content">
+          <strong>🎉 Congratulations! You've won $1,000,000!</strong><br />
+          Click here to claim your prize immediately! Urgent action required!
+          Your account will be suspended if you don't verify immediately!
+        </div>
+
+        <p>
+          The Smart Integration should detect these suspicious patterns and show
+          a warning.
+        </p>
+      </div>
+
+      <!-- Malicious Website Simulation -->
+      <div class="test-section">
+        <h3>🌐 Malicious Website Protection Test</h3>
+        <p>
+          Note: Real malicious sites would be blocked automatically. This is
+          just a demonstration.
+        </p>
+        <button
+          onclick="simulateMaliciousWebsite()"
+          class="test-button dangerous"
+        >
+          Simulate Malicious Website Detection
+        </button>
+      </div>
+
+      <!-- Security Stats -->
+      <div class="test-section">
+        <h3>📊 Security Statistics</h3>
+        <div id="security-stats">
+          <p>Loading security statistics...</p>
+        </div>
+        <button onclick="refreshStats()" class="test-button">
+          Refresh Stats
+        </button>
+      </div>
+    </div>
+
+    <script>
+      function testFileDownload(filename) {
+        // Create a temporary link to simulate file download
+        const link = document.createElement("a");
+        link.href = `data:text/plain;charset=utf-8,Test file content for ${filename}`;
+        link.download = filename;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      function toggleAdTestElements() {
+        const adElements = document.getElementById("ad-test-elements");
+        const toggleButton = document.getElementById("adTestToggle");
+
+        if (adElements.style.display === "none") {
+          adElements.style.display = "block";
+          toggleButton.textContent = "Hide Test Ads";
+          toggleButton.style.background = "#e74c3c";
+        } else {
+          adElements.style.display = "none";
+          toggleButton.textContent =
+            "Show Test Ads (Disable Smart Integration First)";
+          toggleButton.style.background = "#6366f1";
+        }
+      }
+
+      function simulateMaliciousWebsite() {
+        // This would normally be blocked by the content script
+        alert(
+          "In a real scenario, NULL VOID would have blocked this malicious website before you could see this message."
+        );
+      }
+
+      function refreshStats() {
+        if (typeof chrome !== "undefined" && chrome.runtime) {
+          chrome.runtime.sendMessage(
+            { action: "getSecurityStats" },
+            (response) => {
+              if (response) {
+                document.getElementById("security-stats").innerHTML = `
+                            <p><strong>Malware Sites Blocked:</strong> ${
+                              response.malwareBlocked || 0
+                            }</p>
+                            <p><strong>Dangerous Files Blocked:</strong> ${
+                              response.filesBlocked || 0
+                            }</p>
+                            <p><strong>Ads Blocked:</strong> ${
+                              response.adsBlocked || 0
+                            }</p>
+                            <p><strong>Last Updated:</strong> ${new Date(
+                              response.lastUpdated
+                            ).toLocaleString()}</p>
+                            <p><strong>Status:</strong> ${
+                              response.securityEnabled
+                                ? "🟢 Active"
+                                : "🔴 Disabled"
+                            }</p>
+                        `;
+              }
+            }
+          );
+        } else {
+          document.getElementById("security-stats").innerHTML = `
+                    <p style="color: orange;">⚠️ Extension not detected. Make sure NULL VOID is installed and enabled.</p>
+                `;
+        }
+      }
+
+      // Auto-refresh stats when page loads
+      document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(refreshStats, 1000);
+      });
+
+      // Test suspicious content detection
+      document.addEventListener("DOMContentLoaded", () => {
+        console.log(
+          "Test page loaded - Smart Integration should scan for suspicious content"
+        );
+      });
+    </script>
+  </body>
+</html>
