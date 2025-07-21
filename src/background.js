@@ -1,7 +1,232 @@
 // Use browser-specific API namespace
 const browserAPI = typeof browser !== "undefined" ? browser : chrome;
 
-// --- Email polling configuration ---
+// --- Smart Integration Configuration ---
+let smartIntegrationEnabled = false;
+
+// Listen for storage changes
+browserAPI.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === "local" && changes.smartIntegrationEnabled) {
+    const newValue = changes.smartIntegrationEnabled.newValue;
+    if (newValue !== smartIntegrationEnabled) {
+      handleSmartIntegrationToggle(newValue);
+    }
+  }
+});
+
+// --- RBI (Remote Browser Isolation) Functions ---
+
+// RBI session management
+const activeSessions = new Map();
+
+async function handleRBISessionInit(region) {
+  try {
+    console.log(`[RBI Background] Initializing session for region: ${region}`);
+
+    // Since we can't use ES6 imports in service worker directly,
+    // we'll use a simpler approach for production
+
+    // Generate session ID
+    const sessionId =
+      "rbi_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+
+    // Store active session
+    activeSessions.set(sessionId, {
+      region: region,
+      startTime: Date.now(),
+      status: "active",
+    });
+
+    console.log(`[RBI Background] Session created: ${sessionId}`);
+
+    return {
+      success: true,
+      sessionId: sessionId,
+      region: region,
+      endpoint: getRegionEndpoint(region),
+    };
+  } catch (error) {
+    console.error("[RBI Background] Session initialization failed:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+// Get region endpoint configuration
+function getRegionEndpoint(region) {
+  const endpoints = {
+    singapore: {
+      api: "https://sg-rbi-api.nullvoid.com",
+      stream: "wss://sg-rbi-stream.nullvoid.com",
+      region: "ap-southeast-1",
+      flag: "🇸🇬",
+      location: "Singapore",
+    },
+    usa: {
+      api: "https://us-rbi-api.nullvoid.com",
+      stream: "wss://us-rbi-stream.nullvoid.com",
+      region: "us-east-1",
+      flag: "🇺🇸",
+      location: "United States",
+    },
+    uk: {
+      api: "https://uk-rbi-api.nullvoid.com",
+      stream: "wss://uk-rbi-stream.nullvoid.com",
+      region: "eu-west-2",
+      flag: "🇬🇧",
+      location: "United Kingdom",
+    },
+    canada: {
+      api: "https://ca-rbi-api.nullvoid.com",
+      stream: "wss://ca-rbi-stream.nullvoid.com",
+      region: "ca-central-1",
+      flag: "🇨🇦",
+      location: "Canada",
+    },
+    europe: {
+      api: "https://eu-rbi-api.nullvoid.com",
+      stream: "wss://eu-rbi-stream.nullvoid.com",
+      region: "eu-west-1",
+      flag: "🇪🇺",
+      location: "Europe",
+    },
+    japan: {
+      api: "https://jp-rbi-api.nullvoid.com",
+      stream: "wss://jp-rbi-stream.nullvoid.com",
+      region: "ap-northeast-1",
+      flag: "🇯🇵",
+      location: "Japan",
+    },
+  };
+
+  return endpoints[region] || endpoints.singapore;
+}
+
+async function handleRBISessionTermination(sessionId) {
+  try {
+    console.log(`[RBI Background] Terminating session: ${sessionId}`);
+
+    const sessionInfo = activeSessions.get(sessionId);
+    if (!sessionInfo) {
+      throw new Error("Session not found");
+    }
+
+    // Remove from active sessions
+    activeSessions.delete(sessionId);
+
+    // Clear browsing data for this session
+    await clearRBISessionData(sessionId);
+
+    console.log(`[RBI Background] Session terminated: ${sessionId}`);
+
+    return {
+      success: true,
+      message: "Session terminated successfully",
+    };
+  } catch (error) {
+    console.error("[RBI Background] Session termination failed:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+async function handleRBISessionStatus(sessionId) {
+  try {
+    const sessionInfo = activeSessions.get(sessionId);
+    if (!sessionInfo) {
+      return {
+        success: false,
+        error: "Session not found",
+      };
+    }
+
+    return {
+      success: true,
+      status: "active",
+      region: sessionInfo.region,
+      startTime: sessionInfo.startTime,
+      duration: Date.now() - sessionInfo.startTime,
+    };
+  } catch (error) {
+    console.error("[RBI Background] Session status check failed:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+// Clear browsing data specific to RBI session
+async function clearRBISessionData(sessionId) {
+  try {
+    // Clear cookies, cache, local storage, etc. for this session
+    await browserAPI.browsingData.remove(
+      {
+        // Remove data from the last hour (session duration)
+        since: Date.now() - 60 * 60 * 1000,
+      },
+      {
+        cache: true,
+        cookies: true,
+        downloads: false,
+        fileSystems: true,
+        formData: true,
+        history: false, // Keep history for user convenience
+        indexedDB: true,
+        localStorage: true,
+        passwords: false, // Don't clear saved passwords
+        serviceWorkers: true,
+        webSQL: true,
+      }
+    );
+
+    console.log(
+      `[RBI Background] Cleared browsing data for session: ${sessionId}`
+    );
+  } catch (error) {
+    console.error("[RBI Background] Failed to clear session data:", error);
+  }
+}
+
+// Monitor tab closures to clean up RBI sessions
+browserAPI.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+  try {
+    // Check if this was an RBI tab
+    const result = await browserAPI.storage.local.get(["activeRBISession"]);
+    if (result.activeRBISession && result.activeRBISession.tabId === tabId) {
+      console.log(
+        `[RBI Background] RBI tab closed, cleaning up session: ${result.activeRBISession.sessionId}`
+      );
+
+      // Terminate the session
+      await handleRBISessionTermination(result.activeRBISession.sessionId);
+
+      // Clear storage
+      await browserAPI.storage.local.remove(["activeRBISession"]);
+    }
+  } catch (error) {
+    console.error("[RBI Background] Error handling tab closure:", error);
+  }
+});
+
+// Periodic cleanup of inactive sessions
+setInterval(async () => {
+  const now = Date.now();
+  const maxSessionDuration = 24 * 60 * 60 * 1000; // 24 hours
+
+  for (const [sessionId, sessionInfo] of activeSessions.entries()) {
+    if (now - sessionInfo.startTime > maxSessionDuration) {
+      console.log(
+        `[RBI Background] Auto-terminating expired session: ${sessionId}`
+      );
+      await handleRBISessionTermination(sessionId);
+    }
+  }
+}, 60 * 60 * 1000); // Check every houron ---
 const TEMP_MAIL_API_BASE_URL = "https://api.mail.tm";
 let pollingInterval = null;
 let previousMessageCount = 0;
@@ -9,6 +234,9 @@ let previousMessageCount = 0;
 // Listen for when the extension is installed or updated
 browserAPI.runtime.onInstalled.addListener(() => {
   console.log("NULL VOID Extension Installed");
+
+  // Initialize smart integration
+  initializeSmartIntegration();
 
   // Initialize background email polling
   initializeEmailPolling();
@@ -18,8 +246,221 @@ browserAPI.runtime.onInstalled.addListener(() => {
 browserAPI.runtime.onStartup.addListener(() => {
   console.log("NULL VOID Extension Started");
 
+  // Initialize smart integration
+  initializeSmartIntegration();
+
   // Initialize background email polling
   initializeEmailPolling();
+});
+
+// --- Smart Integration Functions ---
+async function initializeSmartIntegration() {
+  console.log("Initializing Smart Integration...");
+
+  // Get stored smart integration status
+  const result = await browserAPI.storage.local.get([
+    "smartIntegrationEnabled",
+  ]);
+  smartIntegrationEnabled = result.smartIntegrationEnabled || false;
+
+  console.log("Smart Integration Status:", smartIntegrationEnabled);
+
+  // Set up web request blocking if enabled
+  if (smartIntegrationEnabled) {
+    setupWebRequestBlocking();
+  }
+
+  // Listen for tab updates to inject content script
+  browserAPI.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (
+      changeInfo.status === "complete" &&
+      tab.url &&
+      smartIntegrationEnabled
+    ) {
+      injectSmartIntegrationScript(tabId);
+    }
+  });
+}
+
+// Inject smart integration content script into tabs
+async function injectSmartIntegrationScript(tabId) {
+  try {
+    const tab = await browserAPI.tabs.get(tabId);
+
+    // Skip special pages
+    if (
+      tab.url.startsWith("chrome://") ||
+      tab.url.startsWith("moz-extension://") ||
+      tab.url.startsWith("chrome-extension://")
+    ) {
+      return;
+    }
+
+    // Inject the smart integration script
+    await browserAPI.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ["smart-integration.js"],
+    });
+
+    console.log(`Smart Integration script injected into tab ${tabId}`);
+  } catch (error) {
+    console.error("Error injecting smart integration script:", error);
+  }
+}
+
+// Setup web request blocking for malicious sites and ads
+async function setupWebRequestBlocking() {
+  try {
+    if (smartIntegrationEnabled) {
+      // Enable ad blocking and malicious site blocking rules
+      await browserAPI.declarativeNetRequest.updateEnabledRulesets({
+        enableRulesetIds: ["nullvoid_ad_blocker", "nullvoid_malicious_blocker"],
+      });
+      console.log("Web request blocking rules enabled");
+    } else {
+      // Disable all blocking rules
+      await browserAPI.declarativeNetRequest.updateEnabledRulesets({
+        disableRulesetIds: [
+          "nullvoid_ad_blocker",
+          "nullvoid_malicious_blocker",
+        ],
+      });
+      console.log("Web request blocking rules disabled");
+    }
+  } catch (error) {
+    console.error("Error setting up web request blocking:", error);
+  }
+}
+
+// Handle messages from popup and content scripts
+browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  switch (message.action) {
+    case "toggleSmartIntegration":
+      handleSmartIntegrationToggle(message.enabled);
+      sendResponse({ success: true });
+      break;
+
+    case "getSmartIntegrationStatus":
+      sendResponse({ enabled: smartIntegrationEnabled });
+      break;
+
+    case "reportMaliciousSite":
+      handleMaliciousSiteReport(message.data);
+      sendResponse({ success: true });
+      break;
+
+    case "reportBlockedAd":
+      console.log("Ad blocked:", message.data);
+      sendResponse({ success: true });
+      break;
+
+    case "initializeRBISession":
+      console.log(
+        "[Background] Received initializeRBISession request for region:",
+        message.region
+      );
+      handleRBISessionInit(message.region)
+        .then((result) => {
+          console.log("[Background] RBI session init result:", result);
+          sendResponse(result);
+        })
+        .catch((error) => {
+          console.error("[Background] RBI session init error:", error);
+          sendResponse({ success: false, error: error.message });
+        });
+      return true; // Keep channel open for async response
+
+    case "terminateRBISession":
+      handleRBISessionTermination(message.sessionId)
+        .then((result) => sendResponse(result))
+        .catch((error) =>
+          sendResponse({ success: false, error: error.message })
+        );
+      return true;
+
+    case "getRBISessionStatus":
+      handleRBISessionStatus(message.sessionId)
+        .then((result) => sendResponse(result))
+        .catch((error) =>
+          sendResponse({ success: false, error: error.message })
+        );
+      return true;
+  }
+
+  return true; // Keep the message channel open for async response
+});
+
+// Handle smart integration toggle
+async function handleSmartIntegrationToggle(enabled) {
+  smartIntegrationEnabled = enabled;
+
+  // Store the setting
+  await browserAPI.storage.local.set({ smartIntegrationEnabled: enabled });
+
+  console.log(`Smart Integration ${enabled ? "enabled" : "disabled"}`);
+
+  // Update web request blocking rules
+  await setupWebRequestBlocking();
+
+  if (enabled) {
+    // Inject script into all existing tabs
+    const tabs = await browserAPI.tabs.query({});
+    for (const tab of tabs) {
+      if (
+        tab.id &&
+        tab.url &&
+        !tab.url.startsWith("chrome://") &&
+        !tab.url.startsWith("moz-extension://") &&
+        !tab.url.startsWith("chrome-extension://")
+      ) {
+        try {
+          await injectSmartIntegrationScript(tab.id);
+        } catch (error) {
+          console.error(`Error injecting into tab ${tab.id}:`, error);
+        }
+      }
+    }
+  } else {
+    // Disable protection in all tabs
+    const tabs = await browserAPI.tabs.query({});
+    for (const tab of tabs) {
+      if (tab.id) {
+        try {
+          await browserAPI.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => {
+              // Disable smart integration in this tab
+              if (window.nullVoidSmartIntegration) {
+                window.nullVoidSmartIntegration.disableProtection();
+              }
+            },
+          });
+        } catch (error) {
+          // Ignore errors for tabs that can't be accessed
+        }
+      }
+    }
+  }
+}
+
+// Handle malicious site reports
+function handleMaliciousSiteReport(data) {
+  console.log("Malicious site reported:", data);
+
+  // In a production environment, you would:
+  // 1. Send this data to your threat intelligence service
+  // 2. Update your malicious domain lists
+  // 3. Notify other users or security services
+}
+
+// Listen for storage changes
+browserAPI.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === "local" && changes.smartIntegrationEnabled) {
+    const newValue = changes.smartIntegrationEnabled.newValue;
+    if (newValue !== smartIntegrationEnabled) {
+      handleSmartIntegrationToggle(newValue);
+    }
+  }
 });
 
 // --- Email polling functions ---

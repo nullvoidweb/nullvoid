@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Integration Test Page</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .test-section {
+        background: white;
+        margin: 20px 0;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .ad-test {
+        border: 2px dashed #ff6b6b;
+        background-color: #ffe6e6;
+        padding: 20px;
+        text-align: center;
+        margin: 10px 0;
+      }
+      .malicious-test {
+        border: 2px dashed #ffa500;
+        background-color: #fff3e0;
+        padding: 20px;
+        text-align: center;
+        margin: 10px 0;
+      }
+      .status {
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+      .enabled {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .disabled {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      .warning-button {
+        background-color: #dc3545;
+      }
+      .warning-button:hover {
+        background-color: #c82333;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🛡️ NULL VOID Smart Integration Test Page</h1>
+
+    <div class="test-section">
+      <h2>Smart Integration Status</h2>
+      <div id="integrationStatus" class="status disabled">
+        Status: Checking...
+      </div>
+      <p>
+        <em
+          >This page will help you test the smart integration features of NULL
+          VOID extension.</em
+        >
+      </p>
+    </div>
+
+    <div class="test-section">
+      <h2>🚫 Ad Blocking Test</h2>
+      <p>
+        The following elements should be hidden when smart integration is
+        enabled:
+      </p>
+
+      <div class="ad-test adsbygoogle">
+        <strong>Google Ad Test</strong><br />
+        This element has class "adsbygoogle" and should be blocked
+      </div>
+
+      <div class="ad-test" id="google_ads_123">
+        <strong>Google Ads ID Test</strong><br />
+        This element has ID starting with "google_ads" and should be blocked
+      </div>
+
+      <div class="ad-test advertisement">
+        <strong>Advertisement Class Test</strong><br />
+        This element has class "advertisement" and should be blocked
+      </div>
+
+      <div class="ad-test banner-ad">
+        <strong>Banner Ad Test</strong><br />
+        This element has class "banner-ad" and should be blocked
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>⚠️ Malicious Content Detection Test</h2>
+      <p>The following buttons will trigger malicious content warnings:</p>
+
+      <button onclick="triggerPhishingWarning()" class="warning-button">
+        Test Phishing Warning
+      </button>
+
+      <button onclick="triggerMalwareWarning()" class="warning-button">
+        Test Malware Warning
+      </button>
+
+      <button onclick="triggerScamWarning()" class="warning-button">
+        Test Scam Warning
+      </button>
+
+      <div class="malicious-test" style="display: none" id="maliciousContent">
+        <strong>⚠️ URGENT SECURITY ALERT ⚠️</strong><br />
+        Your computer is infected! Click here to claim your free antivirus!<br />
+        <em>(This is test content that should trigger a warning)</em>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>🔗 External Request Test</h2>
+      <p>These buttons will test network request blocking:</p>
+
+      <button onclick="testAdRequest()">Test Ad Network Request</button>
+      <button onclick="testTrackingRequest()">Test Tracking Request</button>
+
+      <div id="requestResults"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>📊 Test Results</h2>
+      <div id="testResults">
+        <p>
+          Enable smart integration in the NULL VOID extension and run the tests
+          above.
+        </p>
+      </div>
+    </div>
+
+    <script>
+      // Check smart integration status
+      function checkSmartIntegrationStatus() {
+        const statusDiv = document.getElementById("integrationStatus");
+
+        // Check if protection styles are injected
+        const protectionStyles = document.getElementById(
+          "nullvoid-protection-styles"
+        );
+
+        if (protectionStyles) {
+          statusDiv.className = "status enabled";
+          statusDiv.textContent =
+            "✅ Smart Integration: ENABLED - Protection systems are active";
+        } else {
+          statusDiv.className = "status disabled";
+          statusDiv.textContent =
+            "❌ Smart Integration: DISABLED - No protection detected";
+        }
+      }
+
+      // Test functions
+      function triggerPhishingWarning() {
+        const content = document.getElementById("maliciousContent");
+        content.style.display = "block";
+        content.innerHTML = `
+                <strong>⚠️ PHISHING ALERT ⚠️</strong><br>
+                Verify your account immediately or it will be suspended!<br>
+                <em>(This should trigger the smart integration warning)</em>
+            `;
+
+        // Trigger content check
+        if (window.nullVoidSmartIntegration) {
+          setTimeout(() => {
+            window.nullVoidSmartIntegration.checkCurrentSite();
+          }, 100);
+        }
+      }
+
+      function triggerMalwareWarning() {
+        const content = document.getElementById("maliciousContent");
+        content.style.display = "block";
+        content.innerHTML = `
+                <strong>⚠️ MALWARE DETECTED ⚠️</strong><br>
+                Your computer is infected! Download our security software now!<br>
+                <em>(This should trigger the smart integration warning)</em>
+            `;
+
+        if (window.nullVoidSmartIntegration) {
+          setTimeout(() => {
+            window.nullVoidSmartIntegration.checkCurrentSite();
+          }, 100);
+        }
+      }
+
+      function triggerScamWarning() {
+        const content = document.getElementById("maliciousContent");
+        content.style.display = "block";
+        content.innerHTML = `
+                <strong>🎉 CONGRATULATIONS! 🎉</strong><br>
+                You have won $1000! Click here to claim your prize now!<br>
+                <em>(This should trigger the smart integration warning)</em>
+            `;
+
+        if (window.nullVoidSmartIntegration) {
+          setTimeout(() => {
+            window.nullVoidSmartIntegration.checkCurrentSite();
+          }, 100);
+        }
+      }
+
+      function testAdRequest() {
+        const resultsDiv = document.getElementById("requestResults");
+
+        fetch("https://doubleclick.net/test")
+          .then((response) => {
+            resultsDiv.innerHTML += "<p>❌ Ad request was NOT blocked</p>";
+          })
+          .catch((error) => {
+            resultsDiv.innerHTML +=
+              "<p>✅ Ad request was successfully blocked</p>";
+          });
+      }
+
+      function testTrackingRequest() {
+        const resultsDiv = document.getElementById("requestResults");
+
+        fetch("https://google-analytics.com/collect")
+          .then((response) => {
+            resultsDiv.innerHTML +=
+              "<p>❌ Tracking request was NOT blocked</p>";
+          })
+          .catch((error) => {
+            resultsDiv.innerHTML +=
+              "<p>✅ Tracking request was successfully blocked</p>";
+          });
+      }
+
+      // Check status periodically
+      setInterval(checkSmartIntegrationStatus, 2000);
+      checkSmartIntegrationStatus();
+
+      // Log when page loads
+      console.log("Smart Integration Test Page loaded");
+      console.log(
+        "Available smart integration functions:",
+        window.nullVoidSmartIntegration
+      );
+    </script>
+  </body>
+</html>

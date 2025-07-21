@@ -126,27 +126,82 @@
           </div>
         </div>
 
-        <!-- Disposable File Viewer Section -->
+        <!-- Secure File Viewer Section -->
         <div class="service-section">
           <div class="service-header">
-            <h3>Disposable File Viewer</h3>
+            <h3>Secure File Viewer</h3>
+            <div class="service-info">
+              Complete isolation • All file types • Zero system access
+            </div>
           </div>
           <div class="file-controls">
-            <button class="btn btn-primary" id="selectFile">upload</button>
-            <button class="btn btn-secondary" id="viewFile">view</button>
+            <input
+              type="file"
+              id="fileInput"
+              style="display: none"
+              accept="*/*"
+            />
+            <button class="btn btn-primary" id="selectFile">Select File</button>
+            <button class="btn btn-secondary" id="viewFile" disabled>
+              View Safely
+            </button>
+          </div>
+          <div class="file-info" id="fileInfoDisplay" style="display: none">
+            <div class="file-details">
+              <span id="selectedFileName">No file selected</span>
+              <span id="selectedFileSize"></span>
+            </div>
+            <div class="security-badge" id="securityBadge">
+              <span class="security-level">ISOLATED</span>
+            </div>
           </div>
         </div>
 
         <!-- AI Chat Section -->
         <div class="service-section">
           <div class="service-header">
-            <h3>Ai chat</h3>
-            <input
-              type="text"
-              class="search-input"
-              id="aiSearchInput"
-              placeholder="search bar"
-            />
+            <h3>AI Chat</h3>
+            <div class="ai-controls">
+              <button class="btn btn-secondary" id="clearChat">clear</button>
+              <button class="btn btn-secondary" id="aiSettings">
+                settings
+              </button>
+            </div>
+          </div>
+          <div class="ai-chat-container">
+            <div class="chat-messages" id="chatMessages">
+              <div class="chat-message ai-message">
+                <div class="message-content">
+                  <span class="message-text"
+                    >Hello! I'm your AI assistant. How can I help you
+                    today?</span
+                  >
+                  <span class="message-time">Just now</span>
+                </div>
+              </div>
+            </div>
+            <div class="chat-input-container">
+              <input
+                type="text"
+                class="chat-input"
+                id="aiChatInput"
+                placeholder="Type your message..."
+                maxlength="1000"
+              />
+              <button class="btn btn-primary chat-send-btn" id="sendMessage">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22,2 15,22 11,13 2,9"></polygon>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>

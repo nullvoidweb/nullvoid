@@ -279,7 +279,7 @@ function displayMessage(role, content, animate = true) {
 
   const avatar = document.createElement("div");
   avatar.className = "message-avatar";
-  avatar.textContent = role === "user" ? "👤" : "🤖";
+  avatar.textContent = role === "user" ? "USER" : "AI";
 
   const contentDiv = document.createElement("div");
   contentDiv.className = "message-content";
@@ -363,7 +363,7 @@ function showError(message) {
     }, 5000);
   } else {
     // Fallback: display error in chat
-    displayMessage("ai", `❌ Error: ${message}`);
+    displayMessage("ai", `ERROR: ${message}`);
   }
 }
 

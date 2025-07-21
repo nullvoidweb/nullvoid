@@ -140,7 +140,7 @@ async function displayPDF(content, container) {
   pdfContainer.style.borderRadius = "8px";
 
   pdfContainer.innerHTML = `
-    <div style="font-size: 48px; margin-bottom: 20px;">📄</div>
+    <div style="font-size: 48px; margin-bottom: 20px; font-weight: bold; color: #666;">PDF</div>
     <h3>PDF Document</h3>
     <p>PDF preview not available in this environment.</p>
     <p>Use the download button below to save and open with your PDF reader.</p>
@@ -202,7 +202,7 @@ async function displayAudio(content, container) {
   audio.style.maxWidth = "400px";
 
   audioContainer.innerHTML = `
-    <div style="font-size: 48px; margin-bottom: 20px;">🎵</div>
+    <div style="font-size: 48px; margin-bottom: 20px; font-weight: bold; color: #666;">AUDIO</div>
     <h3>Audio File</h3>
   `;
   audioContainer.appendChild(audio);
@@ -235,33 +235,33 @@ function getFileIcon(name, type) {
   const extension = name.toLowerCase().substring(name.lastIndexOf("."));
 
   const iconMap = {
-    ".pdf": "📄",
-    ".doc": "📝",
-    ".docx": "📝",
-    ".xls": "📊",
-    ".xlsx": "📊",
-    ".ppt": "📈",
-    ".pptx": "📈",
-    ".zip": "🗜️",
-    ".rar": "🗜️",
-    ".7z": "🗜️",
-    ".exe": "⚙️",
-    ".msi": "⚙️",
-    ".mp3": "🎵",
-    ".wav": "🎵",
-    ".flac": "🎵",
-    ".mp4": "🎬",
-    ".avi": "🎬",
-    ".mkv": "🎬",
-    ".txt": "📄",
-    ".log": "📄",
-    ".html": "🌐",
-    ".htm": "🌐",
-    ".css": "🎨",
-    ".js": "⚡",
+    ".pdf": "PDF",
+    ".doc": "DOC",
+    ".docx": "DOC",
+    ".xls": "XLS",
+    ".xlsx": "XLS",
+    ".ppt": "PPT",
+    ".pptx": "PPT",
+    ".zip": "ZIP",
+    ".rar": "RAR",
+    ".7z": "7Z",
+    ".exe": "EXE",
+    ".msi": "MSI",
+    ".mp3": "MP3",
+    ".wav": "WAV",
+    ".flac": "FLAC",
+    ".mp4": "MP4",
+    ".avi": "AVI",
+    ".mkv": "MKV",
+    ".txt": "TXT",
+    ".log": "LOG",
+    ".html": "HTML",
+    ".htm": "HTM",
+    ".css": "CSS",
+    ".js": "JS",
   };
 
-  return iconMap[extension] || "📁";
+  return iconMap[extension] || "FILE";
 }
 
 function setupDownloadButton(content, fileName) {
