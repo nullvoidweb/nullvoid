@@ -99,8 +99,12 @@
           <div class="service-header">
             <h3>Disposable Browser</h3>
             <div class="service-controls">
-              <button class="btn btn-primary">start</button>
-              <button class="btn btn-secondary">singapore</button>
+              <button class="btn btn-primary" id="launchDisposableBrowser">
+                start
+              </button>
+              <button class="btn btn-secondary" id="selectRegion">
+                singapore
+              </button>
             </div>
           </div>
         </div>
@@ -117,11 +121,13 @@
                 value="your@email.com"
                 readonly
               />
-              <button class="btn btn-small">copy</button>
+              <button class="btn btn-small" id="copyEmailBtn">copy</button>
             </div>
           </div>
           <div class="email-actions">
-            <span>regenerate email</span>
+            <button class="btn btn-secondary" id="regenerateEmail">
+              regenerate email
+            </button>
             <button class="btn btn-secondary" id="openInbox">Inbox</button>
           </div>
         </div>
@@ -163,9 +169,8 @@
             <h3>AI Chat</h3>
             <div class="ai-controls">
               <button class="btn btn-secondary" id="clearChat">clear</button>
-              <button class="btn btn-secondary" id="aiSettings">
-                settings
-              </button>
+              <button class="btn btn-secondary" id="aiSettings">settings</button>
+              <button class="btn btn-primary" id="openFullAI">Full AI Chat</button>
             </div>
           </div>
           <div class="ai-chat-container">
@@ -265,6 +270,7 @@
       </div>
     </div>
 
-    <script src="popup.js"></script>
+    <script src="auth-service.js"></script>
+    <script src="popup-fixed.js"></script>
   </body>
 </html>

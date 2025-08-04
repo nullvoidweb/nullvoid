@@ -354,6 +354,35 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
       break;
 
+    case "authComplete":
+      console.log("[Auth] Authentication completed:", message);
+      // Forward to popup if it's open
+      browserAPI.runtime.sendMessage({
+        action: "authStateChanged",
+        isAuthenticated: true,
+        userProfile: message.user
+      }).catch(() => {
+        // Ignore if popup is not open
+      });
+      sendResponse({ success: true });
+      break;
+
+    case "authFailed":
+      console.log("[Auth] Authentication failed:", message.error);
+      // Forward to popup if it's open
+      browserAPI.runtime.sendMessage({
+        action: "authStateChanged",
+        isAuthenticated: false,
+        userProfile: null
+      }).catch(() => {
+        // Ignore if popup is not open
+      });
+      sendResponse({ success: true });
+      break;
+
+    // OSINT functionality removed // Keep message channel open for async response
+      break;
+
     case "initializeRBISession":
       console.log(
         "[Background] Received initializeRBISession request for region:",
@@ -967,3 +996,149 @@ browserAPI.runtime.onInstalled.addListener(async () => {
 // as the primary function of the email is to display and copy.
 // If you wanted auto-fill, you'd need a content.js and inject it
 // using chrome.scripting.executeScript.
+// --- OSINT Functions ---
+
+async function handleOsintSearch(query, type) {
+  const API_KEY = "ijVL3k0b35IyrwhRG1nC1OUnNuqF90CWt";
+  const BASE_URL = "https://api.shodan.io";
+  
+  try {
+    console.log(`[OSINT Background] Performing ${type} search for: ${query}`);
+    
+    let endpoint;
+    let params = new URLSearchParams({ key: API_KEY });
+    
+    switch (type) {
+      case "host":
+        // Host lookup - get info about specific IP
+        if (!isValidIP(query)) {
+          throw new Error("Please enter a valid IP address for host lookup");
+        }
+        endpoint = `${BASE_URL}/shodan/host/${query}`;
+        break;
+        
+      case "search":
+        // General search
+        endpoint = `${BASE_URL}/shodan/host/search`;
+        params.append("query", query);
+        params.append("limit", "10");
+        break;
+        
+      case "count":
+        // Count search results
+        endpoint = `${BASE_URL}/shodan/host/count`;
+        params.append("query", query);
+        break;
+        
+      case "honeypot":
+        // Honeypot check
+        if (!isValidIP(query)) {
+          throw new Error("Please enter a valid IP address for honeypot check");
+        }
+        endpoint = `${BASE_URL}/labs/honeyscore/${query}`;
+        params = new URLSearchParams({ key: API_KEY });
+        break;
+        
+      default:
+        throw new Error("Invalid search type");
+    }
+    
+    const url = type === "host" || type === "honeypot" 
+      ? `${endpoint}?${params.toString()}`
+      : `${endpoint}?${params.toString()}`;
+    
+    console.log("[OSINT Background] Fetching:", url);
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Invalid API key");
+      } else if (response.status === 404) {
+        throw new Error("No information available for this query");
+      } else if (response.status === 429) {
+        throw new Error("Rate limit exceeded. Please try again later");
+      } else {
+        throw new Error(`API error: ${response.status}`);
+      }
+    }
+    
+    const data = await response.json();
+    
+    return {
+      query: query,
+      type: type,
+      data: data,
+      timestamp: Date.now()
+    };
+    
+  } catch (error) {
+    console.error("[OSINT Background] Shodan API error:", error);
+    throw error;
+  }
+}
+
+function isValidIP(ip) {
+  const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  return ipRegex.test(ip);
+
+
+// --- Browserless.io Integration ---
+const BROWSERLESS_API_KEY = "2SgiPLlAtLyabl75ea63edb2fb15fcf000d866d90aa96ab13";
+const BROWSERLESS_BASE_URL = "https://chrome.browserless.io";
+
+// Handle Browserless.io RBI session initialization
+async function handleBrowserlessRBIInit(region) {
+  try {
+    console.log(`[Browserless RBI] Initializing session for region: ${region}`);
+    
+    // Test connection to Browserless.io
+    const response = await fetch(`${BROWSERLESS_BASE_URL}/json/version?token=${BROWSERLESS_API_KEY}`);
+    
+    if (!response.ok) {
+      throw new Error(`Browserless.io connection failed: ${response.status}`);
+    }
+    
+    const versionInfo = await response.json();
+    console.log('[Browserless RBI] Connection successful:', versionInfo);
+    
+    // Generate session ID
+    const sessionId = "browserless_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+    
+    // Store active session
+    activeSessions.set(sessionId, {
+      region: region,
+      startTime: Date.now(),
+      status: "active",
+      type: "browserless"
+    });
+    
+    return {
+      success: true,
+      sessionId: sessionId,
+      region: region,
+      endpoint: {
+        api: BROWSERLESS_BASE_URL,
+        apiKey: BROWSERLESS_API_KEY,
+        type: "browserless"
+      }
+    };
+    
+  } catch (error) {
+    console.error("[Browserless RBI] Session initialization failed:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Add Browserless.io message handler
+browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "initializeBrowserlessRBI") {
+    handleBrowserlessRBIInit(message.region)
+      .then(result => sendResponse(result))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+});

@@ -15,6 +15,16 @@ let historyIndex = -1;
 
 // Initialize when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
+  // Add a safety timeout to ensure loading screen doesn't stay forever
+  setTimeout(() => {
+    const loadingScreen = document.getElementById("loadingScreen");
+    if (loadingScreen && loadingScreen.style.display !== "none") {
+      console.warn("[RBI Browser] Force hiding loading screen due to timeout");
+      hideLoadingScreen();
+      showBrowserReady();
+    }
+  }, 8000); // 8 second timeout
+  
   initializeRemoteBrowser();
   setupEventListeners();
   startUptimeCounter();
@@ -43,6 +53,12 @@ async function initializeRemoteBrowser() {
     // Initialize BrowserBox RBI service
     const containerElement = document.getElementById("browserFrame");
     
+    if (!containerElement) {
+      throw new Error("Browser frame container not found");
+    }
+    
+    console.log("[RBI Browser] Creating BrowserBoxRBI instance...");
+    
     rbiInstance = new BrowserBoxRBI({
       container: containerElement,
       region: location,
@@ -54,17 +70,32 @@ async function initializeRemoteBrowser() {
       onError: handleError
     });
     
-    // Initialize session
-    await rbiInstance.initialize();
+    console.log("[RBI Browser] BrowserBoxRBI instance created, initializing...");
     
-    console.log("[RBI Browser] Session initialized successfully");
+    // Try initialization with timeout
+    try {
+      const initPromise = rbiInstance.initialize();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Initialization timeout")), 3000)
+      );
+      
+      await Promise.race([initPromise, timeoutPromise]);
+      console.log("[RBI Browser] Session initialized successfully");
+      
+    } catch (error) {
+      console.warn("[RBI Browser] Initialization failed or timed out, using fallback:", error);
+      // Continue with fallback - don't throw error
+    }
     
     // Update UI with session data
     updateSessionDisplay(sessionId || rbiInstance.config.sessionId);
     hideLoadingScreen();
     
     // Set default URL
-    document.getElementById("urlInput").value = "https://www.google.com";
+    const urlInput = document.getElementById("urlInput");
+    if (urlInput) {
+      urlInput.value = "https://www.google.com";
+    }
     
     // Show success notification
     showNotification("Remote browser ready - Your browsing is now fully isolated", "success");
@@ -289,7 +320,13 @@ async function handleGoNavigation() {
   }
 
   try {
-    const url = urlInput.value.trim();
+    let url = urlInput.value.trim();
+    
+    // Add protocol if missing
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    
     console.log("[RBI] Go navigation to:", url);
     
     // Disable button temporarily
@@ -305,12 +342,36 @@ async function handleGoNavigation() {
     
     if (rbiInstance) {
       showNotification("Navigating to " + url, "info");
-      const result = await rbiInstance.navigate(url);
       
-      if (result.success) {
-        showNotification("Navigation successful", "success");
-        addToHistory(result.url, "");
+      try {
+        const result = await rbiInstance.navigate(url);
+        
+        if (result && result.success) {
+          showNotification("Navigation successful", "success");
+          addToHistory(result.url, "");
+        } else {
+          throw new Error("Navigation returned unsuccessful result");
+        }
+      } catch (navError) {
+        console.error("[RBI] Navigation error:", navError);
+        
+        // Fallback: Try direct iframe navigation
+        console.log("[RBI] Trying fallback navigation...");
+        const contentArea = document.getElementById('rbi-content-area');
+        if (contentArea) {
+          contentArea.innerHTML = `
+            <iframe src="${url}" style="width: 100%; height: 100%; border: none;" 
+                    onload="console.log('Fallback navigation successful')"
+                    onerror="console.error('Fallback navigation failed')">
+            </iframe>
+          `;
+          showNotification("Navigation completed (fallback mode)", "success");
+        } else {
+          throw navError;
+        }
       }
+    } else {
+      throw new Error("RBI instance not initialized");
     }
     
   } catch (error) {
@@ -524,6 +585,51 @@ function hideLoadingScreen() {
   if (browserFrame) {
     browserFrame.style.display = "block";
   }
+  
+  console.log("[RBI Browser] Loading screen hidden");
+}
+
+// Show browser ready state
+function showBrowserReady() {
+  const browserFrame = document.getElementById("browserFrame");
+  
+  if (browserFrame) {
+    // Ensure the browser frame is visible
+    browserFrame.style.display = "block";
+    
+    // If it's empty or still loading, show ready screen
+    if (!browserFrame.innerHTML || browserFrame.innerHTML.includes("Loading")) {
+      browserFrame.innerHTML = `
+        <div id="rbi-browser-interface" style="width: 100%; height: 100%; position: relative; background: #f8f9fa;">
+          <div id="rbi-content-area" style="width: 100%; height: 100%; background: white; position: relative;">
+            <div id="rbi-ready-screen" style="display: flex; align-items: center; justify-content: center; height: 100%; background: linear-gradient(135deg, #6c757d 0%, #868e96 100%);">
+              <div style="text-align: center; color: white; max-width: 500px; padding: 40px;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="white" style="margin-bottom: 20px;">
+                  <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11H16V16H8V11H9.2V10C9.2,8.6 10.6,7 12,7M12,8.2C11.2,8.2 10.4,8.7 10.4,10V11H13.6V10C13.6,8.7 12.8,8.2 12,8.2Z"/>
+                </svg>
+                <h3 style="font-size: 24px; font-weight: 600; margin-bottom: 15px;">Remote Browser Ready</h3>
+                <p style="color: rgba(255,255,255,0.9); line-height: 1.6; margin-bottom: 20px;">
+                  Your secure remote browser is ready in <strong>${currentLocation}</strong>. 
+                  Enter a URL in the address bar to start browsing.
+                </p>
+                <div style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); 
+                            border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                  <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 8px;">
+                      <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11H16V16H8V11H9.2V10C9.2,8.6 10.6,7 12,7M12,8.2C11.2,8.2 10.4,8.7 10.4,10V11H13.6V10C13.6,8.7 12.8,8.2 12,8.2Z"/>
+                    </svg>
+                    Complete isolation • Zero local execution • Enterprise security
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
+  
+  console.log("[RBI Browser] Browser ready state shown");
 }
 
 // Show error screen

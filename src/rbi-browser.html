@@ -64,9 +64,8 @@
         display: flex;
         align-items: center;
         gap: 10px;
-      }
-
-      .location-badge {
+      }  
+    .location-badge {
         background: rgba(59, 130, 246, 0.2);
         color: #60a5fa;
         padding: 6px 12px;
@@ -133,9 +132,8 @@
         align-items: center;
         gap: 10px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      }
-
-      .nav-btn {
+      }     
+ .nav-btn {
         background: rgba(255, 255, 255, 0.1);
         color: #ffffff;
         border: 1px solid rgba(255, 255, 255, 0.2);
@@ -198,9 +196,8 @@
         border: none;
         background: #ffffff;
         border-radius: 0;
-      }
-
-      .loading-screen {
+      }   
+   .loading-screen {
         position: absolute;
         top: 0;
         left: 0;
@@ -259,51 +256,11 @@
         display: flex;
         align-items: center;
         gap: 15px;
-      }
-
-      .status-item {
+      }      .s
+tatus-item {
         display: flex;
         align-items: center;
         gap: 5px;
-      }
-
-      .error-screen {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, #6c757d 0%, #868e96 100%);
-        display: none;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 20;
-        padding: 40px;
-      }
-
-      .error-icon {
-        width: 64px;
-        height: 64px;
-        margin-bottom: 20px;
-        opacity: 0.8;
-      }
-
-      .error-title {
-        color: #ffffff;
-        font-size: 24px;
-        font-weight: 600;
-        margin-bottom: 10px;
-        text-align: center;
-      }
-
-      .error-message {
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 16px;
-        text-align: center;
-        max-width: 500px;
-        line-height: 1.5;
-        margin-bottom: 30px;
       }
 
       .security-badge {
@@ -375,9 +332,9 @@
         to { transform: translateX(0); opacity: 1; }
       }
     </style>
-  </head>
-  <body>
-    <!-- Header -->
+  </head>  <body>
+  
+  <!-- Header -->
     <div class="header">
       <div class="logo-section">
         <div class="logo">NV</div>
@@ -418,7 +375,7 @@
         type="text" 
         class="url-bar" 
         id="urlInput" 
-        placeholder="Enter URL to browse securely..." 
+        placeholder="Enter URL for secure browsing..." 
         value=""
       />
       <button class="btn" id="goBtn">
@@ -427,34 +384,16 @@
         </svg>
         Go
       </button>
-    </div>
-
-    <!-- Browser Container -->
+    </div> 
+   <!-- Browser Container -->
     <div class="browser-container" id="browserContainer">
       <!-- Loading Screen -->
       <div class="loading-screen" id="loadingScreen">
         <div class="loading-animation"></div>
-        <div class="loading-text">Initializing Remote Browser</div>
+        <div class="loading-text">Initializing Browserless.io RBI</div>
         <div class="loading-subtext">
-          Establishing secure connection to remote browser isolation service...
+          Connecting to secure remote browser isolation service...
         </div>
-      </div>
-
-      <!-- Error Screen -->
-      <div class="error-screen" id="errorScreen">
-        <svg class="error-icon" viewBox="0 0 24 24">
-          <path fill="#ef4444" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-        </svg>
-        <div class="error-title">Connection Error</div>
-        <div class="error-message" id="errorMessage">
-          Unable to establish secure connection to the remote browser service.
-        </div>
-        <button class="btn" id="retryBtn">
-          <svg class="svg-icon" viewBox="0 0 24 24">
-            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-          </svg>
-          Retry Connection
-        </button>
       </div>
 
       <!-- Browser Frame -->
@@ -482,12 +421,148 @@
         </div>
       </div>
       <div class="isolation-info">
-        Remote Browser Isolation Active
+        Browserless.io Remote Browser Isolation Active
       </div>
-    </div>
+    </div>    <!--
+ Clean RBI Script -->
+    <script>
+        // Clean RBI Browser - Browserless.io Only
+        console.log("NULL VOID Clean RBI Browser Loading...");
 
-    <!-- Scripts -->
-    <script src="browserbox-rbi.js"></script>
-    <script src="rbi-browser.js"></script>
-  </body>
-</html>
+        // Browserless.io Configuration
+        const BROWSERLESS_CONFIG = {
+            apiKey: "2SgiPLlAtLyabl75ea63edb2fb15fcf000d866d90aa96ab13",
+            baseUrl: "https://chrome.browserless.io"
+        };
+
+        // Global state
+        let currentUrl = '';
+        let history = [];
+        let historyIndex = -1;
+        let sessionStartTime = null;
+        let uptimeInterval = null;
+
+        // Initialize when DOM is ready
+        document.addEventListener("DOMContentLoaded", () => {
+            console.log("[Clean RBI] Starting clean RBI browser...");
+            
+            initializeCleanRBI();
+            setupEventListeners();
+            startUptimeCounter();
+        });
+
+        // Clean initialization
+        function initializeCleanRBI() {
+            console.log("[Clean RBI] Initializing Browserless.io RBI...");
+            
+            try {
+                // Get parameters from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const location = urlParams.get("location") || "singapore";
+                const sessionId = urlParams.get("sessionId") || "rbi_" + Date.now();
+
+                sessionStartTime = Date.now();
+
+                // Update UI
+                updateLocationDisplay(location);
+                updateSessionDisplay(sessionId);
+
+                // Set default URL
+                const urlInput = document.getElementById("urlInput");
+                if (urlInput) {
+                    urlInput.value = "https://www.google.com";
+                    urlInput.placeholder = "Enter URL for secure browsing...";
+                }
+
+                // Hide loading screen
+                hideLoadingScreen();
+                
+                // Load Google.com via Browserless.io
+                setTimeout(() => {
+                    loadUrlViaBrowserless("https://www.google.com");
+                }, 500);
+
+                showNotification("🚀 Browserless.io RBI initialized", "success");
+
+            } catch (error) {
+                console.error("[Clean RBI] Initialization failed:", error);
+                hideLoadingScreen();
+                showErrorScreen("RBI initialization failed: " + error.message);
+            }
+        }        
+// Load URL via Browserless.io
+        async function loadUrlViaBrowserless(targetUrl) {
+            console.log("[Clean RBI] Loading URL via Browserless.io:", targetUrl);
+            
+            const browserFrame = document.getElementById('browserFrame');
+            if (!browserFrame) {
+                console.error("[Clean RBI] Browser frame not found");
+                return;
+            }
+
+            currentUrl = targetUrl;
+            
+            // Add to history
+            if (historyIndex === -1 || history[historyIndex] !== targetUrl) {
+                history = history.slice(0, historyIndex + 1);
+                history.push(targetUrl);
+                historyIndex = history.length - 1;
+            }
+
+            updateNavigationButtons();
+
+            // Show loading state
+            showLoadingState(targetUrl);
+
+            try {
+                // Get screenshot via Browserless.io
+                const screenshotResult = await getBrowserlessScreenshot(targetUrl);
+                
+                if (screenshotResult.success) {
+                    displayScreenshot(screenshotResult.imageUrl, targetUrl);
+                } else {
+                    throw new Error(screenshotResult.error);
+                }
+
+            } catch (error) {
+                console.error("[Clean RBI] Browserless.io failed:", error);
+                showErrorState(targetUrl, error.message);
+            }
+        }
+
+        // Get screenshot via Browserless.io API
+        async function getBrowserlessScreenshot(targetUrl) {
+            try {
+                const screenshotUrl = `${BROWSERLESS_CONFIG.baseUrl}/screenshot?token=${BROWSERLESS_CONFIG.apiKey}`;
+                
+                const requestBody = {
+                    url: targetUrl,
+                    options: {
+                        fullPage: false,
+                        type: 'png',
+                        quality: 90,
+                        width: 1200,
+                        height: 800
+                    },
+                    gotoOptions: {
+                        waitUntil: 'networkidle2',
+                        timeout: 30000
+                    }
+                };
+
+                console.log("[Clean RBI] Requesting screenshot from Browserless.io...");
+
+                const response = await fetch(screenshotUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (response.ok) {
+                    const screenshotBlob = await response.blob();
+                    const imageUrl = URL.createObjectURL(screenshotBlob);
+                    console.log("[Clean RBI] Screenshot received successfully");
+                    return { success: true, imageUrl: imageUrl };
+             

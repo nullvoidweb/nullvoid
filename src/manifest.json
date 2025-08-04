@@ -18,7 +18,15 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["activeTab", "storage", "scripting", "tabs", "browsingData"],
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "tabs",
+    "browsingData",
+    "https://chrome.browserless.io/*",
+    "https://*.browserless.io/*"
+  ],
   "host_permissions": [
     "<all_urls>",
     "https://api.mail.tm/*",
@@ -32,17 +40,22 @@
     "wss://sg-rbi-stream.nullvoid.com/*",
     "wss://us-rbi-stream.nullvoid.com/*",
     "wss://uk-rbi-stream.nullvoid.com/*",
-    "wss://ca-rbi-stream.nullvoid.com/*"
+    "wss://ca-rbi-stream.nullvoid.com/*",
+    "https://*.browserless.io/*"
   ],
   "web_accessible_resources": [
     {
       "resources": [
         "rbi-browser.html",
-        "file-viewer.html",
-        "common/*",
+        "file-viewer-secure.html",
+        "ai-chat-full.html",
+        "ai-chat-full.js",
+
         "icons/*"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

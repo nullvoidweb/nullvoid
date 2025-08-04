@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NULL VOID AI</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1f1f1f;
+            color: #e8eaed;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: #1f1f1f;
+            border-right: 1px solid #3c4043;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 999;
+            transition: transform 0.3s ease;
+            transform: translateX(-100%);
+        }
+
+        .sidebar.visible {
+            transform: translateX(0);
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #3c4043;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .search-icon {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .search-icon:hover {
+            background: #3c4043;
+        }
+
+        .new-chat-btn {
+            margin: 16px 20px;
+            padding: 12px 16px;
+            background: transparent;
+            border: 1px solid #5f6368;
+            border-radius: 20px;
+            color: #e8eaed;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .new-chat-btn:hover {
+            background: #3c4043;
+        }
+
+        .recent-section {
+            padding: 0 20px;
+            margin-bottom: 20px;
+        }
+
+        .recent-title {
+            font-size: 14px;
+            color: #9aa0a6;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 16px 20px;
+            border-top: 1px solid #3c4043;
+        }
+
+        .settings-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            color: #e8eaed;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 14px;
+            width: 100%;
+            text-align: left;
+            transition: background 0.2s;
+        }
+
+        .settings-btn:hover {
+            background: #3c4043;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin-left: 0;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.sidebar-visible {
+            margin-left: 280px;
+        }
+
+        .top-bar {
+            padding: 12px 24px;
+            border-bottom: 1px solid #3c4043;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .model-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: none;
+            color: #e8eaed;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.2s;
+            position: relative;
+        }
+
+        .model-selector:hover {
+            background: #3c4043;
+        }
+
+        .model-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #2d2e30;
+            border: 1px solid #5f6368;
+            border-radius: 8px;
+            min-width: 250px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .model-dropdown.open {
+            display: block;
+        }
+
+        .model-option {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #3c4043;
+            transition: background 0.2s;
+        }
+
+        .model-option:last-child {
+            border-bottom: none;
+        }
+
+        .model-option:hover {
+            background: #3c4043;
+        }
+
+        .model-option.selected {
+            background: #1a73e8;
+        }
+
+        .model-name {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .model-description {
+            font-size: 12px;
+            color: #9aa0a6;
+        }
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .about-btn {
+            background: transparent;
+            border: none;
+            color: #8ab4f8;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .about-btn:hover {
+            background: #3c4043;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+            max-width: 768px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .welcome-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .welcome-title {
+            font-size: 56px;
+            font-weight: 400;
+            margin-bottom: 8px;
+            background: linear-gradient(45deg, #4285f4, #34a853, #fbbc04, #ea4335);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .welcome-subtitle {
+            font-size: 24px;
+            color: #9aa0a6;
+            font-weight: 400;
+        }
+
+        /* Input Area */
+        .input-container {
+            width: 100%;
+            max-width: 648px;
+            position: relative;
+        }
+
+        .input-wrapper {
+            background: #2d2e30;
+            border: 1px solid #5f6368;
+            border-radius: 20px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+            min-height: 44px;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #8ab4f8;
+            box-shadow: 0 0 0 1px #8ab4f8;
+        }
+
+        .input-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .input-icon:hover {
+            background: #3c4043;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #e8eaed;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            min-height: 20px;
+            max-height: 150px;
+            line-height: 1.4;
+        }
+
+        .chat-input::placeholder {
+            color: #9aa0a6;
+        }
+
+        /* Send button styles */
+        .send-btn {
+            width: 28px;
+            height: 28px;
+            background: #1a73e8;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        .send-btn.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .send-btn:hover {
+            background: #1557b0;
+        }
+
+        .send-btn:disabled {
+            background: #5f6368;
+            cursor: not-allowed;
+        }
+
+        /* Suggestion Pills */
+        .suggestions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .suggestion-pill {
+            background: #2d2e30;
+            border: 1px solid #5f6368;
+            border-radius: 20px;
+            padding: 12px 20px;
+            color: #e8eaed;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .suggestion-pill:hover {
+            background: #3c4043;
+            border-color: #8ab4f8;
+        }
+
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+            display: none;
+        }
+
+        .message {
+            max-width: 768px;
+            margin: 0 auto 32px auto;
+            display: flex;
+            gap: 16px;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .user-avatar {
+            background: #1a73e8;
+            color: white;
+        }
+
+        .ai-avatar {
+            background: linear-gradient(45deg, #4285f4, #34a853, #fbbc04, #ea4335);
+            color: white;
+        }
+
+        .message-content {
+            flex: 1;
+            line-height: 1.6;
+        }
+
+        .message-text {
+            font-size: 16px;
+            color: #e8eaed;
+        }
+
+        .message-text h1,
+        .message-text h2,
+        .message-text h3 {
+            color: #e8eaed;
+            margin: 16px 0 8px 0;
+            font-weight: 500;
+        }
+
+        .message-text p {
+            margin: 12px 0;
+        }
+
+        .message-text ul,
+        .message-text ol {
+            margin: 12px 0;
+            padding-left: 20px;
+        }
+
+        .message-text li {
+            margin: 4px 0;
+        }
+
+        .message-text code {
+            background: #3c4043;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 14px;
+        }
+
+        .message-text pre {
+            background: #3c4043;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 16px 0;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 14px;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 0;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #9aa0a6;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            60%,
+            100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+
+            30% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        /* Show chat state */
+        .chat-mode .chat-area {
+            justify-content: flex-start;
+            padding: 0;
+        }
+
+        .chat-mode .welcome-section {
+            display: none;
+        }
+
+        .chat-mode .input-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 24px;
+            background: #1f1f1f;
+            border-top: 1px solid #3c4043;
+            z-index: 1000;
+            transition: left 0.3s ease;
+            max-width: none;
+        }
+
+        .chat-mode .main-content.sidebar-visible .input-container {
+            left: 280px;
+        }
+
+        .chat-mode .chat-messages {
+            display: block;
+            padding-bottom: 120px;
+        }
+
+        .search-panel.open~.main-content .chat-messages {
+            padding-top: 50px;
+        }
+
+        /* Hamburger menu for when sidebar is hidden */
+        .hamburger-menu {
+            position: fixed;
+            top: 70px;
+            left: 16px;
+            width: 40px;
+            height: 40px;
+            background: #2d2e30;
+            border: 1px solid #5f6368;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 999;
+            transition: all 0.2s;
+        }
+
+        .hamburger-menu:hover {
+            background: #3c4043;
+        }
+
+        .main-content.sidebar-visible .hamburger-menu {
+            display: none;
+        }
+
+        /* Settings panel */
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: #1f1f1f;
+            border-left: 1px solid #3c4043;
+            z-index: 1001;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .settings-header {
+            padding: 20px;
+            border-bottom: 1px solid #3c4043;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .settings-title {
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        .close-settings {
+            background: none;
+            border: none;
+            color: #e8eaed;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .close-settings:hover {
+            background: #3c4043;
+        }
+
+        .settings-content {
+            padding: 20px;
+        }
+
+        .setting-group {
+            margin-bottom: 24px;
+        }
+
+        .setting-label {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .setting-input {
+            width: 100%;
+            background: #2d2e30;
+            border: 1px solid #5f6368;
+            border-radius: 8px;
+            padding: 12px;
+            color: #e8eaed;
+            font-size: 14px;
+        }
+
+        .setting-input:focus {
+            outline: none;
+            border-color: #8ab4f8;
+        }
+
+        .setting-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: #5f6368;
+            border-radius: 12px;
+            position: relative;
+            transition: background 0.2s;
+        }
+
+        .toggle-switch.active {
+            background: #1a73e8;
+        }
+
+        .toggle-knob {
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+
+        .toggle-switch.active .toggle-knob {
+            transform: translateX(20px);
+        }
+
+        /* About modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: #1f1f1f;
+            border: 1px solid #3c4043;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #3c4043;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #e8eaed;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #3c4043;
+        }
+
+        .modal-content {
+            padding: 20px;
+        }
+
+        /* Search functionality */
+        .search-panel {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: #1f1f1f;
+            border-bottom: 1px solid #3c4043;
+            z-index: 997;
+            display: none;
+            align-items: center;
+            padding: 0 24px;
+            gap: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .search-panel.open {
+            display: flex;
+        }
+
+        .main-content.sidebar-visible .search-panel {
+            left: 280px;
+        }
+
+        .search-input {
+            flex: 1;
+            max-width: 400px;
+            background: #2d2e30;
+            border: 1px solid #5f6368;
+            border-radius: 16px;
+            padding: 6px 12px;
+            color: #e8eaed;
+            font-size: 13px;
+            height: 32px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #8ab4f8;
+        }
+
+        .search-close {
+            background: none;
+            border: none;
+            color: #e8eaed;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .search-close:hover {
+            background: #3c4043;
+        }
+
+        /* Recent chats */
+        .recent-chat {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-radius: 8px;
+            margin: 4px 0;
+            transition: background 0.2s;
+            font-size: 14px;
+            color: #9aa0a6;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .recent-chat:hover {
+            background: #3c4043;
+            color: #e8eaed;
+        }
+
+        .recent-chat.active {
+            background: #2d2e30;
+            color: #e8eaed;
+        }
+
+        /* Custom notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2d2e30;
+            border: 1px solid #5f6368;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #e8eaed;
+            z-index: 2001;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-color: #34a853;
+            background: #1e3a2e;
+        }
+
+        .notification.error {
+            border-color: #ea4335;
+            background: #3e1e1e;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 16px 24px;
+            text-align: center;
+            font-size: 12px;
+            color: #9aa0a6;
+            border-top: 1px solid #3c4043;
+        }
+
+        .footer a {
+            color: #8ab4f8;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.visible {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .main-content.sidebar-visible {
+                margin-left: 0;
+            }
+
+            .welcome-title {
+                font-size: 40px;
+            }
+
+            .welcome-subtitle {
+                font-size: 20px;
+            }
+
+            .suggestions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .suggestion-pill {
+                width: 100%;
+                text-align: center;
+            }
+
+            .chat-mode .input-container,
+            .chat-mode .main-content.sidebar-visible .input-container {
+                left: 0;
+            }
+
+            .search-panel,
+            .main-content.sidebar-visible .search-panel {
+                left: 0;
+            }
+
+            .hamburger-menu {
+                display: flex;
+                top: 16px;
+            }
+
+            .main-content.sidebar-visible .hamburger-menu {
+                display: flex;
+                top: 16px;
+            }
+
+            .search-panel {
+                top: 50px;
+                height: 45px;
+            }
+        }
+
+        /* Hidden class */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="search-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                </svg>
+            </div>
+        </div>
+
+        <button class="new-chat-btn" id="newChatBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
+            New chat
+        </button>
+
+        <div class="recent-section">
+            <div class="recent-title">Recent</div>
+            <div id="recentChats">
+                <!-- Recent chats will be populated here -->
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="settings-btn" id="settingsBtn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
+                </svg>
+                Settings & help
+            </button>
+        </div>
+    </div>
+
+    <!-- Hamburger Menu (shown when sidebar is hidden) -->
+    <button class="hamburger-menu" id="hamburgerMenu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+        </svg>
+    </button>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="model-selector">
+                <button id="modelSelector">
+                    <span id="currentModel">NULL VOID AI</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7 10l5 5 5-5z" />
+                    </svg>
+                </button>
+                <div class="model-dropdown" id="modelDropdown">
+                    <div class="model-option selected" data-model="gemini-1.5-flash">
+                        <div class="model-name">Gemini 1.5 Flash</div>
+                        <div class="model-description">Fast and efficient</div>
+                    </div>
+                    <div class="model-option" data-model="gemini-1.5-pro">
+                        <div class="model-name">Gemini 1.5 Pro</div>
+                        <div class="model-description">Most capable model</div>
+                    </div>
+                </div>
+            </div>
+            <div class="top-actions">
+                <button class="about-btn">About NULL VOID AI</button>
+            </div>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <div class="welcome-section">
+                <h1 class="welcome-title">Meet NULL VOID AI,</h1>
+                <p class="welcome-subtitle">your personal AI assistant</p>
+                <p style="font-size: 12px; color: #9aa0a6; margin-top: 8px;">Free AI Assistant v2.0</p>
+            </div>
+
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <div class="input-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                        </svg>
+                    </div>
+                    <textarea class="chat-input" id="chatInput" placeholder="Ask NULL VOID AI" rows="1"></textarea>
+                    <button class="send-btn" id="sendBtn" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="suggestions">
+                    <div class="suggestion-pill" data-prompt="Write">Write</div>
+                    <div class="suggestion-pill" data-prompt="Build">Build</div>
+                    <div class="suggestion-pill" data-prompt="Research">Research</div>
+                    <div class="suggestion-pill" data-prompt="Create Image">Create Image</div>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <!-- Messages will be added here -->
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>
+                <a href="#" id="termsLink">NULL VOID Terms</a> and the
+                <a href="#" id="privacyLink">NULL VOID Privacy Policy</a> apply.
+                NULL VOID AI can make mistakes, so double-check it.
+            </p>
+        </div>
+    </div>
+
+    <!-- Search Panel -->
+    <div class="search-panel" id="searchPanel">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search conversations...">
+        <button class="search-close" id="searchClose">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                    d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <h2 class="settings-title">Settings & Help</h2>
+            <button class="close-settings" id="closeSettings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+            </button>
+        </div>
+        <div class="settings-content">
+            <div class="setting-group">
+                <label class="setting-label">AI Model Temperature</label>
+                <input type="range" class="setting-input" id="temperatureSlider" min="0" max="1" step="0.1" value="0.7">
+                <span id="temperatureValue">0.7</span>
+            </div>
+            <div class="setting-group">
+                <label class="setting-label">Max Response Length</label>
+                <input type="number" class="setting-input" id="maxTokens" value="8000" min="100" max="32000">
+            </div>
+            <div class="setting-group">
+                <label class="setting-label">Auto-save Conversations</label>
+                <div class="setting-toggle" id="autoSaveToggle">
+                    <div class="toggle-switch active" id="autoSaveSwitch">
+                        <div class="toggle-knob"></div>
+                    </div>
+                    <span>Enabled</span>
+                </div>
+            </div>
+            <div class="setting-group">
+                <label class="setting-label">Dark Mode</label>
+                <div class="setting-toggle" id="darkModeToggle">
+                    <div class="toggle-switch active" id="darkModeSwitch">
+                        <div class="toggle-knob"></div>
+                    </div>
+                    <span>Enabled</span>
+                </div>
+            </div>
+            <div class="setting-group">
+                <button class="setting-input" id="clearAllData" style="background: #ea4335; border-color: #ea4335;">
+                    Clear All Data
+                </button>
+            </div>
+            <div class="setting-group">
+                <button class="setting-input" id="exportData">
+                    Export Conversations
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal-overlay" id="aboutModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">About NULL VOID AI</h2>
+                <button class="modal-close" id="closeAbout">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-content">
+                <h3>NULL VOID AI v2.0</h3>
+                <p>A free, powerful AI assistant built for everyone. No sign-up required, no limits.</p>
+
+                <h4>Features:</h4>
+                <ul>
+                    <li>Advanced AI conversations</li>
+                    <li>Persistent chat history</li>
+                    <li>Customizable settings</li>
+                    <li>Export conversations</li>
+                    <li>Search functionality</li>
+                    <li>Completely free to use</li>
+                </ul>
+
+                <h4>Privacy:</h4>
+                <p>Your conversations are stored locally in your browser. We don't collect or store your data on our
+                    servers.</p>
+
+                <h4>Support:</h4>
+                <p>For support or feedback, visit our website or contact us through the extension store.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="ai-chat-full.js?v=2.0"></script>
+</body>
+
+</html>
