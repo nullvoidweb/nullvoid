@@ -38,6 +38,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     await initializeSmartIntegration();
     await initializeAuth();
 
+    // Initialize email on startup
+    await initializeDisposableEmail();
+
     console.log("[Popup] ✅ Extension loaded successfully");
     showNotification("NULL VOID Extension Ready", "success");
   } catch (error) {
@@ -143,6 +146,23 @@ function initializeButtons() {
     console.log("[Popup] ✅ Back to list button ready");
   }
 
+  // Refresh messages button
+  const refreshBtn = document.getElementById("refreshMessages");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", refreshInboxMessages);
+    console.log("[Popup] ✅ Refresh messages button ready");
+  }
+
+  // Generate new email in inbox
+  const generateNewBtn = document.getElementById("generateNewEmail");
+  if (generateNewBtn) {
+    generateNewBtn.addEventListener("click", async () => {
+      await handleRegenerateEmail();
+      await refreshInboxMessages();
+    });
+    console.log("[Popup] ✅ Generate new email button ready");
+  }
+
   // Smart integration toggle
   const smartToggle = document.getElementById("smartIntegration");
   if (smartToggle) {
@@ -153,22 +173,22 @@ function initializeButtons() {
   // Theme toggle
   initializeTheme();
   console.log("[Popup] ✅ Theme system ready");
-  
+
   // Profile avatar
   const profileAvatar = document.querySelector(".profile-avatar");
   if (profileAvatar) {
     profileAvatar.addEventListener("click", handleProfileClick);
     console.log("[Popup] ✅ Profile avatar ready");
   }
-  
+
   // OSINT functionality removed
-  
+
   // Full AI Chat button
   const openFullAIBtn = document.getElementById("openFullAI");
   if (openFullAIBtn) {
     openFullAIBtn.addEventListener("click", handleOpenFullAI);
     console.log("[Popup] ✅ Full AI Chat button ready");
-    
+
     // Add visual feedback
     openFullAIBtn.addEventListener("click", () => {
       console.log("[Popup] Full AI Chat button clicked!");
@@ -196,7 +216,7 @@ async function handleLaunchBrowser() {
     // Send message to background script
     const response = await browserAPI.runtime.sendMessage({
       action: "initializeRBISession",
-      region: region
+      region: region,
     });
 
     if (response && response.success) {
@@ -209,7 +229,7 @@ async function handleLaunchBrowser() {
 
       await browserAPI.tabs.create({
         url: rbiUrl,
-        active: true
+        active: true,
       });
 
       showNotification("Secure browser launched!", "success");
@@ -219,14 +239,12 @@ async function handleLaunchBrowser() {
         activeRBISession: {
           sessionId: response.sessionId,
           region: region,
-          startTime: Date.now()
-        }
+          startTime: Date.now(),
+        },
       });
-
     } else {
       throw new Error(response?.error || "Failed to launch browser");
     }
-
   } catch (error) {
     console.error("[Browser] Launch failed:", error);
     showNotification("Failed to launch browser: " + error.message, "error");
@@ -241,7 +259,7 @@ async function handleLaunchBrowser() {
 
       await browserAPI.tabs.create({
         url: rbiUrl,
-        active: true
+        active: true,
       });
 
       showNotification("Browser launched (fallback mode)", "success");
@@ -249,7 +267,6 @@ async function handleLaunchBrowser() {
       console.error("[Browser] Fallback launch also failed:", fallbackError);
       showNotification("Complete launch failure", "error");
     }
-
   } finally {
     if (btn) {
       btn.textContent = "start";
@@ -277,7 +294,11 @@ async function handleCopyEmail() {
   console.log("[Email] Copying email...");
   const emailInput = document.getElementById("disposableEmail");
 
-  if (!emailInput || !emailInput.value || emailInput.value === "your@email.com") {
+  if (
+    !emailInput ||
+    !emailInput.value ||
+    emailInput.value === "your@email.com"
+  ) {
     showNotification("No email to copy. Generate one first.", "warning");
     return;
   }
@@ -296,40 +317,48 @@ async function handleRegenerateEmail() {
   const btn = document.getElementById("regenerateEmail");
   const emailInput = document.getElementById("disposableEmail");
 
-  try {
-    if (btn) {
-      btn.textContent = "Generating...";
-      btn.disabled = true;
-    }
+  if (!btn || !emailInput) {
+    console.error("[Email] Required elements not found");
+    return;
+  }
 
-    // Clear current email display
-    if (emailInput) {
-      emailInput.value = "Generating new email...";
-    }
+  try {
+    // Update button state
+    btn.textContent = "Generating...";
+    btn.disabled = true;
+    emailInput.value = "Generating new email...";
 
     showNotification("🔄 Generating new disposable email...", "info");
 
-    // Clear old email data first
+    // Clear old email data
     currentDisposableEmailAddress = null;
     currentDisposableEmailId = null;
     currentEmailToken = null;
+    currentEmailAPI = "mail.tm";
+    await browserAPI.storage.local.remove([
+      "disposableEmail",
+      "disposableEmailId",
+      "emailToken",
+      "emailPassword",
+      "emailAPI",
+      "emailCreatedAt",
+    ]);
 
     // Generate new email with improved error handling
     const email = await generateDisposableEmail();
 
-    // Update UI with new email
-    if (emailInput) {
-      emailInput.value = email;
-    }
+    // Update UI - the generateDisposableEmail function already saved to storage
+    emailInput.value = email;
+    btn.textContent = "regenerate email";
+    btn.disabled = false;
 
-    showNotification("✅ New disposable email generated successfully!", "success");
-    console.log("[Email] Successfully regenerated email:", email);
-
+    showNotification("✅ New disposable email generated!", "success");
+    console.log("[Email] Successfully generated:", email);
   } catch (error) {
     console.error("[Email] Regeneration failed:", error);
-    
+
     // Restore previous email if available
-    const storage = await browserAPI.storage.local.get(['disposableEmail']);
+    const storage = await browserAPI.storage.local.get(["disposableEmail"]);
     if (storage.disposableEmail && emailInput) {
       emailInput.value = storage.disposableEmail;
     } else if (emailInput) {
@@ -343,13 +372,13 @@ async function handleRegenerateEmail() {
     } else if (error.message.includes("Rate limited")) {
       errorMessage = "Too many requests. Please wait a moment and try again.";
     } else if (error.message.includes("domains")) {
-      errorMessage = "Email service temporarily unavailable. Please try again later.";
+      errorMessage =
+        "Email service temporarily unavailable. Please try again later.";
     } else {
       errorMessage = `Failed to generate email: ${error.message}`;
     }
 
     showNotification("❌ " + errorMessage, "error");
-
   } finally {
     if (btn) {
       btn.textContent = "regenerate email";
@@ -361,30 +390,37 @@ async function handleRegenerateEmail() {
 async function handleOpenInbox() {
   console.log("[Email] Opening inbox...");
 
-  if (!currentDisposableEmailAddress || !currentEmailToken) {
+  if (
+    !currentDisposableEmailAddress ||
+    currentDisposableEmailAddress === "loading..."
+  ) {
     showNotification("No active email. Generate one first.", "warning");
     return;
   }
 
   try {
-    // Fetch messages
-    const messages = await fetchEmailMessages();
-
-    // Show modal
+    // Show modal first
     const modal = document.getElementById("inboxModal");
     if (modal) {
       modal.style.display = "block";
 
       // Update email display
-      const currentEmailDisplay = document.getElementById("currentEmailDisplay");
+      const currentEmailDisplay = document.getElementById(
+        "currentEmailDisplay"
+      );
       if (currentEmailDisplay) {
         currentEmailDisplay.textContent = currentDisposableEmailAddress;
       }
 
-      // Display messages
-      displayEmailMessages(messages);
-    }
+      // Show loading state
+      const emailList = document.getElementById("emailList");
+      if (emailList) {
+        emailList.innerHTML = '<div class="loading">Loading messages...</div>';
+      }
 
+      // Fetch and display messages
+      await refreshInboxMessages();
+    }
   } catch (error) {
     console.error("[Email] Inbox failed:", error);
     showNotification("Failed to open inbox: " + error.message, "error");
@@ -438,19 +474,18 @@ async function handleViewFile() {
         name: selectedFile.name,
         size: selectedFile.size,
         type: selectedFile.type,
-        content: dataUrl
-      }
+        content: dataUrl,
+      },
     });
 
     // Open file viewer
     const viewerUrl = browserAPI.runtime.getURL("file-viewer.html");
     await browserAPI.tabs.create({
       url: viewerUrl,
-      active: true
+      active: true,
     });
 
     showNotification("File viewer opened!", "success");
-
   } catch (error) {
     console.error("[File] View failed:", error);
     showNotification("Failed to view file: " + error.message, "error");
@@ -502,11 +537,14 @@ async function handleSendMessage() {
     }
 
     await browserAPI.storage.local.set({ chatHistory });
-
   } catch (error) {
     console.error("[AI] Message failed:", error);
     hideTypingIndicator();
-    addChatMessage("Sorry, I encountered an error. Please try again.", false, true);
+    addChatMessage(
+      "Sorry, I encountered an error. Please try again.",
+      false,
+      true
+    );
   } finally {
     isAIResponding = false;
     const sendBtn = document.getElementById("sendMessage");
@@ -544,14 +582,13 @@ async function handleSmartIntegrationToggle() {
   try {
     await browserAPI.runtime.sendMessage({
       action: "toggleSmartIntegration",
-      enabled: enabled
+      enabled: enabled,
     });
 
     showNotification(
       `Smart integration ${enabled ? "enabled" : "disabled"}`,
       "success"
     );
-
   } catch (error) {
     console.error("[Smart] Toggle failed:", error);
     showNotification("Failed to toggle smart integration", "error");
@@ -572,7 +609,7 @@ function initializeTheme() {
     themeIcon: !!themeIcon,
     moonIcon: !!moonIcon,
     sunIcon: !!sunIcon,
-    body: !!body
+    body: !!body,
   });
 
   if (!themeIcon || !moonIcon || !sunIcon) {
@@ -648,32 +685,32 @@ async function handleThemeToggle() {
 // Profile Functions
 async function initializeAuth() {
   console.log("[Auth] Initializing authentication...");
-  
+
   try {
     // Wait a bit for auth-service.js to load
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     // Check if AuthService is available
-    if (typeof AuthService !== 'undefined') {
+    if (typeof AuthService !== "undefined") {
       authService = new AuthService();
       await authService.initialize();
-      
+
       isAuthenticated = authService.isUserAuthenticated();
       userProfile = authService.getUserProfile();
-      
+
       console.log("[Auth] Auth state:", { isAuthenticated, userProfile });
-      
+
       // Update UI
       updateAuthUI();
-      
+
       // Listen for auth state changes
-      document.addEventListener('authStateChanged', (event) => {
+      document.addEventListener("authStateChanged", (event) => {
         console.log("[Auth] Auth state changed:", event.detail);
         isAuthenticated = event.detail.isAuthenticated;
         userProfile = event.detail.userProfile;
         updateAuthUI();
       });
-      
+
       // Listen for background script messages
       browserAPI.runtime.onMessage.addListener((message) => {
         if (message.action === "authStateChanged") {
@@ -682,16 +719,15 @@ async function initializeAuth() {
           updateAuthUI();
         }
       });
-      
     } else {
       console.warn("[Auth] AuthService not available, using fallback");
       // Try to load saved auth data from storage
       try {
         const storage = await browserAPI.storage.local.get([
-          'nullvoid_auth_token',
-          'nullvoid_user_profile'
+          "nullvoid_auth_token",
+          "nullvoid_user_profile",
         ]);
-        
+
         if (storage.nullvoid_auth_token && storage.nullvoid_user_profile) {
           isAuthenticated = true;
           userProfile = storage.nullvoid_user_profile;
@@ -700,10 +736,9 @@ async function initializeAuth() {
       } catch (storageError) {
         console.warn("[Auth] Failed to load from storage:", storageError);
       }
-      
+
       updateAuthUI(); // Show current state
     }
-    
   } catch (error) {
     console.error("[Auth] Failed to initialize:", error);
     updateAuthUI(); // Show login state
@@ -721,12 +756,18 @@ function updateAuthUI() {
     // Show user profile
     profileAvatar.innerHTML = `
       <div class="profile-info">
-        <img src="${userProfile.avatar || "icons/icon48.png"}" alt="Profile" class="profile-image" />
-        <span class="profile-name">${userProfile.name || userProfile.username || "User"}</span>
+        <img src="${
+          userProfile.avatar || "icons/icon48.png"
+        }" alt="Profile" class="profile-image" />
+        <span class="profile-name">${
+          userProfile.name || userProfile.username || "User"
+        }</span>
       </div>
     `;
     profileAvatar.classList.add("authenticated");
-    profileAvatar.title = `Logged in as ${userProfile.name || userProfile.username || "User"}`;
+    profileAvatar.title = `Logged in as ${
+      userProfile.name || userProfile.username || "User"
+    }`;
   } else {
     // Show login icon
     profileAvatar.innerHTML = `
@@ -742,7 +783,7 @@ function updateAuthUI() {
 
 async function handleProfileClick() {
   console.log("[Profile] Profile clicked");
-  
+
   if (isAuthenticated && userProfile) {
     showProfileMenu();
   } else {
@@ -752,36 +793,38 @@ async function handleProfileClick() {
 
 async function handleLoginClick() {
   console.log("[Auth] Login clicked");
-  
+
   try {
     // Get the primary domain for login
-    const loginDomain = authService ? authService.getCurrentDomain() : "https://nullvoid.zone.id";
+    const loginDomain = authService
+      ? authService.getCurrentDomain()
+      : "https://nullvoid.zone.id";
     const loginUrl = `${loginDomain}/login?extension=true`;
-    
+
     console.log("[Auth] Opening login URL:", loginUrl);
-    
+
     // Open login page
     await browserAPI.tabs.create({
       url: loginUrl,
-      active: true
+      active: true,
     });
-    
+
     // Show status message to user
     showNotification(
       "Login page opened. After logging in, your profile will sync automatically.",
       "info"
     );
-    
+
     // If no auth service, set up a simple check for login completion
     if (!authService) {
       // Check periodically if user has logged in
       const checkLoginInterval = setInterval(async () => {
         try {
           const storage = await browserAPI.storage.local.get([
-            'nullvoid_auth_token',
-            'nullvoid_user_profile'
+            "nullvoid_auth_token",
+            "nullvoid_user_profile",
           ]);
-          
+
           if (storage.nullvoid_auth_token && storage.nullvoid_user_profile) {
             isAuthenticated = true;
             userProfile = storage.nullvoid_user_profile;
@@ -793,13 +836,12 @@ async function handleLoginClick() {
           console.warn("[Auth] Login check failed:", error);
         }
       }, 2000);
-      
+
       // Stop checking after 5 minutes
       setTimeout(() => {
         clearInterval(checkLoginInterval);
       }, 300000);
     }
-    
   } catch (error) {
     console.error("[Auth] Login failed:", error);
     showNotification("Failed to open login page", "error");
@@ -808,9 +850,11 @@ async function handleLoginClick() {
 
 function showProfileMenu() {
   console.log("[Profile] Showing profile menu");
-  
-  const baseDomain = authService ? authService.getCurrentDomain() : "https://nullvoid.zone.id";
-  
+
+  const baseDomain = authService
+    ? authService.getCurrentDomain()
+    : "https://nullvoid.zone.id";
+
   // Create dropdown menu
   const menuItems = [
     {
@@ -819,7 +863,7 @@ function showProfileMenu() {
       action: () => {
         const profileUrl = `${baseDomain}/profile`;
         browserAPI.tabs.create({ url: profileUrl });
-      }
+      },
     },
     {
       text: "View Profile",
@@ -827,10 +871,10 @@ function showProfileMenu() {
       action: () => {
         const profileUrl = `${baseDomain}/profile`;
         browserAPI.tabs.create({ url: profileUrl });
-      }
-    }
+      },
+    },
   ];
-  
+
   // Add refresh option only if auth service is available
   if (authService) {
     menuItems.push({
@@ -845,10 +889,10 @@ function showProfileMenu() {
           console.error("[Profile] Refresh failed:", error);
           showNotification("Failed to refresh profile", "error");
         }
-      }
+      },
     });
   }
-  
+
   menuItems.push(
     {
       text: "Account Settings",
@@ -856,7 +900,7 @@ function showProfileMenu() {
       action: () => {
         const settingsUrl = `${baseDomain}/settings`;
         browserAPI.tabs.create({ url: settingsUrl });
-      }
+      },
     },
     {
       text: "Logout",
@@ -864,34 +908,34 @@ function showProfileMenu() {
       action: async () => {
         try {
           showNotification("Logging out...", "info");
-          
+
           if (authService) {
             await authService.logout();
           } else {
             // Fallback logout - clear storage
             await browserAPI.storage.local.remove([
-              'nullvoid_auth_token',
-              'nullvoid_user_profile',
-              'nullvoid_current_domain',
-              'nullvoid_last_login'
+              "nullvoid_auth_token",
+              "nullvoid_user_profile",
+              "nullvoid_current_domain",
+              "nullvoid_last_login",
             ]);
-            
+
             isAuthenticated = false;
             userProfile = null;
             updateAuthUI();
           }
-          
+
           showNotification("Logged out successfully", "success");
         } catch (error) {
           console.error("[Profile] Logout failed:", error);
           showNotification("Failed to logout", "error");
         }
-      }
+      },
     }
   );
-  
+
   const menu = createDropdownMenu(menuItems);
-  
+
   // Position menu near profile avatar
   const profileAvatar = document.querySelector(".profile-avatar");
   if (profileAvatar && menu) {
@@ -909,7 +953,7 @@ function createDropdownMenu(items) {
   if (existingMenu) {
     existingMenu.remove();
   }
-  
+
   const menu = document.createElement("div");
   menu.className = "profile-dropdown-menu";
   menu.style.cssText = `
@@ -921,8 +965,8 @@ function createDropdownMenu(items) {
     min-width: 200px;
     font-size: 14px;
   `;
-  
-  items.forEach(item => {
+
+  items.forEach((item) => {
     const menuItem = document.createElement("div");
     menuItem.className = "profile-menu-item";
     menuItem.style.cssText = `
@@ -934,30 +978,31 @@ function createDropdownMenu(items) {
       color: #1a365d;
       transition: all 0.2s ease;
     `;
-    
+
     menuItem.innerHTML = `
       <span style="font-size: 16px;">${item.icon}</span>
       <span>${item.text}</span>
     `;
-    
+
     menuItem.addEventListener("mouseenter", () => {
-      menuItem.style.background = "linear-gradient(135deg, #e8f4ff 0%, #d1e9ff 100%)";
+      menuItem.style.background =
+        "linear-gradient(135deg, #e8f4ff 0%, #d1e9ff 100%)";
       menuItem.style.color = "#0066cc";
     });
-    
+
     menuItem.addEventListener("mouseleave", () => {
       menuItem.style.background = "transparent";
       menuItem.style.color = "#1a365d";
     });
-    
+
     menuItem.addEventListener("click", () => {
       item.action();
       menu.remove();
     });
-    
+
     menu.appendChild(menuItem);
   });
-  
+
   // Close menu when clicking outside
   setTimeout(() => {
     document.addEventListener("click", function closeMenu(e) {
@@ -967,7 +1012,7 @@ function createDropdownMenu(items) {
       }
     });
   }, 100);
-  
+
   document.body.appendChild(menu);
   return menu;
 }
@@ -976,21 +1021,22 @@ function createDropdownMenu(items) {
 
 async function handleOpenFullAI() {
   console.log("[AI] Opening full AI chat - Gemini style");
-  
+
   try {
     // Open full AI chat interface with cache busting
     const timestamp = Date.now();
-    const aiChatUrl = browserAPI.runtime.getURL(`ai-chat-full.html?v=2.0&t=${timestamp}`);
+    const aiChatUrl = browserAPI.runtime.getURL(
+      `ai-chat-full.html?v=2.0&t=${timestamp}`
+    );
     console.log("[AI] AI Chat URL:", aiChatUrl);
-    
+
     await browserAPI.tabs.create({
       url: aiChatUrl,
-      active: true
+      active: true,
     });
-    
+
     showNotification("Gemini-style AI Chat opened", "success");
     console.log("[AI] ✅ Gemini-style AI Chat tab created successfully");
-    
   } catch (error) {
     console.error("[AI] Failed to open full chat:", error);
     showNotification("Failed to open AI chat: " + error.message, "error");
@@ -1003,57 +1049,68 @@ async function handleOpenFullAI() {
 async function generateDisposableEmail() {
   const maxRetries = 3;
   const retryDelay = 1000; // 1 second
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`[Email] Generation attempt ${attempt}/${maxRetries}`);
-      
-      // Get available domains with timeout
-      const domainsResponse = await fetchWithTimeout("https://api.mail.tm/domains", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      }, 10000);
-      
+      console.log(
+        `[Email] Generation attempt ${attempt}/${maxRetries} using mail.tm`
+      );
+
+      // First, get available domains from mail.tm
+      const domainsResponse = await fetchWithTimeout(
+        "https://api.mail.tm/domains",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": "NULL-VOID-Extension/1.0",
+          },
+        },
+        15000
+      );
+
       if (!domainsResponse.ok) {
-        throw new Error(`Failed to fetch domains: ${domainsResponse.status}`);
+        throw new Error(`Failed to get domains: ${domainsResponse.status}`);
       }
 
       const domainsData = await domainsResponse.json();
-      const availableDomains = domainsData["hydra:member"];
-      
-      if (!availableDomains || availableDomains.length === 0) {
-        throw new Error("No domains available");
+      const domains = domainsData["hydra:member"] || [];
+
+      if (domains.length === 0) {
+        throw new Error("No available domains from mail.tm");
       }
 
-      // Try different domains if available
-      const domain = availableDomains[Math.floor(Math.random() * availableDomains.length)].domain;
-
-      // Generate unique credentials with timestamp to avoid conflicts
-      const timestamp = Date.now().toString(36);
-      const randomStr = Math.random().toString(36).substring(2, 8);
-      const username = `nullvoid${timestamp}${randomStr}`;
-      const email = `${username}@${domain}`;
-      const password = generateSecurePassword();
+      // Generate random email address
+      const randomStr = Math.random().toString(36).substring(2, 12);
+      const domain = domains[0].domain; // Use first available domain
+      const email = `${randomStr}@${domain}`;
+      const password = Math.random().toString(36).substring(2, 15);
 
       console.log(`[Email] Attempting to create: ${email}`);
 
       // Create account with timeout
-      const createResponse = await fetchWithTimeout("https://api.mail.tm/accounts", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "User-Agent": "NULL-VOID-Extension/1.0"
+      const createResponse = await fetchWithTimeout(
+        "https://api.mail.tm/accounts",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": "NULL-VOID-Extension/1.0",
+          },
+          body: JSON.stringify({
+            address: email,
+            password: password,
+          }),
         },
-        body: JSON.stringify({ 
-          address: email, 
-          password: password 
-        })
-      }, 15000);
+        15000
+      );
 
       if (!createResponse.ok) {
         const errorText = await createResponse.text();
-        console.error(`[Email] Create account failed: ${createResponse.status} - ${errorText}`);
-        
+        console.error(
+          `[Email] Create account failed: ${createResponse.status} - ${errorText}`
+        );
+
         if (createResponse.status === 422) {
           // Account already exists, try with different username
           throw new Error("Account conflict, retrying with different username");
@@ -1069,24 +1126,30 @@ async function generateDisposableEmail() {
       console.log(`[Email] Account created successfully: ${accountData.id}`);
 
       // Small delay before authentication
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Get authentication token with timeout
-      const authResponse = await fetchWithTimeout("https://api.mail.tm/token", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "User-Agent": "NULL-VOID-Extension/1.0"
+      const authResponse = await fetchWithTimeout(
+        "https://api.mail.tm/token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": "NULL-VOID-Extension/1.0",
+          },
+          body: JSON.stringify({
+            address: email,
+            password: password,
+          }),
         },
-        body: JSON.stringify({ 
-          address: email, 
-          password: password 
-        })
-      }, 15000);
+        15000
+      );
 
       if (!authResponse.ok) {
         const errorText = await authResponse.text();
-        console.error(`[Email] Authentication failed: ${authResponse.status} - ${errorText}`);
+        console.error(
+          `[Email] Authentication failed: ${authResponse.status} - ${errorText}`
+        );
         throw new Error(`Failed to authenticate: ${authResponse.status}`);
       }
 
@@ -1097,6 +1160,7 @@ async function generateDisposableEmail() {
       currentDisposableEmailAddress = email;
       currentDisposableEmailId = accountData.id;
       currentEmailToken = authData.token;
+      currentEmailAPI = "mail.tm";
 
       // Save to storage
       await browserAPI.storage.local.set({
@@ -1104,24 +1168,26 @@ async function generateDisposableEmail() {
         disposableEmailId: accountData.id,
         emailToken: authData.token,
         emailPassword: password,
-        emailCreatedAt: Date.now()
+        emailAPI: "mail.tm",
+        emailCreatedAt: Date.now(),
       });
 
       console.log(`[Email] Successfully generated: ${email}`);
       return email;
-
     } catch (error) {
       console.error(`[Email] Attempt ${attempt} failed:`, error.message);
-      
+
       if (attempt === maxRetries) {
         // Last attempt failed, throw the error
-        throw new Error(`Failed to generate email after ${maxRetries} attempts: ${error.message}`);
+        throw new Error(
+          `Failed to generate email after ${maxRetries} attempts: ${error.message}`
+        );
       }
-      
+
       // Wait before retrying, with exponential backoff
       const delay = retryDelay * Math.pow(2, attempt - 1);
       console.log(`[Email] Waiting ${delay}ms before retry...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 }
@@ -1130,25 +1196,26 @@ async function generateDisposableEmail() {
 async function fetchWithTimeout(url, options = {}, timeout = 10000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
+
   try {
     const response = await fetch(url, {
       ...options,
-      signal: controller.signal
+      signal: controller.signal,
     });
     clearTimeout(timeoutId);
     return response;
   } catch (error) {
     clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      throw new Error('Request timeout');
+    if (error.name === "AbortError") {
+      throw new Error("Request timeout");
     }
     throw error;
   }
 }
 
 function generateSecurePassword() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
   let password = "";
   for (let i = 0; i < 16; i++) {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -1160,13 +1227,17 @@ async function fetchEmailMessages() {
   if (!currentEmailToken) throw new Error("No email token");
 
   try {
-    const response = await fetchWithTimeout("https://api.mail.tm/messages", {
-      headers: {
-        "Authorization": `Bearer ${currentEmailToken}`,
-        "Content-Type": "application/json",
-        "User-Agent": "NULL-VOID-Extension/1.0"
-      }
-    }, 10000);
+    const response = await fetchWithTimeout(
+      "https://api.mail.tm/messages",
+      {
+        headers: {
+          Authorization: `Bearer ${currentEmailToken}`,
+          "Content-Type": "application/json",
+          "User-Agent": "NULL-VOID-Extension/1.0",
+        },
+      },
+      10000
+    );
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -1175,14 +1246,14 @@ async function fetchEmailMessages() {
         currentDisposableEmailAddress = null;
         currentDisposableEmailId = null;
         currentEmailToken = null;
-        
+
         await browserAPI.storage.local.remove([
-          'disposableEmail',
-          'disposableEmailId', 
-          'emailToken',
-          'emailPassword'
+          "disposableEmail",
+          "disposableEmailId",
+          "emailToken",
+          "emailPassword",
         ]);
-        
+
         throw new Error("Email session expired. Please regenerate email.");
       } else if (response.status === 429) {
         throw new Error("Rate limited. Please try again in a moment.");
@@ -1193,9 +1264,8 @@ async function fetchEmailMessages() {
 
     const data = await response.json();
     return data["hydra:member"] || [];
-    
   } catch (error) {
-    if (error.message.includes('timeout')) {
+    if (error.message.includes("timeout")) {
       throw new Error("Request timed out. Please check your connection.");
     }
     throw error;
@@ -1216,16 +1286,21 @@ function displayEmailMessages(messages) {
 
   if (noMessages) noMessages.style.display = "none";
 
-  emailList.innerHTML = messages.map((msg, index) => {
-    const fromName = msg.from?.name || msg.from?.address?.split('@')[0] || "Unknown";
-    const fromEmail = msg.from?.address || "unknown@email.com";
-    const subject = msg.subject || "No Subject";
-    const preview = msg.intro || msg.text?.substring(0, 100) || "No preview available";
-    const time = formatEmailTime(msg.createdAt);
-    const hasAttachments = msg.attachments && msg.attachments.length > 0;
-    
-    return `
-      <div class="email-item" data-email-id="${msg.id}" data-email-index="${index}" onclick="openEmailDetail(${index})">
+  emailList.innerHTML = messages
+    .map((msg, index) => {
+      const fromName =
+        msg.from?.name || msg.from?.address?.split("@")[0] || "Unknown";
+      const fromEmail = msg.from?.address || "unknown@email.com";
+      const subject = msg.subject || "No Subject";
+      const preview =
+        msg.intro || msg.text?.substring(0, 100) || "No preview available";
+      const time = formatEmailTime(msg.createdAt);
+      const hasAttachments = msg.attachments && msg.attachments.length > 0;
+
+      return `
+      <div class="email-item" data-email-id="${
+        msg.id
+      }" data-email-index="${index}" onclick="openEmailDetail(${index})">
         <div class="email-item-header">
           <div class="email-sender">
             <div class="sender-avatar">${fromName.charAt(0).toUpperCase()}</div>
@@ -1236,17 +1311,20 @@ function displayEmailMessages(messages) {
           </div>
           <div class="email-meta">
             <div class="email-time">${time}</div>
-            ${hasAttachments ? '<div class="attachment-icon">📎</div>' : ''}
+            ${hasAttachments ? '<div class="attachment-icon">📎</div>' : ""}
           </div>
         </div>
         <div class="email-subject">${subject}</div>
-        <div class="email-preview">${preview}${preview.length >= 100 ? '...' : ''}</div>
+        <div class="email-preview">${preview}${
+        preview.length >= 100 ? "..." : ""
+      }</div>
         <div class="email-actions">
           <span class="view-email">Tap to view</span>
         </div>
       </div>
     `;
-  }).join("");
+    })
+    .join("");
 
   // Store messages globally for detail view
   window.currentEmailMessages = messages;
@@ -1264,12 +1342,15 @@ function formatEmailTime(dateString) {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  
+
   return date.toLocaleDateString();
 }
 
 function openEmailDetail(emailIndex) {
-  if (!window.currentEmailMessages || !window.currentEmailMessages[emailIndex]) {
+  if (
+    !window.currentEmailMessages ||
+    !window.currentEmailMessages[emailIndex]
+  ) {
     console.error("Email not found");
     return;
   }
@@ -1289,19 +1370,22 @@ function openEmailDetail(emailIndex) {
   emailDetailView.style.display = "block";
 
   // Format email content
-  const fromName = email.from?.name || email.from?.address?.split('@')[0] || "Unknown";
+  const fromName =
+    email.from?.name || email.from?.address?.split("@")[0] || "Unknown";
   const fromEmail = email.from?.address || "unknown@email.com";
   const subject = email.subject || "No Subject";
   const date = new Date(email.createdAt).toLocaleString();
   const htmlContent = email.html || email.text || "No content available";
-  
+
   // Create detailed email view
   emailContent.innerHTML = `
     <div class="email-detail-container">
       <div class="email-detail-header-info">
         <div class="email-detail-subject">${subject}</div>
         <div class="email-detail-from">
-          <div class="sender-avatar-large">${fromName.charAt(0).toUpperCase()}</div>
+          <div class="sender-avatar-large">${fromName
+            .charAt(0)
+            .toUpperCase()}</div>
           <div class="sender-details">
             <div class="sender-name-large">${fromName}</div>
             <div class="sender-email-small">${fromEmail}</div>
@@ -1310,19 +1394,33 @@ function openEmailDetail(emailIndex) {
         </div>
       </div>
       
-      ${email.attachments && email.attachments.length > 0 ? `
+      ${
+        email.attachments && email.attachments.length > 0
+          ? `
         <div class="email-attachments">
-          <div class="attachments-header">📎 Attachments (${email.attachments.length})</div>
+          <div class="attachments-header">📎 Attachments (${
+            email.attachments.length
+          })</div>
           <div class="attachments-list">
-            ${email.attachments.map(att => `
+            ${email.attachments
+              .map(
+                (att) => `
               <div class="attachment-item">
-                <span class="attachment-name">${att.filename || 'Attachment'}</span>
-                <span class="attachment-size">${formatFileSize(att.size || 0)}</span>
+                <span class="attachment-name">${
+                  att.filename || "Attachment"
+                }</span>
+                <span class="attachment-size">${formatFileSize(
+                  att.size || 0
+                )}</span>
               </div>
-            `).join('')}
+            `
+              )
+              .join("")}
           </div>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
       
       <div class="email-body">
         <div class="email-content-wrapper">
@@ -1346,17 +1444,17 @@ function openEmailDetail(emailIndex) {
 }
 
 function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 }
 
 function backToInbox() {
   const inboxListView = document.getElementById("inboxListView");
   const emailDetailView = document.getElementById("emailDetailFullView");
-  
+
   if (inboxListView && emailDetailView) {
     emailDetailView.style.display = "none";
     inboxListView.style.display = "block";
@@ -1380,13 +1478,19 @@ function deleteEmail(emailIndex) {
 
 async function sendAIMessage(message) {
   const requestBody = {
-    contents: [{
-      parts: [{ text: `You are a helpful AI assistant. Provide a detailed, comprehensive response to: ${message}` }]
-    }],
+    contents: [
+      {
+        parts: [
+          {
+            text: `You are a helpful AI assistant. Provide a detailed, comprehensive response to: ${message}`,
+          },
+        ],
+      },
+    ],
     generationConfig: {
       temperature: AI_CONFIG.temperature,
-      maxOutputTokens: AI_CONFIG.maxTokens
-    }
+      maxOutputTokens: AI_CONFIG.maxTokens,
+    },
   };
 
   const response = await fetch(
@@ -1394,7 +1498,7 @@ async function sendAIMessage(message) {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
     }
   );
 
@@ -1409,7 +1513,9 @@ function addChatMessage(message, isUser = false, isError = false) {
   if (!chatMessages) return;
 
   const messageDiv = document.createElement("div");
-  messageDiv.className = `chat-message ${isUser ? "user-message" : "ai-message"}`;
+  messageDiv.className = `chat-message ${
+    isUser ? "user-message" : "ai-message"
+  }`;
 
   messageDiv.innerHTML = `
     <div class="message-content ${isError ? "error-message" : ""}">
@@ -1467,20 +1573,251 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Fetch messages from email API
+async function refreshInboxMessages() {
+  if (!currentDisposableEmailAddress || !currentEmailToken) {
+    console.error("[Email] No email address or token available");
+    return;
+  }
+
+  const emailList = document.getElementById("emailList");
+  const noMessages = document.getElementById("noMessages");
+
+  try {
+    // Show loading state
+    if (emailList) {
+      emailList.innerHTML = '<div class="loading">Loading messages...</div>';
+    }
+
+    console.log(
+      `[Email] Fetching messages for: ${currentDisposableEmailAddress}`
+    );
+
+    // Use mail.tm API to fetch messages
+    const response = await fetchWithTimeout(
+      "https://api.mail.tm/messages",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${currentEmailToken}`,
+          "Content-Type": "application/json",
+          "User-Agent": "NULL-VOID-Extension/1.0",
+        },
+      },
+      15000
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `mail.tm API error: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    const messages = data["hydra:member"] || [];
+
+    console.log(`[Email] Fetched ${messages.length} messages from mail.tm`);
+
+    displayEmailMessages(messages);
+  } catch (error) {
+    console.error("[Email] Failed to fetch messages:", error);
+
+    if (emailList) {
+      emailList.innerHTML = `
+        <div class="error">
+          <p>Failed to load messages</p>
+          <p>Current email: <strong>${currentDisposableEmailAddress}</strong></p>
+          <p>Error: ${error.message}</p>
+          <p>Try sending an email and refresh in a few minutes.</p>
+          <button onclick="refreshInboxMessages()" class="btn btn-primary btn-small">Try Again</button>
+        </div>
+      `;
+    }
+  }
+}
+
+// Display email messages in the inbox
+function displayEmailMessages(messages) {
+  const emailList = document.getElementById("emailList");
+  const noMessages = document.getElementById("noMessages");
+
+  if (!emailList) return;
+
+  if (!messages || messages.length === 0) {
+    emailList.innerHTML = `
+      <div class="info-message">
+        <h4>Email Address: ${currentDisposableEmailAddress}</h4>
+        <p>Send an email to this address from your Gmail account.</p>
+        <p>Messages may take 1-2 minutes to appear.</p>
+        <button onclick="refreshInboxMessages()" class="btn btn-primary btn-small" style="margin-top: 10px;">
+          Refresh Messages
+        </button>
+      </div>
+    `;
+    if (noMessages) noMessages.style.display = "block";
+    return;
+  }
+
+  if (noMessages) noMessages.style.display = "none";
+
+  emailList.innerHTML = messages
+    .map(
+      (msg) => `
+    <div class="email-item" data-id="${msg.id}">
+      <div class="email-sender">${
+        msg.from?.address || msg.from || "Unknown"
+      }</div>
+      <div class="email-subject">${msg.subject || "(No subject)"}</div>
+      <div class="email-date">${new Date(
+        msg.createdAt || msg.date
+      ).toLocaleString()}</div>
+    </div>
+  `
+    )
+    .join("");
+
+  // Add click handlers
+  emailList.querySelectorAll(".email-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const msgId = item.getAttribute("data-id");
+      viewEmailMessage(msgId);
+    });
+  });
+}
+
+// View individual email message
+async function viewEmailMessage(messageId) {
+  if (!currentDisposableEmailAddress || !messageId || !currentEmailToken)
+    return;
+
+  try {
+    // Use mail.tm API to fetch individual message
+    const response = await fetchWithTimeout(
+      `https://api.mail.tm/messages/${messageId}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${currentEmailToken}`,
+          "Content-Type": "application/json",
+          "User-Agent": "NULL-VOID-Extension/1.0",
+        },
+      },
+      15000
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch message: ${response.status}`);
+    }
+
+    const message = await response.json();
+
+    // Show email detail view
+    const detailView = document.getElementById("emailDetailFullView");
+    const listView = document.getElementById("inboxListView");
+    const content = document.getElementById("emailFullContent");
+
+    if (detailView && listView && content) {
+      listView.style.display = "none";
+      detailView.style.display = "block";
+
+      content.innerHTML = `
+        <div class="email-detail">
+          <div class="email-header">
+            <div><strong>From:</strong> ${
+              message.from?.address || message.from || "Unknown"
+            }</div>
+            <div><strong>To:</strong> ${
+              message.to?.[0]?.address || currentDisposableEmailAddress
+            }</div>
+            <div><strong>Subject:</strong> ${
+              message.subject || "(No subject)"
+            }</div>
+            <div><strong>Date:</strong> ${new Date(
+              message.createdAt
+            ).toLocaleString()}</div>
+          </div>
+          <div class="email-body">
+            ${message.html || message.text || "(No content)"}
+          </div>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error("[Email] Failed to read message:", error);
+    showNotification("Failed to load message", "error");
+  }
+}
+
+// Back to inbox list
+function backToInbox() {
+  const detailView = document.getElementById("emailDetailFullView");
+  const listView = document.getElementById("inboxListView");
+
+  if (detailView && listView) {
+    detailView.style.display = "none";
+    listView.style.display = "block";
+  }
+}
+
+// Initialize disposable email
+async function initializeDisposableEmail() {
+  const emailInput = document.getElementById("disposableEmail");
+  if (!emailInput) return;
+
+  try {
+    // Check if we have a saved email
+    const storage = await browserAPI.storage.local.get([
+      "disposableEmail",
+      "disposableEmailId",
+      "emailToken",
+      "emailPassword",
+      "emailAPI",
+      "emailCreatedAt",
+    ]);
+
+    if (
+      storage.disposableEmail &&
+      storage.emailCreatedAt &&
+      storage.emailToken
+    ) {
+      // Check if email is less than 24 hours old
+      const age = Date.now() - storage.emailCreatedAt;
+      if (age < 24 * 60 * 60 * 1000) {
+        emailInput.value = storage.disposableEmail;
+        currentDisposableEmailAddress = storage.disposableEmail;
+        currentDisposableEmailId = storage.disposableEmailId;
+        currentEmailToken = storage.emailToken;
+        currentEmailAPI = storage.emailAPI || "mail.tm";
+        return;
+      }
+    }
+
+    // Generate new email if no valid saved email
+    const email = await generateDisposableEmail();
+    emailInput.value = email;
+  } catch (error) {
+    console.error("[Email] Initialization failed:", error);
+    emailInput.value = "Error generating email";
+  }
+}
+
 async function loadSavedData() {
   try {
     const storage = await browserAPI.storage.local.get([
       "disposableEmail",
       "disposableEmailId",
       "emailToken",
+      "emailPassword",
+      "emailAPI",
       "chatHistory",
-      "theme"
+      "theme",
     ]);
 
-    if (storage.disposableEmail) {
+    if (storage.disposableEmail && storage.emailToken) {
       currentDisposableEmailAddress = storage.disposableEmail;
       currentDisposableEmailId = storage.disposableEmailId;
       currentEmailToken = storage.emailToken;
+      currentEmailAPI = storage.emailAPI || "mail.tm";
 
       const emailInput = document.getElementById("disposableEmail");
       if (emailInput) emailInput.value = storage.disposableEmail;
@@ -1492,7 +1829,10 @@ async function loadSavedData() {
           const email = await generateDisposableEmail();
           const emailInput = document.getElementById("disposableEmail");
           if (emailInput) emailInput.value = email;
-          showNotification("✅ Disposable email generated automatically", "success");
+          showNotification(
+            "✅ Disposable email generated automatically",
+            "success"
+          );
         } catch (error) {
           console.error("[Popup] Auto email generation failed:", error);
           // Don't show error notification for auto-generation failure
@@ -1508,7 +1848,6 @@ async function loadSavedData() {
     if (storage.theme) {
       localStorage.setItem("theme", storage.theme);
     }
-
   } catch (error) {
     console.error("[Popup] Failed to load saved data:", error);
   }
@@ -1517,14 +1856,13 @@ async function loadSavedData() {
 async function initializeSmartIntegration() {
   try {
     const response = await browserAPI.runtime.sendMessage({
-      action: "getSmartIntegrationStatus"
+      action: "getSmartIntegrationStatus",
     });
 
     const toggle = document.getElementById("smartIntegration");
     if (toggle && response) {
       toggle.checked = response.enabled;
     }
-
   } catch (error) {
     console.warn("[Smart] Failed to initialize:", error);
   }
@@ -1538,7 +1876,9 @@ function showNotification(message, type = "info") {
     position: fixed;
     top: 20px;
     right: 20px;
-    background: ${type === "success" ? "#22c55e" : type === "error" ? "#ef4444" : "#3b82f6"};
+    background: ${
+      type === "success" ? "#22c55e" : type === "error" ? "#ef4444" : "#3b82f6"
+    };
     color: white;
     padding: 12px 16px;
     border-radius: 8px;
@@ -1563,7 +1903,11 @@ window.testButtons = function () {
   const buttons = document.querySelectorAll("button");
   console.log(`Found ${buttons.length} buttons:`);
   buttons.forEach((btn, i) => {
-    console.log(`${i}: ${btn.id || 'no-id'} - "${btn.textContent.trim()}" - ${btn.disabled ? 'disabled' : 'enabled'}`);
+    console.log(
+      `${i}: ${btn.id || "no-id"} - "${btn.textContent.trim()}" - ${
+        btn.disabled ? "disabled" : "enabled"
+      }`
+    );
   });
   return `Found ${buttons.length} buttons. Check console for details.`;
 };

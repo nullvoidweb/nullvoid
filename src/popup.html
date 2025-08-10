@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Disposable Services</title>
     <link rel="stylesheet" href="popup.css" />
+    <link rel="stylesheet" href="popup_new.css" />
   </head>
   <body>
     <div class="extension-container">
@@ -113,22 +114,53 @@
         <div class="service-section">
           <div class="service-header">
             <h3>Disposable Email</h3>
-            <div class="email-controls">
-              <input
-                type="text"
-                class="email-input"
-                id="disposableEmail"
-                value="your@email.com"
-                readonly
-              />
-              <button class="btn btn-small" id="copyEmailBtn">copy</button>
-            </div>
           </div>
-          <div class="email-actions">
-            <button class="btn btn-secondary" id="regenerateEmail">
+          <div class="email-controls">
+            <input
+              type="text"
+              class="email-input"
+              id="disposableEmail"
+              value="loading..."
+              readonly
+            />
+            <button class="btn btn-primary btn-small" id="copyEmailBtn">
+              copy
+            </button>
+          </div>
+          <div
+            class="email-actions"
+            style="
+              display: flex !important;
+              justify-content: space-between !important;
+              margin-top: 16px !important;
+            "
+          >
+            <button
+              class="btn btn-secondary"
+              id="regenerateEmail"
+              style="
+                background-color: red !important;
+                color: white !important;
+                padding: 10px 20px !important;
+                border: 2px solid yellow !important;
+                display: inline-block !important;
+              "
+            >
               regenerate email
             </button>
-            <button class="btn btn-secondary" id="openInbox">Inbox</button>
+            <button
+              class="btn btn-inbox"
+              id="openInbox"
+              style="
+                background-color: blue !important;
+                color: white !important;
+                padding: 10px 20px !important;
+                border: 2px solid green !important;
+                display: inline-block !important;
+              "
+            >
+              Inbox
+            </button>
           </div>
         </div>
 
@@ -169,8 +201,12 @@
             <h3>AI Chat</h3>
             <div class="ai-controls">
               <button class="btn btn-secondary" id="clearChat">clear</button>
-              <button class="btn btn-secondary" id="aiSettings">settings</button>
-              <button class="btn btn-primary" id="openFullAI">Full AI Chat</button>
+              <button class="btn btn-secondary" id="aiSettings">
+                settings
+              </button>
+              <button class="btn btn-primary" id="openFullAI">
+                Full AI Chat
+              </button>
             </div>
           </div>
           <div class="ai-chat-container">
