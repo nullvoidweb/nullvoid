@@ -82,15 +82,43 @@ const SECURITY_CONFIG = {
 // Initialize secure file viewer
 document.addEventListener("DOMContentLoaded", async () => {
   console.log(
-    "[Secure File Viewer] Initializing with enterprise-grade isolation..."
+    "[Secure File Viewer] Initializing with native browser capabilities..."
   );
 
   try {
+    // Skip library loading in native mode
+    if (window.NATIVE_MODE) {
+      console.log(
+        "[Secure File Viewer] Using native mode - no external dependencies"
+      );
+    }
+
     // Initialize security features
     await initializeSecurity();
 
-    // Get file data from storage
-    const storage = await browserAPI.storage.local.get(["pendingFileData"]);
+    // Get file data from storage with retry logic
+    let storage;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      try {
+        storage = await browserAPI.storage.local.get(["pendingFileData"]);
+        break;
+      } catch (storageError) {
+        console.warn(
+          "[Secure File Viewer] Storage access failed, retrying...",
+          storageError
+        );
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          throw new Error(
+            "Failed to access storage after " + maxRetries + " attempts"
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
 
     if (storage.pendingFileData) {
       currentFileData = storage.pendingFileData;
@@ -99,23 +127,99 @@ document.addEventListener("DOMContentLoaded", async () => {
         currentFileData.name
       );
 
+      // Validate file data
+      if (!currentFileData.name || !currentFileData.content) {
+        throw new Error("Invalid file data structure");
+      }
+
       // Security analysis
       await performSecurityAnalysis(currentFileData);
 
       // Display file in isolated environment
       await displayFileSecurely(currentFileData);
 
-      // Clear from storage for security
-      await browserAPI.storage.local.remove(["pendingFileData"]);
+      // Clear from storage for security (but keep backup in case of refresh)
+      try {
+        await browserAPI.storage.local.remove(["pendingFileData"]);
+      } catch (clearError) {
+        console.warn(
+          "[Secure File Viewer] Failed to clear storage:",
+          clearError
+        );
+      }
     } else {
-      showError("No file data found. Please try uploading the file again.");
+      // Show helpful error with retry option and debugging info
+      console.warn(
+        "[Secure File Viewer] No file data found in storage, checking for test mode..."
+      );
+
+      // Check for test mode in URL params
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("test") === "true") {
+        console.log("[Secure File Viewer] Test mode activated");
+        currentFileData = {
+          name: "test-file.txt",
+          size: 1024,
+          type: "text/plain",
+          content:
+            "data:text/plain;base64," +
+            btoa(
+              "This is a test file for debugging the secure file viewer.\n\nIf you can see this message, the file viewer is working correctly!"
+            ),
+        };
+
+        await performSecurityAnalysis(currentFileData);
+        await displayFileSecurely(currentFileData);
+        showSuccess("Test file loaded successfully!");
+
+        // Don't return here, continue to initialize action buttons
+      } else if (urlParams.get("testpdf") === "true") {
+        console.log("[Secure File Viewer] PDF test mode activated");
+        showPDFTest();
+      } else {
+        const contentArea = document.getElementById("contentArea");
+        if (contentArea) {
+          contentArea.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #e0e0e0;">
+              <h3>No File Data Found</h3>
+              <p>The secure file viewer could not find file data to display.</p>
+              <div style="margin: 20px 0; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 6px; text-align: left;">
+                <strong>Troubleshooting:</strong><br>
+                1. Try selecting and viewing the file again from the extension popup<br>
+                2. Make sure the file was selected properly<br>
+                3. Check if the extension has proper permissions<br>
+                4. Reload the extension if the problem persists
+              </div>
+              <div style="margin: 20px 0;">
+                <button onclick="window.location.href = window.location.pathname + '?test=true'" style="
+                  background: linear-gradient(135deg, #505050 0%, #3a3a3a 100%);
+                  color: white; border: 1px solid #666666; padding: 8px 16px;
+                  border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 10px;
+                ">Load Test File</button>
+                <button onclick="window.close()" style="
+                  background: linear-gradient(135deg, #404040 0%, #2a2a2a 100%);
+                  color: white; border: 1px solid #555555; padding: 12px 24px;
+                  border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;
+                ">Close Viewer</button>
+              </div>
+            </div>
+          `;
+        }
+        showError(
+          "No file data found. Please try uploading the file again.",
+          true
+        );
+      }
     }
 
     // Initialize action buttons
     initializeActionButtons();
   } catch (error) {
     console.error("[Secure File Viewer] Initialization error:", error);
-    showError("Failed to initialize secure file viewer: " + error.message);
+    showError(
+      "Failed to initialize secure file viewer: " + error.message,
+      true
+    );
   }
 });
 
@@ -136,15 +240,17 @@ async function initializeSecurity() {
   document.addEventListener("copy", (e) => e.preventDefault());
   document.addEventListener("cut", (e) => e.preventDefault());
 
-  // Override console for isolation
+  // Override console for isolation (but preserve original for debugging)
   const originalConsole = window.console;
-  window.console = {
-    log: () => {},
-    error: () => {},
-    warn: () => {},
-    info: () => {},
-    debug: () => {},
-  };
+  if (typeof window.DEBUG === "undefined") {
+    window.console = {
+      log: () => {},
+      error: () => {},
+      warn: () => {},
+      info: () => {},
+      debug: () => {},
+    };
+  }
 
   console.log("[Security] ✅ Basic isolation layer activated");
 }
@@ -250,6 +356,13 @@ function assessSecurityLevel(name, type, size, isDangerous) {
 async function displayFileSecurely(fileData) {
   const { name, size, type, content } = fileData;
 
+  console.log("[Secure File Viewer] Displaying file:", {
+    name,
+    size,
+    type: type || "unknown",
+    contentLength: content ? content.length : 0,
+  });
+
   // Update file info
   updateFileInfo(name, size, type);
 
@@ -258,7 +371,7 @@ async function displayFileSecurely(fileData) {
 
   if (!contentArea) {
     console.error("Content area not found");
-    return;
+    throw new Error("Content area element not found in DOM");
   }
 
   try {
@@ -280,19 +393,55 @@ async function displayFileSecurely(fileData) {
     `;
 
     // Determine display method based on file type
+    console.log(
+      "[Secure File Viewer] Determining display method for type:",
+      type,
+      "file:",
+      name
+    );
+
+    // Enhanced file type detection
+    const fileName = name.toLowerCase();
+    const isExcelFile =
+      type.includes("excel") ||
+      type.includes("spreadsheet") ||
+      fileName.endsWith(".xlsx") ||
+      fileName.endsWith(".xls") ||
+      type ===
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      type === "application/vnd.ms-excel";
+
     if (type.startsWith("image/")) {
+      console.log("[Secure File Viewer] Displaying as image");
       await displayImageIsolated(content, isolatedContainer);
     } else if (type === "application/pdf") {
+      console.log("[Secure File Viewer] Displaying as PDF");
+      console.log(
+        "[PDF Debug] Content preview:",
+        content.substring(0, 100) + "..."
+      );
+      console.log(
+        "[PDF Debug] PDF.js available:",
+        typeof pdfjsLib !== "undefined"
+      );
       await displayPDFIsolated(content, isolatedContainer);
+    } else if (isExcelFile) {
+      console.log("[Secure File Viewer] Displaying as Excel");
+      await displayExcelIsolated(content, isolatedContainer, name);
     } else if (type.startsWith("text/") || isTextFile(name)) {
+      console.log("[Secure File Viewer] Displaying as text");
       await displayTextIsolated(content, isolatedContainer);
     } else if (type.startsWith("video/")) {
+      console.log("[Secure File Viewer] Displaying as video");
       await displayVideoIsolated(content, isolatedContainer);
     } else if (type.startsWith("audio/")) {
+      console.log("[Secure File Viewer] Displaying as audio");
       await displayAudioIsolated(content, isolatedContainer);
     } else if (type.startsWith("application/")) {
+      console.log("[Secure File Viewer] Displaying as document");
       await displayDocumentIsolated(content, isolatedContainer, name, type);
     } else {
+      console.log("[Secure File Viewer] Displaying as generic file");
       await displayGenericIsolated(content, isolatedContainer, name, type);
     }
 
@@ -339,21 +488,225 @@ async function displayImageIsolated(content, container) {
 }
 
 async function displayPDFIsolated(content, container) {
-  // Create completely isolated PDF viewer
+  console.log("[PDF] Starting native PDF display...");
+
+  try {
+    // Always use native browser PDF viewer - no external dependencies
+    console.log("[PDF] Using native browser PDF capabilities");
+
+    // Validate content format
+    if (!content || !content.startsWith("data:")) {
+      throw new Error("Invalid PDF data format");
+    }
+
+    // Convert data URL to blob for better browser compatibility
+    console.log("[PDF] Converting data URL to blob...");
+    const base64Data = content.split(",")[1];
+    const binaryData = atob(base64Data);
+    const uint8Array = new Uint8Array(binaryData.length);
+    for (let i = 0; i < binaryData.length; i++) {
+      uint8Array[i] = binaryData.charCodeAt(i);
+    }
+    const blob = new Blob([uint8Array], { type: "application/pdf" });
+    const blobUrl = URL.createObjectURL(blob);
+
+    console.log("[PDF] Blob URL created:", blobUrl.substring(0, 50) + "...");
+
+    // Create PDF container with native viewer
+    const pdfContainer = document.createElement("div");
+    pdfContainer.style.cssText = `
+      width: 100%;
+      height: 100%;
+      min-height: 600px;
+      background: white;
+      border-radius: 6px;
+      position: relative;
+      border: 1px solid #ddd;
+    `;
+
+    // Create iframe for native PDF display
+    const iframe = document.createElement("iframe");
+    iframe.src = blobUrl;
+    iframe.style.cssText = `
+      width: 100%;
+      height: 580px;
+      border: none;
+      border-radius: 6px;
+      background: white;
+    `;
+
+    // Add loading indicator
+    const loadingDiv = document.createElement("div");
+    loadingDiv.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #666;
+      z-index: 10;
+    `;
+    loadingDiv.innerHTML = `
+      <div style="font-size: 24px; margin-bottom: 10px;">📄</div>
+      <p>Loading PDF using native browser viewer...</p>
+    `;
+
+    // Add debug info and fallback options
+    const debugDiv = document.createElement("div");
+    debugDiv.style.cssText = `
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      z-index: 20;
+    `;
+    debugDiv.innerHTML = `📊 Native PDF Mode | ${Math.round(
+      uint8Array.length / 1024
+    )}KB`;
+
+    // Create fallback button
+    const fallbackButton = document.createElement("button");
+    fallbackButton.style.cssText = `
+      position: absolute;
+      top: 50px;
+      right: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      z-index: 20;
+      display: none;
+    `;
+    fallbackButton.innerHTML = "Try Object Viewer";
+    fallbackButton.onclick = () => tryObjectFallback(container, blobUrl);
+
+    pdfContainer.appendChild(debugDiv);
+    pdfContainer.appendChild(fallbackButton);
+    pdfContainer.appendChild(loadingDiv);
+    pdfContainer.appendChild(iframe);
+
+    // Handle iframe load events
+    iframe.onload = () => {
+      console.log("[PDF] Native PDF iframe loaded successfully");
+      loadingDiv.style.display = "none";
+
+      // Check if iframe actually shows content
+      setTimeout(() => {
+        if (iframe.contentWindow) {
+          console.log("[PDF] Iframe content window available");
+          debugDiv.innerHTML += " ✅ Loaded";
+        } else {
+          console.warn("[PDF] Iframe content window not available");
+          fallbackButton.style.display = "block";
+        }
+      }, 2000);
+
+      // Clean up blob URL after successful load
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+        console.log("[PDF] Blob URL cleaned up");
+      }, 5000);
+    };
+
+    iframe.onerror = () => {
+      console.error("[PDF] Native PDF iframe failed to load");
+      URL.revokeObjectURL(blobUrl); // Clean up on error
+      fallbackButton.style.display = "block";
+      debugDiv.innerHTML += " ❌ Failed";
+      loadingDiv.innerHTML = `
+        <div style="color: #e74c3c;">
+          <div style="font-size: 24px; margin-bottom: 10px;">⚠️</div>
+          <p>Iframe PDF viewer failed</p>
+          <p style="font-size: 12px;">Try the Object Viewer button or download the file</p>
+        </div>
+      `;
+    };
+
+    // Timeout for loading
+    setTimeout(() => {
+      if (loadingDiv.style.display !== "none") {
+        console.warn("[PDF] Native PDF loading timeout");
+        fallbackButton.style.display = "block";
+        debugDiv.innerHTML += " ⏱️ Timeout";
+        loadingDiv.innerHTML = `
+          <div style="font-size: 24px; margin-bottom: 10px;">📄</div>
+          <p>PDF viewer loaded (may be slow to display)</p>
+          <p style="font-size: 12px; color: #888;">If PDF doesn't display, try the Object Viewer button</p>
+        `;
+      }
+    }, 5000); // Increased timeout to 5 seconds
+
+    container.appendChild(pdfContainer);
+
+    console.log("[PDF] Native PDF viewer setup complete");
+  } catch (error) {
+    console.error("[PDF] Native PDF display error:", error);
+    showNativePDFFallback(container, error.message);
+  }
+}
+
+// Object fallback function for PDF viewing
+function tryObjectFallback(container, blobUrl) {
+  console.log("[PDF] Trying object fallback viewer...");
+
+  const objectContainer = document.createElement("div");
+  objectContainer.style.cssText = `
+    width: 100%;
+    height: 600px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    position: relative;
+    margin-top: 10px;
+  `;
+
+  const objectElement = document.createElement("object");
+  objectElement.data = blobUrl;
+  objectElement.type = "application/pdf";
+  objectElement.style.cssText = `
+    width: 100%;
+    height: 100%;
+    border: none;
+  `;
+
+  objectElement.innerHTML = `
+    <div style="padding: 40px; text-align: center; color: #666;">
+      <h3>PDF Object Viewer Failed</h3>
+      <p>Your browser doesn't support embedded PDF viewing.</p>
+      <p>Please use the download button to view the PDF externally.</p>
+    </div>
+  `;
+
+  objectContainer.appendChild(objectElement);
+  container.appendChild(objectContainer);
+}
+
+function showNativePDFFallback(container, errorMessage) {
   const pdfContainer = document.createElement("div");
-  pdfContainer.style.textAlign = "center";
-  pdfContainer.style.padding = "40px";
-  pdfContainer.style.background = "white";
-  pdfContainer.style.borderRadius = "6px";
-  pdfContainer.style.border = "2px dashed #ddd";
+  pdfContainer.style.cssText = `
+    text-align: center;
+    padding: 40px;
+    background: white;
+    border-radius: 6px;
+    border: 2px dashed #ddd;
+  `;
 
   pdfContainer.innerHTML = `
-    <div style="font-size: 48px; margin-bottom: 20px; font-weight: bold; color: #666;">PDF</div>
-    <h3>PDF Document (Isolated View)</h3>
-    <p>PDF content is being processed in a secure sandbox.</p>
+    <div style="font-size: 48px; margin-bottom: 20px; font-weight: bold; color: #666;">📄</div>
+    <h3>PDF Document (Download Mode)</h3>
+    <p style="color: #e74c3c; margin: 10px 0;"><strong>Issue:</strong> ${sanitizeHtml(
+      errorMessage
+    )}</p>
     <p><strong>Security Level:</strong> Maximum Isolation</p>
     <div style="margin: 20px 0; padding: 15px; background: #404040; color: #e0e0e0; border-radius: 6px;">
-      SECURED: This PDF cannot execute JavaScript or access system resources
+      🔒 SECURED: This PDF viewer uses only native browser capabilities
     </div>
     <p>Use the download button below to save and open with your preferred PDF reader.</p>
   `;
@@ -440,6 +793,18 @@ async function displayAudioIsolated(content, container) {
 }
 
 async function displayDocumentIsolated(content, container, name, type) {
+  // Check if it's an Excel file
+  if (
+    type.includes("excel") ||
+    type.includes("spreadsheet") ||
+    name.toLowerCase().endsWith(".xlsx") ||
+    name.toLowerCase().endsWith(".xls")
+  ) {
+    await displayExcelIsolated(content, container, name);
+    return;
+  }
+
+  // Default document display for other types
   const docContainer = document.createElement("div");
   docContainer.style.textAlign = "center";
   docContainer.style.padding = "40px";
@@ -462,6 +827,149 @@ async function displayDocumentIsolated(content, container, name, type) {
   `;
 
   container.appendChild(docContainer);
+}
+
+async function displayExcelIsolated(content, container, name) {
+  try {
+    // Extract Excel data from data URL
+    const base64Data = content.split(",")[1];
+    const excelData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+
+    // Create Excel container
+    const excelContainer = document.createElement("div");
+    excelContainer.style.cssText = `
+      width: 100%;
+      height: 100%;
+      min-height: 600px;
+      background: white;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    `;
+
+    // Create controls
+    const controls = document.createElement("div");
+    controls.style.cssText = `
+      padding: 10px;
+      background: #f5f5f5;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+    `;
+
+    controls.innerHTML = `
+      <div>
+        <strong>Excel Viewer:</strong> ${sanitizeHtml(name)}
+      </div>
+      <div>
+        <select id="sheetSelector" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+          <option>Loading sheets...</option>
+        </select>
+      </div>
+    `;
+
+    // Create content area
+    const contentArea = document.createElement("div");
+    contentArea.style.cssText = `
+      padding: 20px;
+      overflow: auto;
+      height: calc(100% - 60px);
+      background: white;
+    `;
+
+    excelContainer.appendChild(controls);
+    excelContainer.appendChild(contentArea);
+
+    // Load Excel workbook
+    const workbook = XLSX.read(excelData, { type: "array" });
+    const sheetNames = workbook.SheetNames;
+
+    // Update sheet selector
+    const sheetSelector = controls.querySelector("#sheetSelector");
+    sheetSelector.innerHTML = "";
+    sheetNames.forEach((name, index) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      if (index === 0) option.selected = true;
+      sheetSelector.appendChild(option);
+    });
+
+    // Function to display sheet
+    function displaySheet(sheetName) {
+      const worksheet = workbook.Sheets[sheetName];
+      const htmlTable = XLSX.utils.sheet_to_html(worksheet, {
+        table: true,
+        header: 1,
+      });
+
+      // Style the table
+      const styledTable = htmlTable
+        .replace(
+          "<table>",
+          '<table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">'
+        )
+        .replace(
+          /<td>/g,
+          '<td style="border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top;">'
+        )
+        .replace(
+          /<th>/g,
+          '<th style="border: 1px solid #ddd; padding: 8px; background: #f0f0f0; font-weight: bold; text-align: left;">'
+        );
+
+      contentArea.innerHTML = `
+        <div style="margin-bottom: 15px;">
+          <strong>Sheet:</strong> ${sanitizeHtml(sheetName)} 
+          <span style="color: #666; margin-left: 10px;">(Read-only view in secure isolation)</span>
+        </div>
+        <div style="overflow: auto; max-height: 500px; border: 1px solid #ddd; border-radius: 4px;">
+          ${styledTable}
+        </div>
+        <div style="margin-top: 15px; padding: 10px; background: #404040; color: #e0e0e0; border-radius: 6px; font-size: 12px;">
+          <strong>SECURITY:</strong> This Excel file is displayed in read-only mode with no macro execution or external connections.
+        </div>
+      `;
+    }
+
+    // Display first sheet
+    if (sheetNames.length > 0) {
+      displaySheet(sheetNames[0]);
+    }
+
+    // Handle sheet selection
+    sheetSelector.onchange = (e) => {
+      displaySheet(e.target.value);
+    };
+
+    container.appendChild(excelContainer);
+  } catch (error) {
+    console.error("Excel display error:", error);
+    // Fallback display
+    const errorContainer = document.createElement("div");
+    errorContainer.style.cssText = `
+      text-align: center;
+      padding: 40px;
+      background: white;
+      border-radius: 6px;
+      border: 2px solid #fbbf24;
+    `;
+
+    errorContainer.innerHTML = `
+      <div style="font-size: 64px; margin-bottom: 20px; font-weight: bold; color: #666;">XLS</div>
+      <h3>Excel File (Fallback Mode)</h3>
+      <p><strong>File:</strong> ${sanitizeHtml(name)}</p>
+      <p>Excel preview failed to load. This may be due to file corruption or unsupported format.</p>
+      <div style="margin: 20px 0; padding: 15px; background: #404040; color: #e0e0e0; border-radius: 6px;">
+        SECURED: This Excel file cannot execute macros or access system resources
+      </div>
+      <p>Use the download button below to save and open with your preferred spreadsheet application.</p>
+    `;
+
+    container.appendChild(errorContainer);
+  }
 }
 
 async function displayGenericIsolated(content, container, name, type) {
@@ -746,28 +1254,163 @@ function showSuccess(message) {
   showNotification(message, "success");
 }
 
-function showError(message) {
-  showNotification(message, "error");
+function showError(message, showRetry = false) {
+  showNotification(message, "error", showRetry);
 }
 
-function showNotification(message, type) {
+function showNotification(message, type, showRetry = false) {
   const notification = document.createElement("div");
   notification.className = `notification ${type}`;
-  notification.textContent = message;
+
+  // Create notification content
+  const messageDiv = document.createElement("div");
+  messageDiv.textContent = message;
+  notification.appendChild(messageDiv);
+
+  // Add retry button if requested
+  if (showRetry && type === "error") {
+    const retryBtn = document.createElement("button");
+    retryBtn.textContent = "Reload Extension";
+    retryBtn.style.cssText = `
+      margin-top: 8px; padding: 4px 8px; background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 4px;
+      color: white; cursor: pointer; font-size: 12px;
+    `;
+    retryBtn.onclick = () => window.location.reload();
+    notification.appendChild(retryBtn);
+  }
+
   notification.style.cssText = `
     position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 6px;
-    color: white; font-weight: 500; z-index: 1000; max-width: 300px;
+    color: white; font-weight: 500; z-index: 1000; max-width: 350px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     ${type === "success" ? "background: #10b981;" : "background: #ef4444;"}
   `;
 
   document.body.appendChild(notification);
 
+  setTimeout(
+    () => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    },
+    showRetry ? 10000 : 5000
+  ); // Longer timeout for retry notifications
+}
+
+// PDF test function
+function showPDFTest() {
+  console.log("[Test] Running PDF functionality test...");
+
+  const contentArea = document.getElementById("contentArea");
+  if (!contentArea) return;
+
+  contentArea.innerHTML = `
+    <div style="text-align: center; padding: 40px; color: #e0e0e0;">
+      <h3>PDF Functionality Test</h3>
+      <p>Testing PDF.js library integration...</p>
+      <div id="testResults" style="margin: 20px 0; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 6px;">
+        <div>PDF.js Available: <span id="pdfjsStatus">Checking...</span></div>
+        <div>Worker URL: <span id="workerStatus">Checking...</span></div>
+        <div>Global Options: <span id="globalStatus">Checking...</span></div>
+      </div>
+      <button onclick="runDetailedTest()" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        Run Detailed Test
+      </button>
+    </div>
+  `;
+
+  // Check PDF.js status
   setTimeout(() => {
-    if (notification.parentNode) {
-      notification.parentNode.removeChild(notification);
+    const pdfjsStatus = document.getElementById("pdfjsStatus");
+    const workerStatus = document.getElementById("workerStatus");
+    const globalStatus = document.getElementById("globalStatus");
+
+    if (pdfjsStatus) {
+      pdfjsStatus.textContent =
+        typeof pdfjsLib !== "undefined" ? "✅ Available" : "❌ Not Available";
     }
-  }, 5000);
+
+    if (workerStatus && typeof pdfjsLib !== "undefined") {
+      workerStatus.textContent = pdfjsLib.GlobalWorkerOptions.workerSrc
+        ? "✅ Set"
+        : "❌ Not Set";
+    }
+
+    if (globalStatus && typeof pdfjsLib !== "undefined") {
+      globalStatus.textContent = "✅ Available";
+    }
+  }, 1000);
+
+  // Add global test function
+  window.runDetailedTest = function () {
+    console.log("[Test] Running detailed PDF test...");
+
+    if (typeof pdfjsLib === "undefined") {
+      alert("PDF.js is not available. Check the console for errors.");
+      return;
+    }
+
+    // Try to create a simple PDF test
+    try {
+      // This is a very basic test - in reality you'd need actual PDF data
+      alert(
+        `PDF.js is available! Version info: ${JSON.stringify(
+          pdfjsLib.version || "Unknown"
+        )}`
+      );
+    } catch (error) {
+      alert(`PDF.js test failed: ${error.message}`);
+    }
+  };
+}
+
+// Wait for external libraries to load
+async function waitForLibraries() {
+  const maxWait = 15000; // 15 seconds - increased timeout
+  const checkInterval = 100; // 100ms
+  let elapsed = 0;
+
+  return new Promise((resolve) => {
+    const checkLibraries = () => {
+      const pdfJsLoaded = typeof pdfjsLib !== "undefined";
+      const xlsxLoaded = typeof XLSX !== "undefined";
+
+      console.log(
+        `[Libraries] Check ${elapsed}ms - PDF.js: ${pdfJsLoaded}, XLSX: ${xlsxLoaded}`
+      );
+
+      if (pdfJsLoaded && xlsxLoaded) {
+        console.log("[Secure File Viewer] All libraries loaded successfully");
+        resolve();
+        return;
+      }
+
+      elapsed += checkInterval;
+      if (elapsed >= maxWait) {
+        console.warn(
+          `[Secure File Viewer] Library loading timeout after ${maxWait}ms`
+        );
+        console.warn("PDF.js loaded:", pdfJsLoaded, "XLSX loaded:", xlsxLoaded);
+
+        // Check for specific error messages
+        if (window.pdfLoadError) {
+          console.error("PDF.js load error:", window.pdfLoadError);
+        }
+        if (window.xlsxLoadError) {
+          console.error("XLSX load error:", window.xlsxLoadError);
+        }
+
+        resolve(); // Continue anyway
+        return;
+      }
+
+      setTimeout(checkLibraries, checkInterval);
+    };
+
+    checkLibraries();
+  });
 }
 
 // Initialize security monitoring

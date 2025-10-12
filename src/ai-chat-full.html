@@ -1,1157 +1,1914 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NULL VOID AI</title>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
+    <meta
+      http-equiv="Cache-Control"
+      content="no-cache, no-store, must-revalidate"
+    />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      :root {
+        --primary-bg: rgba(15, 15, 35, 0.6);
+        --secondary-bg: rgba(26, 26, 46, 0.7);
+        --tertiary-bg: rgba(22, 33, 62, 0.6);
+        --accent-bg: rgba(15, 52, 96, 0.7);
+        --sidebar-bg: rgba(16, 18, 35, 0.15);
+        --chat-bg: rgba(15, 15, 35, 0.1);
+        --message-bg: rgba(255, 255, 255, 0.05);
+        --user-message-bg: linear-gradient(
+          135deg,
+          rgba(66, 133, 244, 0.9) 0%,
+          rgba(52, 168, 83, 0.9) 100%
+        );
+        --ai-message-bg: rgba(255, 255, 255, 0.02);
+        --border-color: rgba(255, 255, 255, 0.1);
+        --text-primary: #e8eaed;
+        --text-secondary: #9aa0a6;
+        --text-muted: #5f6368;
+        --input-bg: rgba(255, 255, 255, 0.08);
+        --button-hover: rgba(255, 255, 255, 0.15);
+        --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        --blur: blur(30px);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
 
-        body {
-            font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1f1f1f;
-            color: #e8eaed;
-            min-height: 100vh;
-            display: flex;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        /* Sidebar */
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(
+          135deg,
+          var(--primary-bg) 0%,
+          var(--secondary-bg) 30%,
+          var(--tertiary-bg) 60%,
+          var(--accent-bg) 100%
+        );
+        color: var(--text-primary);
+        min-height: 100vh;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Animated background */
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+            circle at 20% 50%,
+            rgba(120, 119, 198, 0.3) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 80% 20%,
+            rgba(66, 133, 244, 0.2) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 40% 80%,
+            rgba(52, 168, 83, 0.2) 0%,
+            transparent 50%
+          );
+        animation: backgroundFloat 20s ease-in-out infinite;
+        z-index: -1;
+      }
+
+      @keyframes backgroundFloat {
+        0%,
+        100% {
+          transform: scale(1) rotate(0deg);
+          opacity: 0.5;
+        }
+        33% {
+          transform: scale(1.1) rotate(1deg);
+          opacity: 0.7;
+        }
+        66% {
+          transform: scale(0.9) rotate(-1deg);
+          opacity: 0.6;
+        }
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #1a73e8 0%, #1e8e3e 100%);
+      }
+
+      /* Main Layout Container */
+      .app-container {
+        display: flex;
+        height: 100vh;
+        position: relative;
+      }
+
+      /* Sidebar */
+      .sidebar {
+        width: 260px;
+        background: var(--sidebar-bg);
+        backdrop-filter: var(--blur);
+        border-right: 1px solid var(--glass-border);
+        box-shadow: var(--glass-shadow);
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        position: relative;
+        z-index: 1000;
+        flex-shrink: 0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .sidebar.collapsed {
+        width: 0;
+        overflow: hidden;
+        border-right: none;
+      }
+
+      /* Sidebar Header */
+      .sidebar-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: var(--blur);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .new-chat-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background: var(--input-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        color: var(--text-primary);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        flex: 1;
+        transition: all 0.2s ease;
+        backdrop-filter: var(--blur);
+        box-shadow: var(--glass-shadow);
+      }
+
+      .new-chat-btn:hover {
+        background: var(--button-hover);
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      }
+
+      .search-btn {
+        width: 44px;
+        height: 44px;
+        background: var(--input-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        color: var(--text-primary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        backdrop-filter: var(--blur);
+        box-shadow: var(--glass-shadow);
+        margin-left: 8px;
+        flex-shrink: 0;
+      }
+
+      .search-btn:hover {
+        background: var(--button-hover);
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      }
+
+      .sidebar-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+
+      .new-chat-icon {
+        font-size: 16px;
+      }
+
+      /* Chat History */
+      .chat-history {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+      }
+
+      .chat-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        margin: 2px 0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 14px;
+        color: var(--text-secondary);
+        position: relative;
+      }
+
+      .chat-item:hover {
+        background: var(--message-bg);
+        color: var(--text-primary);
+      }
+
+      .chat-item.active {
+        background: var(--user-message-bg);
+        color: white;
+      }
+
+      .chat-item-title {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .chat-item-actions {
+        opacity: 0;
+        display: flex;
+        gap: 4px;
+        transition: opacity 0.2s ease;
+      }
+
+      .chat-item:hover .chat-item-actions {
+        opacity: 1;
+      }
+
+      .chat-action-btn {
+        width: 24px;
+        height: 24px;
+        border: none;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s ease;
+      }
+
+      .chat-action-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      /* Sidebar Footer */
+      .sidebar-footer {
+        padding: 16px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .user-profile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .user-profile:hover {
+        background: var(--message-bg);
+      }
+
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--user-message-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 14px;
+        color: white;
+      }
+
+      .user-info {
+        flex: 1;
+      }
+
+      .user-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary);
+      }
+
+      .user-plan {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      /* Main Content Area */
+      .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        position: relative;
+        background: var(--chat-bg);
+        backdrop-filter: var(--blur);
+      }
+
+      /* Top Header */
+      .chat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: var(--blur);
+        z-index: 100;
+        box-shadow: var(--glass-shadow);
+      }
+
+      .header-title h2 {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+        text-align: center;
+        flex: 1;
+      }
+
+      .sidebar-toggle {
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: var(--input-bg);
+        color: var(--text-primary);
+        cursor: pointer;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        backdrop-filter: var(--blur);
+        border: 1px solid var(--glass-border);
+      }
+
+      .sidebar-toggle:hover {
+        background: var(--button-hover);
+        transform: scale(1.05);
+        box-shadow: var(--glass-shadow);
+      }
+
+      /* Chat Messages Area */
+      .chat-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .messages-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        scroll-behavior: smooth;
+      }
+
+      .welcome-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 40px 20px;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .welcome-title {
+        font-size: 48px;
+        font-weight: 300;
+        margin-bottom: 16px;
+        background: linear-gradient(
+          135deg,
+          var(--text-primary) 0%,
+          #9aa0a6 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .welcome-subtitle {
+        font-size: 20px;
+        color: var(--text-secondary);
+        margin-bottom: 32px;
+        font-weight: 400;
+      }
+
+      .suggestions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        max-width: 800px;
+        width: 100%;
+        margin-top: 32px;
+      }
+
+      .suggestion-card {
+        padding: 24px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: var(--blur);
+        box-shadow: var(--glass-shadow);
+      }
+
+      .suggestion-card:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.25);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      }
+
+      .suggestion-title {
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+      }
+
+      .suggestion-desc {
+        font-size: 14px;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+
+      /* Chat Messages */
+      .chat-messages {
+        padding: 0;
+      }
+
+      .message {
+        display: flex;
+        padding: 24px;
+        gap: 16px;
+        max-width: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+        backdrop-filter: var(--blur);
+      }
+
+      .message.user-message {
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .message.ai-message {
+        background: rgba(255, 255, 255, 0.01);
+      }
+
+      .message-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+
+      .user-avatar-msg {
+        background: var(--user-message-bg);
+        color: white;
+      }
+
+      .ai-avatar-msg {
+        background: var(--ai-message-bg);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+      }
+
+      .message-content {
+        flex: 1;
+        max-width: calc(100% - 56px);
+      }
+
+      .message-text {
+        font-size: 15px;
+        line-height: 1.6;
+        color: var(--text-primary);
+        word-wrap: break-word;
+        white-space: pre-wrap;
+      }
+
+      /* Input Area - ChatGPT Style */
+      .input-area {
+        padding: 0 24px 24px;
+        background: transparent;
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+      }
+
+      .input-container {
+        max-width: 800px;
+        margin: 0 auto;
+        position: relative;
+      }
+
+      .input-wrapper {
+        display: flex;
+        align-items: flex-end;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 26px;
+        padding: 12px 16px;
+        gap: 8px;
+        backdrop-filter: blur(20px);
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        position: relative;
+        min-height: 52px;
+      }
+
+      .input-wrapper:focus-within {
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .chat-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        resize: none;
+        font-size: 16px;
+        line-height: 1.5;
+        color: var(--text-primary);
+        max-height: 200px;
+        min-height: 24px;
+        font-family: inherit;
+      }
+
+      .chat-input::placeholder {
+        color: var(--text-muted);
+      }
+
+      .send-btn {
+        width: 36px;
+        height: 36px;
+        border: none;
+        background: var(--user-message-bg);
+        color: white;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        opacity: 0.5;
+        transform: scale(0.9);
+        box-shadow: var(--glass-shadow);
+      }
+
+      .send-btn:not(:disabled) {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      .send-btn:not(:disabled):hover {
+        transform: scale(1.1);
+        box-shadow: 0 8px 25px rgba(66, 133, 244, 0.4);
+      }
+
+      .send-btn:disabled {
+        cursor: not-allowed;
+      }
+
+      /* Typing Indicator */
+      .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 24px;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.3s ease;
+      }
+
+      .typing-indicator.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .typing-dots {
+        display: flex;
+        gap: 4px;
+      }
+
+      .typing-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text-secondary);
+        animation: typingBounce 1.4s ease-in-out infinite both;
+      }
+
+      .typing-dot:nth-child(1) {
+        animation-delay: -0.32s;
+      }
+      .typing-dot:nth-child(2) {
+        animation-delay: -0.16s;
+      }
+
+      @keyframes typingBounce {
+        0%,
+        80%,
+        100% {
+          transform: scale(0.8);
+          opacity: 0.5;
+        }
+        40% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      /* Footer - ChatGPT Style */
+      .footer {
+        padding: 12px 0;
+        text-align: center;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.4);
+        background: transparent;
+        position: relative;
+        z-index: 1;
+        margin-top: 20px;
+      }
+
+      .footer a {
+        color: rgba(255, 255, 255, 0.6);
+        text-decoration: none;
+        font-weight: 400;
+        transition: all 0.2s ease;
+      }
+
+      .footer a:hover {
+        text-decoration: underline;
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      /* Search Panel - Floating Design */
+      .search-panel {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        right: auto;
+        height: 60px;
+        width: 500px;
+        max-width: 90vw;
+        background: rgba(15, 15, 35, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        backdrop-filter: blur(45px);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        padding: 0 24px;
+        gap: 12px;
+        transition: all 0.3s ease;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+
+      .search-panel.open {
+        display: flex;
+      }
+
+      .search-input {
+        flex: 1;
+        max-width: 100%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 8px 16px;
+        color: rgba(255, 255, 255, 0.95);
+        font-size: 14px;
+        height: 40px;
+        backdrop-filter: blur(20px);
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1),
+          inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+
+      .search-input:focus {
+        outline: none;
+        border-color: rgba(66, 133, 244, 0.4);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2),
+          0 6px 20px rgba(66, 133, 244, 0.1);
+      }
+
+      .search-close {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.8);
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+        min-width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .search-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
         .sidebar {
-            width: 280px;
-            background: #1f1f1f;
-            border-right: 1px solid #3c4043;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            position: fixed;
-            left: 0;
-            top: 0;
-            z-index: 999;
-            transition: transform 0.3s ease;
-            transform: translateX(-100%);
+          position: fixed;
+          left: 0;
+          top: 0;
+          z-index: 1001;
+          transform: translateX(-100%);
         }
 
-        .sidebar.visible {
-            transform: translateX(0);
+        .sidebar.open {
+          transform: translateX(0);
         }
 
-        .sidebar-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid #3c4043;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-        }
-
-        .search-icon {
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
-
-        .search-icon:hover {
-            background: #3c4043;
-        }
-
-        .new-chat-btn {
-            margin: 16px 20px;
-            padding: 12px 16px;
-            background: transparent;
-            border: 1px solid #5f6368;
-            border-radius: 20px;
-            color: #e8eaed;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-
-        .new-chat-btn:hover {
-            background: #3c4043;
-        }
-
-        .recent-section {
-            padding: 0 20px;
-            margin-bottom: 20px;
-        }
-
-        .recent-title {
-            font-size: 14px;
-            color: #9aa0a6;
-            margin-bottom: 12px;
-            font-weight: 500;
-        }
-
-        .sidebar-footer {
-            margin-top: auto;
-            padding: 16px 20px;
-            border-top: 1px solid #3c4043;
-        }
-
-        .settings-btn {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 12px;
-            background: transparent;
-            border: none;
-            color: #e8eaed;
-            cursor: pointer;
-            border-radius: 8px;
-            font-size: 14px;
-            width: 100%;
-            text-align: left;
-            transition: background 0.2s;
-        }
-
-        .settings-btn:hover {
-            background: #3c4043;
-        }
-
-        /* Main Content */
         .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            margin-left: 0;
-            transition: margin-left 0.3s ease;
+          width: 100%;
         }
 
-        .main-content.sidebar-visible {
-            margin-left: 280px;
+        .chat-header {
+          padding: 12px 16px;
         }
 
-        .top-bar {
-            padding: 12px 24px;
-            border-bottom: 1px solid #3c4043;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .model-selector {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: transparent;
-            border: none;
-            color: #e8eaed;
-            cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 500;
-            transition: background 0.2s;
-            position: relative;
-        }
-
-        .model-selector:hover {
-            background: #3c4043;
-        }
-
-        .model-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: #2d2e30;
-            border: 1px solid #5f6368;
-            border-radius: 8px;
-            min-width: 250px;
-            z-index: 1000;
-            display: none;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        .model-dropdown.open {
-            display: block;
-        }
-
-        .model-option {
-            padding: 12px 16px;
-            cursor: pointer;
-            border-bottom: 1px solid #3c4043;
-            transition: background 0.2s;
-        }
-
-        .model-option:last-child {
-            border-bottom: none;
-        }
-
-        .model-option:hover {
-            background: #3c4043;
-        }
-
-        .model-option.selected {
-            background: #1a73e8;
-        }
-
-        .model-name {
-            font-weight: 500;
-            margin-bottom: 4px;
-        }
-
-        .model-description {
-            font-size: 12px;
-            color: #9aa0a6;
-        }
-
-        .top-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .about-btn {
-            background: transparent;
-            border: none;
-            color: #8ab4f8;
-            cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-
-        .about-btn:hover {
-            background: #3c4043;
-        }
-
-        /* Chat Area */
-        .chat-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 24px;
-            max-width: 768px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .welcome-section {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .welcome-title {
-            font-size: 56px;
-            font-weight: 400;
-            margin-bottom: 8px;
-            background: linear-gradient(45deg, #4285f4, #34a853, #fbbc04, #ea4335);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .welcome-subtitle {
-            font-size: 24px;
-            color: #9aa0a6;
-            font-weight: 400;
-        }
-
-        /* Input Area */
-        .input-container {
-            width: 100%;
-            max-width: 648px;
-            position: relative;
-        }
-
-        .input-wrapper {
-            background: #2d2e30;
-            border: 1px solid #5f6368;
-            border-radius: 20px;
-            padding: 10px 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: all 0.2s;
-            min-height: 44px;
-        }
-
-        .input-wrapper:focus-within {
-            border-color: #8ab4f8;
-            box-shadow: 0 0 0 1px #8ab4f8;
-        }
-
-        .input-icon {
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            border-radius: 50%;
-            transition: background 0.2s;
-        }
-
-        .input-icon:hover {
-            background: #3c4043;
-        }
-
-        .chat-input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            outline: none;
-            color: #e8eaed;
-            font-size: 14px;
-            font-family: inherit;
-            resize: none;
-            min-height: 20px;
-            max-height: 150px;
-            line-height: 1.4;
-        }
-
-        .chat-input::placeholder {
-            color: #9aa0a6;
-        }
-
-        /* Send button styles */
-        .send-btn {
-            width: 28px;
-            height: 28px;
-            background: #1a73e8;
-            border: none;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            opacity: 0;
-            transform: scale(0.8);
-        }
-
-        .send-btn.active {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-        .send-btn:hover {
-            background: #1557b0;
-        }
-
-        .send-btn:disabled {
-            background: #5f6368;
-            cursor: not-allowed;
-        }
-
-        /* Suggestion Pills */
-        .suggestions {
-            display: flex;
-            gap: 12px;
-            margin-top: 24px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .suggestion-pill {
-            background: #2d2e30;
-            border: 1px solid #5f6368;
-            border-radius: 20px;
-            padding: 12px 20px;
-            color: #e8eaed;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-
-        .suggestion-pill:hover {
-            background: #3c4043;
-            border-color: #8ab4f8;
-        }
-
-        /* Chat Messages */
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px 24px;
-            display: none;
+        .input-area {
+          padding: 16px;
         }
 
         .message {
-            max-width: 768px;
-            margin: 0 auto 32px auto;
-            display: flex;
-            gap: 16px;
+          padding: 16px;
         }
 
-        .message-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            flex-shrink: 0;
+        .welcome-title {
+          font-size: 32px;
         }
 
-        .user-avatar {
-            background: #1a73e8;
-            color: white;
+        .suggestions-grid {
+          grid-template-columns: 1fr;
+          gap: 12px;
         }
 
-        .ai-avatar {
-            background: linear-gradient(45deg, #4285f4, #34a853, #fbbc04, #ea4335);
-            color: white;
-        }
-
-        .message-content {
-            flex: 1;
-            line-height: 1.6;
-        }
-
-        .message-text {
-            font-size: 16px;
-            color: #e8eaed;
-        }
-
-        .message-text h1,
-        .message-text h2,
-        .message-text h3 {
-            color: #e8eaed;
-            margin: 16px 0 8px 0;
-            font-weight: 500;
-        }
-
-        .message-text p {
-            margin: 12px 0;
-        }
-
-        .message-text ul,
-        .message-text ol {
-            margin: 12px 0;
-            padding-left: 20px;
-        }
-
-        .message-text li {
-            margin: 4px 0;
-        }
-
-        .message-text code {
-            background: #3c4043;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Roboto Mono', monospace;
-            font-size: 14px;
-        }
-
-        .message-text pre {
-            background: #3c4043;
-            padding: 16px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 16px 0;
-            font-family: 'Roboto Mono', monospace;
-            font-size: 14px;
-        }
-
-        /* Typing Indicator */
-        .typing-indicator {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 16px 0;
-        }
-
-        .typing-dots {
-            display: flex;
-            gap: 4px;
-        }
-
-        .typing-dot {
-            width: 8px;
-            height: 8px;
-            background: #9aa0a6;
-            border-radius: 50%;
-            animation: typing 1.4s infinite;
-        }
-
-        .typing-dot:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .typing-dot:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes typing {
-
-            0%,
-            60%,
-            100% {
-                transform: scale(1);
-                opacity: 0.5;
-            }
-
-            30% {
-                transform: scale(1.2);
-                opacity: 1;
-            }
-        }
-
-        /* Show chat state */
-        .chat-mode .chat-area {
-            justify-content: flex-start;
-            padding: 0;
-        }
-
-        .chat-mode .welcome-section {
-            display: none;
-        }
-
-        .chat-mode .input-container {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 16px 24px;
-            background: #1f1f1f;
-            border-top: 1px solid #3c4043;
-            z-index: 1000;
-            transition: left 0.3s ease;
-            max-width: none;
-        }
-
-        .chat-mode .main-content.sidebar-visible .input-container {
-            left: 280px;
-        }
-
-        .chat-mode .chat-messages {
-            display: block;
-            padding-bottom: 120px;
-        }
-
-        .search-panel.open~.main-content .chat-messages {
-            padding-top: 50px;
-        }
-
-        /* Hamburger menu for when sidebar is hidden */
-        .hamburger-menu {
-            position: fixed;
-            top: 70px;
-            left: 16px;
-            width: 40px;
-            height: 40px;
-            background: #2d2e30;
-            border: 1px solid #5f6368;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 999;
-            transition: all 0.2s;
-        }
-
-        .hamburger-menu:hover {
-            background: #3c4043;
-        }
-
-        .main-content.sidebar-visible .hamburger-menu {
-            display: none;
-        }
-
-        /* Settings panel */
-        .settings-panel {
-            position: fixed;
-            top: 0;
-            right: -400px;
-            width: 400px;
-            height: 100vh;
-            background: #1f1f1f;
-            border-left: 1px solid #3c4043;
-            z-index: 1001;
-            transition: right 0.3s ease;
-            overflow-y: auto;
-        }
-
-        .settings-panel.open {
-            right: 0;
-        }
-
-        .settings-header {
-            padding: 20px;
-            border-bottom: 1px solid #3c4043;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .settings-title {
-            font-size: 20px;
-            font-weight: 500;
-        }
-
-        .close-settings {
-            background: none;
-            border: none;
-            color: #e8eaed;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
-
-        .close-settings:hover {
-            background: #3c4043;
-        }
-
-        .settings-content {
-            padding: 20px;
-        }
-
-        .setting-group {
-            margin-bottom: 24px;
-        }
-
-        .setting-label {
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .setting-input {
-            width: 100%;
-            background: #2d2e30;
-            border: 1px solid #5f6368;
-            border-radius: 8px;
-            padding: 12px;
-            color: #e8eaed;
-            font-size: 14px;
-        }
-
-        .setting-input:focus {
-            outline: none;
-            border-color: #8ab4f8;
-        }
-
-        .setting-toggle {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            cursor: pointer;
-        }
-
-        .toggle-switch {
-            width: 44px;
-            height: 24px;
-            background: #5f6368;
-            border-radius: 12px;
-            position: relative;
-            transition: background 0.2s;
-        }
-
-        .toggle-switch.active {
-            background: #1a73e8;
-        }
-
-        .toggle-knob {
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 50%;
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            transition: transform 0.2s;
-        }
-
-        .toggle-switch.active .toggle-knob {
-            transform: translateX(20px);
-        }
-
-        /* About modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 2000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-overlay.open {
-            display: flex;
-        }
-
-        .modal {
-            background: #1f1f1f;
-            border: 1px solid #3c4043;
-            border-radius: 12px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            padding: 20px;
-            border-bottom: 1px solid #3c4043;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .modal-title {
-            font-size: 20px;
-            font-weight: 500;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: #e8eaed;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
-
-        .modal-close:hover {
-            background: #3c4043;
-        }
-
-        .modal-content {
-            padding: 20px;
-        }
-
-        /* Search functionality */
+        /* Keep search panel floating on mobile */
         .search-panel {
-            position: fixed;
-            top: 60px;
-            left: 0;
-            right: 0;
-            height: 50px;
-            background: #1f1f1f;
-            border-bottom: 1px solid #3c4043;
-            z-index: 997;
-            display: none;
-            align-items: center;
-            padding: 0 24px;
-            gap: 12px;
-            transition: all 0.3s ease;
+          width: 85vw;
+          top: 70px;
         }
 
-        .search-panel.open {
-            display: flex;
+        .sidebar-toggle,
+        .send-btn,
+        .chat-action-btn {
+          min-width: 44px;
+          min-height: 44px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .input-wrapper {
+          padding: 10px 16px;
         }
 
-        .main-content.sidebar-visible .search-panel {
-            left: 280px;
+        .chat-input {
+          font-size: 16px; /* Prevent zoom on iOS */
         }
 
-        .search-input {
-            flex: 1;
-            max-width: 400px;
-            background: #2d2e30;
-            border: 1px solid #5f6368;
-            border-radius: 16px;
-            padding: 6px 12px;
-            color: #e8eaed;
-            font-size: 13px;
-            height: 32px;
+        .welcome-title {
+          font-size: 28px;
         }
 
-        .search-input:focus {
-            outline: none;
-            border-color: #8ab4f8;
+        .welcome-subtitle {
+          font-size: 18px;
         }
+      }
 
-        .search-close {
-            background: none;
-            border: none;
-            color: #e8eaed;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
+      /* Enhanced Focus States */
+      .chat-input:focus,
+      .search-input:focus,
+      .new-chat-btn:focus {
+        outline: 2px solid rgba(66, 133, 244, 0.5);
+        outline-offset: 2px;
+      }
 
-        .search-close:hover {
-            background: #3c4043;
-        }
-
-        /* Recent chats */
-        .recent-chat {
-            padding: 12px 20px;
-            cursor: pointer;
-            border-radius: 8px;
-            margin: 4px 0;
-            transition: background 0.2s;
-            font-size: 14px;
-            color: #9aa0a6;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .recent-chat:hover {
-            background: #3c4043;
-            color: #e8eaed;
-        }
-
-        .recent-chat.active {
-            background: #2d2e30;
-            color: #e8eaed;
-        }
-
-        /* Custom notification */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #2d2e30;
-            border: 1px solid #5f6368;
-            border-radius: 8px;
-            padding: 12px 16px;
-            color: #e8eaed;
-            z-index: 2001;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-        }
-
-        .notification.show {
-            transform: translateX(0);
-        }
-
-        .notification.success {
-            border-color: #34a853;
-            background: #1e3a2e;
-        }
-
-        .notification.error {
-            border-color: #ea4335;
-            background: #3e1e1e;
-        }
-
-        /* Footer */
-        .footer {
-            padding: 16px 24px;
-            text-align: center;
-            font-size: 12px;
-            color: #9aa0a6;
-            border-top: 1px solid #3c4043;
-        }
-
-        .footer a {
-            color: #8ab4f8;
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            text-decoration: underline;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                transform: translateX(-100%);
-            }
-
-            .sidebar.visible {
-                transform: translateX(0);
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .main-content.sidebar-visible {
-                margin-left: 0;
-            }
-
-            .welcome-title {
-                font-size: 40px;
-            }
-
-            .welcome-subtitle {
-                font-size: 20px;
-            }
-
-            .suggestions {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .suggestion-pill {
-                width: 100%;
-                text-align: center;
-            }
-
-            .chat-mode .input-container,
-            .chat-mode .main-content.sidebar-visible .input-container {
-                left: 0;
-            }
-
-            .search-panel,
-            .main-content.sidebar-visible .search-panel {
-                left: 0;
-            }
-
-            .hamburger-menu {
-                display: flex;
-                top: 16px;
-            }
-
-            .main-content.sidebar-visible .hamburger-menu {
-                display: flex;
-                top: 16px;
-            }
-
-            .search-panel {
-                top: 50px;
-                height: 45px;
-            }
-        }
-
-        /* Hidden class */
-        .hidden {
-            display: none !important;
-        }
+      /* Prevent text selection on interactive elements */
+      .sidebar-toggle,
+      .send-btn,
+      .chat-action-btn {
+        user-select: none;
+        -webkit-user-select: none;
+      }
     </style>
-</head>
-
-<body>
-    <!-- Sidebar -->
-    <div class="sidebar">
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="search-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path
-                        d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-                </svg>
-            </div>
+          <button class="new-chat-btn" id="newChatBtn">
+            <span class="new-chat-icon">✏️</span>
+            <span>New chat</span>
+          </button>
+          <button
+            class="search-btn"
+            id="searchBtn"
+            title="Search conversations"
+            onclick="window.toggleSearchExtension && window.toggleSearchExtension()"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+              />
+            </svg>
+          </button>
         </div>
 
-        <button class="new-chat-btn" id="newChatBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-            </svg>
-            New chat
-        </button>
-
-        <div class="recent-section">
-            <div class="recent-title">Recent</div>
-            <div id="recentChats">
-                <!-- Recent chats will be populated here -->
-            </div>
+        <div class="chat-history" id="chatHistory">
+          <!-- Chat history items will be populated here -->
         </div>
 
         <div class="sidebar-footer">
-            <button class="settings-btn" id="settingsBtn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path
-                        d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
-                </svg>
-                Settings & help
-            </button>
+          <div class="user-profile" id="userProfile">
+            <div class="user-avatar">U</div>
+            <div class="user-info">
+              <div class="user-name">NULL VOID User</div>
+              <div class="user-plan">Free Plan</div>
+            </div>
+          </div>
         </div>
-    </div>
+      </aside>
 
-    <!-- Hamburger Menu (shown when sidebar is hidden) -->
-    <button class="hamburger-menu" id="hamburgerMenu">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
-        </svg>
-    </button>
+      <!-- Main Content -->
+      <main class="main-content" id="mainContent">
+        <!-- Header -->
+        <header class="chat-header">
+          <button
+            class="sidebar-toggle"
+            id="sidebarToggle"
+            data-action="toggle-sidebar"
+            style="cursor: pointer; z-index: 9999; position: relative"
+            title="Toggle Sidebar"
+            onclick="window.toggleSidebarExtension && window.toggleSidebarExtension()"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
+            </svg>
+          </button>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <div class="top-bar">
-            <div class="model-selector">
-                <button id="modelSelector">
-                    <span id="currentModel">NULL VOID AI</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M7 10l5 5 5-5z" />
-                    </svg>
-                </button>
-                <div class="model-dropdown" id="modelDropdown">
-                    <div class="model-option selected" data-model="gemini-1.5-flash">
-                        <div class="model-name">Gemini 1.5 Flash</div>
-                        <div class="model-description">Fast and efficient</div>
-                    </div>
-                    <div class="model-option" data-model="gemini-1.5-pro">
-                        <div class="model-name">Gemini 1.5 Pro</div>
-                        <div class="model-description">Most capable model</div>
-                    </div>
-                </div>
-            </div>
-            <div class="top-actions">
-                <button class="about-btn">About NULL VOID AI</button>
-            </div>
-        </div>
+          <div class="header-title">
+            <h2>NULL VOID AI</h2>
+          </div>
+        </header>
 
-        <div class="chat-area" id="chatArea">
-            <div class="welcome-section">
-                <h1 class="welcome-title">Meet NULL VOID AI,</h1>
-                <p class="welcome-subtitle">your personal AI assistant</p>
-                <p style="font-size: 12px; color: #9aa0a6; margin-top: 8px;">Free AI Assistant v2.0</p>
-            </div>
+        <!-- Chat Container -->
+        <div class="chat-container">
+          <div class="messages-area" id="messagesArea">
+            <!-- Welcome Section (shown when no messages) -->
+            <div class="welcome-section" id="welcomeSection">
+              <h1 class="welcome-title">Hello, NULL VOID User</h1>
+              <p class="welcome-subtitle">How can I help you today?</p>
 
-            <div class="input-container">
-                <div class="input-wrapper">
-                    <div class="input-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path
-                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                        </svg>
-                    </div>
-                    <textarea class="chat-input" id="chatInput" placeholder="Ask NULL VOID AI" rows="1"></textarea>
-                    <button class="send-btn" id="sendBtn" disabled>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                        </svg>
-                    </button>
+              <div class="suggestions-grid">
+                <div
+                  class="suggestion-card"
+                  data-prompt="How does NULL VOID protect me from dangerous websites?"
+                >
+                  <div class="suggestion-title">🛡️ Security Protection</div>
+                  <div class="suggestion-desc">
+                    Learn how NULL VOID keeps you safe from malicious websites
+                    and threats
+                  </div>
                 </div>
 
-                <div class="suggestions">
-                    <div class="suggestion-pill" data-prompt="Write">Write</div>
-                    <div class="suggestion-pill" data-prompt="Build">Build</div>
-                    <div class="suggestion-pill" data-prompt="Research">Research</div>
-                    <div class="suggestion-pill" data-prompt="Create Image">Create Image</div>
+                <div
+                  class="suggestion-card"
+                  data-prompt="How do I use the disposable browser feature?"
+                >
+                  <div class="suggestion-title">🌐 Disposable Browser</div>
+                  <div class="suggestion-desc">
+                    Discover how to browse safely without leaving traces
+                  </div>
                 </div>
+
+                <div
+                  class="suggestion-card"
+                  data-prompt="Can you explain all the features of NULL VOID?"
+                >
+                  <div class="suggestion-title">✨ All Features</div>
+                  <div class="suggestion-desc">
+                    Get an overview of NULL VOID's complete feature set
+                  </div>
+                </div>
+
+                <div
+                  class="suggestion-card"
+                  data-prompt="What should I do if I see a security warning?"
+                >
+                  <div class="suggestion-title">⚠️ Troubleshooting</div>
+                  <div class="suggestion-desc">
+                    Learn how to handle security warnings and error messages
+                  </div>
+                </div>
+              </div>
             </div>
 
+            <!-- Chat Messages -->
             <div class="chat-messages" id="chatMessages">
-                <!-- Messages will be added here -->
+              <!-- Messages will be populated here -->
             </div>
+
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typingIndicator">
+              <div class="message-avatar ai-avatar-msg">🤖</div>
+              <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+          <div class="input-container">
+            <div class="input-wrapper">
+              <textarea
+                class="chat-input"
+                id="chatInput"
+                placeholder="Message NULL VOID AI..."
+                rows="1"
+                maxlength="4000"
+              ></textarea>
+              <button class="send-btn" id="sendBtn" disabled>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="footer">
-            <p>
-                <a href="#" id="termsLink">NULL VOID Terms</a> and the
-                <a href="#" id="privacyLink">NULL VOID Privacy Policy</a> apply.
-                NULL VOID AI can make mistakes, so double-check it.
-            </p>
+          <p>
+            <a href="#" id="termsLink">NULL VOID Terms</a> and the
+            <a href="#" id="privacyLink">NULL VOID Privacy Policy</a> apply.
+            NULL VOID AI can make mistakes, so double-check it.
+          </p>
         </div>
+      </main>
     </div>
+
+    <!-- Overlay for mobile sidebar -->
+    <div
+      class="sidebar-overlay"
+      id="sidebarOverlay"
+      style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 999;
+        backdrop-filter: blur(8px);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      "
+    ></div>
 
     <!-- Search Panel -->
     <div class="search-panel" id="searchPanel">
-        <input type="text" class="search-input" id="searchInput" placeholder="Search conversations...">
-        <button class="search-close" id="searchClose">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path
-                    d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-            </svg>
-        </button>
+      <input
+        type="text"
+        class="search-input"
+        id="searchInput"
+        placeholder="Search conversations..."
+      />
+      <button class="search-close" id="searchClose">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+          />
+        </svg>
+      </button>
     </div>
 
-    <!-- Settings Panel -->
-    <div class="settings-panel" id="settingsPanel">
-        <div class="settings-header">
-            <h2 class="settings-title">Settings & Help</h2>
-            <button class="close-settings" id="closeSettings">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path
-                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                </svg>
-            </button>
-        </div>
-        <div class="settings-content">
-            <div class="setting-group">
-                <label class="setting-label">AI Model Temperature</label>
-                <input type="range" class="setting-input" id="temperatureSlider" min="0" max="1" step="0.1" value="0.7">
-                <span id="temperatureValue">0.7</span>
-            </div>
-            <div class="setting-group">
-                <label class="setting-label">Max Response Length</label>
-                <input type="number" class="setting-input" id="maxTokens" value="8000" min="100" max="32000">
-            </div>
-            <div class="setting-group">
-                <label class="setting-label">Auto-save Conversations</label>
-                <div class="setting-toggle" id="autoSaveToggle">
-                    <div class="toggle-switch active" id="autoSaveSwitch">
-                        <div class="toggle-knob"></div>
-                    </div>
-                    <span>Enabled</span>
-                </div>
-            </div>
-            <div class="setting-group">
-                <label class="setting-label">Dark Mode</label>
-                <div class="setting-toggle" id="darkModeToggle">
-                    <div class="toggle-switch active" id="darkModeSwitch">
-                        <div class="toggle-knob"></div>
-                    </div>
-                    <span>Enabled</span>
-                </div>
-            </div>
-            <div class="setting-group">
-                <button class="setting-input" id="clearAllData" style="background: #ea4335; border-color: #ea4335;">
-                    Clear All Data
-                </button>
-            </div>
-            <div class="setting-group">
-                <button class="setting-input" id="exportData">
-                    Export Conversations
-                </button>
-            </div>
-        </div>
+    <script>
+            // NULL VOID AI - Self-contained for Chrome Extension Compatibility
+            console.log("[NULL VOID AI] Loading extension-compatible AI assistant");
+
+            // AI Configuration and Functions
+            const AI_CONFIG = {
+              apiKey: "AIzaSyB-j8iXAEg_W-I2l3PodnJMoO_wgai2VDU",
+              baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+              model: "gemini-2.5-flash",
+              maxTokens: 8000,
+              temperature: 0.7,
+            };
+
+            // Simple AI response generator for demo
+            async function generateAIResponse(userMessage) {
+              console.log("[NULL VOID AI] Generating response for:", userMessage);
+
+              // Simulate AI thinking time
+              await new Promise((resolve) =>
+                setTimeout(resolve, 1000 + Math.random() * 2000)
+              );
+
+              const responses = [
+                `I understand your question about "${userMessage}". NULL VOID extension helps keep you safe online by providing secure browsing features and protection against malicious websites.`,
+
+                `That's a great question about "${userMessage}". The NULL VOID extension offers several security features including disposable browsing, temporary email creation, and smart protection systems.`,
+
+                `Thanks for asking about "${userMessage}". I'm here to help you understand how NULL VOID keeps you safe while browsing. Would you like to know about any specific security features?`,
+
+                `Regarding "${userMessage}" - NULL VOID provides multiple layers of protection including secure file viewing, disposable browser sessions, and AI-powered threat detection.`,
+
+                `I see you're interested in "${userMessage}". NULL VOID's mission is to provide comprehensive online security through innovative browser protection and smart threat prevention.`,
+              ];
+
+              return responses[Math.floor(Math.random() * responses.length)];
+            }
+
+            // Enhanced UI Controller for ChatGPT-like experience
+            class ChatGPTUI {
+              constructor() {
+                this.isSidebarOpen = window.innerWidth > 768;
+                this.currentChatId = null;
+                this.isTyping = false;
+
+                this.initializeElements();
+                this.setupEventListeners();
+                this.setupResponsiveDesign();
+                this.loadChatHistory();
+              }
+
+              initializeElements() {
+                this.sidebar = document.getElementById("sidebar");
+                this.sidebarToggle = document.getElementById("sidebarToggle");
+                this.sidebarOverlay = document.getElementById("sidebarOverlay");
+                this.mainContent = document.getElementById("mainContent");
+                this.chatInput = document.getElementById("chatInput");
+                this.sendBtn = document.getElementById("sendBtn");
+                this.messagesArea = document.getElementById("messagesArea");
+                this.chatMessages = document.getElementById("chatMessages");
+                this.welcomeSection = document.getElementById("welcomeSection");
+                this.typingIndicator = document.getElementById("typingIndicator");
+                this.newChatBtn = document.getElementById("newChatBtn");
+                this.chatHistory = document.getElementById("chatHistory");
+                this.searchBtn = document.getElementById("searchBtn");
+                this.searchPanel = document.getElementById("searchPanel");
+                this.searchInput = document.getElementById("searchInput");
+                this.searchClose = document.getElementById("searchClose");
+
+                console.log("Elements initialized:", {
+                  sidebar: !!this.sidebar,
+                  sidebarToggle: !!this.sidebarToggle,
+                  chatInput: !!this.chatInput,
+                  sendBtn: !!this.sendBtn,
+                  searchBtn: !!this.searchBtn,
+                  searchPanel: !!this.searchPanel,
+                });
+
+                // Ensure input field is enabled and ready
+                if (this.chatInput) {
+                  this.chatInput.disabled = false;
+                  this.chatInput.readOnly = false;
+                  this.chatInput.style.pointerEvents = 'auto';
+                  console.log("[NULL VOID AI] Chat input enabled and ready");
+                }
+
+                // Ensure send button is properly initialized
+                if (this.sendBtn) {
+                  this.sendBtn.disabled = true; // Initially disabled until user types
+                  console.log("[NULL VOID AI] Send button initialized");
+                }
+
+                // Initialize sidebar state
+                this.updateSidebarState();
+              }
+
+              setupEventListeners() {
+                console.log(
+                  "[NULL VOID AI] Setting up event listeners for Chrome extension..."
+                );
+
+                // CHROME EXTENSION COMPATIBLE HAMBURGER BUTTON
+                if (this.sidebarToggle) {
+                  console.log(
+                    "[NULL VOID AI] Hamburger button found, setting up multiple handlers"
+                  );
+
+                  // Store reference to this class for global access
+                  window.nullVoidUI = this;
+
+                  // Method 1: Standard addEventListener with error handling
+                  try {
+                    this.sidebarToggle.addEventListener("click", (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log(
+                        "[NULL VOID AI] Hamburger clicked via addEventListener"
+                      );
+                      this.toggleSidebar();
+                    });
+                    console.log(
+                      "[NULL VOID AI] addEventListener attached successfully"
+                    );
+                  } catch (error) {
+                    console.error("[NULL VOID AI] addEventListener failed:", error);
+                  }
+
+                  // Method 2: Direct onclick property as fallback
+                  this.sidebarToggle.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log(
+                      "[NULL VOID AI] Hamburger clicked via onclick property"
+                    );
+                    this.toggleSidebar();
+                  };
+
+                  // Method 3: Create global function for inline onclick
+                  window.toggleSidebarExtension = () => {
+                    console.log(
+                      "[NULL VOID AI] Hamburger clicked via global function"
+                    );
+                    this.toggleSidebar();
+                  };
+
+                  // Global search functions for Chrome extension compatibility
+                  window.toggleSearchExtension = () => {
+                    console.log(
+                      "[NULL VOID AI] Search button clicked via global function"
+                    );
+                    this.toggleSearch();
+                  };
+
+                  window.EMERGENCY_SEARCH_TOGGLE = () => {
+                    console.log("[NULL VOID AI] Emergency search toggle activated!");
+                    this.toggleSearch();
+                  };
+
+                  // Emergency functions for testing input functionality
+                  window.EMERGENCY_SEND_MESSAGE = (message = "Test message") => {
+                    console.log("[NULL VOID AI] Emergency send message activated!");
+                    if (this.chatInput) {
+                      this.chatInput.value = message;
+                      this.handleInputChange();
+                      this.sendMessage();
+                    }
+                  };
+
+                  window.EMERGENCY_FOCUS_INPUT = () => {
+                    console.log("[NULL VOID AI] Emergency focus input activated!");
+                    if (this.chatInput) {
+                      this.chatInput.focus();
+                      this.chatInput.disabled = false;
+                      this.chatInput.readOnly = false;
+                    }
+                  };
+
+                  window.EMERGENCY_DEBUG_ELEMENTS = () => {
+                    console.log("[NULL VOID AI] Emergency debug elements:");
+                    console.log("chatInput:", this.chatInput);
+                    console.log("sendBtn:", this.sendBtn);
+                    console.log("chatInput disabled:", this.chatInput?.disabled);
+                    console.log("chatInput readOnly:", this.chatInput?.readOnly);
+                    console.log("sendBtn disabled:", this.sendBtn?.disabled);
+                  };
+
+                  console.log(
+                    "[NULL VOID AI] All hamburger methods set up for extension compatibility"
+                  );
+                } else {
+                  console.error("[NULL VOID AI] Hamburger button not found!");
+                }
+
+                // CHROME EXTENSION COMPATIBLE SEARCH BUTTON
+                if (this.searchBtn) {
+                  console.log(
+                    "[NULL VOID AI] Search button found, setting up multiple handlers"
+                  );
+
+                  // Method 1: Standard addEventListener with error handling
+                  try {
+                    this.searchBtn.addEventListener("click", (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log(
+                        "[NULL VOID AI] Search clicked via addEventListener"
+                      );
+                      this.toggleSearch();
+                    });
+                    console.log(
+                      "[NULL VOID AI] Search addEventListener attached successfully"
+                    );
+                  } catch (error) {
+                    console.error("[NULL VOID AI] Search addEventListener failed:", error);
+                  }
+
+                  // Method 2: Direct onclick property as fallback
+                  this.searchBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log(
+                      "[NULL VOID AI] Search clicked via onclick property"
+                    );
+                    this.toggleSearch();
+                  };
+
+                  console.log(
+                    "[NULL VOID AI] All search methods set up for extension compatibility"
+                  );
+                } else {
+                  console.error("[NULL VOID AI] Search button not found!");
+                }
+
+                this.sidebarOverlay?.addEventListener("click", () =>
+                  this.closeSidebar()
+                );
+
+                // Chat input
+                this.chatInput?.addEventListener("input", () =>
+                  this.handleInputChange()
+                );
+                this.chatInput?.addEventListener("keydown", (e) =>
+                  this.handleKeyDown(e)
+                );
+
+                // Send button
+                this.sendBtn?.addEventListener("click", () => this.sendMessage());
+
+                // New chat
+                this.newChatBtn?.addEventListener("click", () => this.startNewChat());
+
+                // Search functionality
+                this.searchBtn?.addEventListener("click", () => this.toggleSearch());
+                this.searchClose?.addEventListener("click", () => this.closeSearch());
+                this.searchInput?.addEventListener("input", (e) => this.handleSearch(e.target.value));
+                this.searchInput?.addEventListener("keydown", (e) => {
+                  if (e.key === "Escape") {
+                    this.closeSearch();
+                  }
+                });
+
+                // Suggestion cards
+                document.querySelectorAll(".suggestion-card").forEach((card) => {
+                  card.addEventListener("click", (e) =>
+                    this.handleSuggestionClick(e)
+                  );
+                });
+
+                // Escape key handling
+                document.addEventListener("keydown", (e) => {
+                  if (e.key === "Escape") {
+                    this.closeSidebar();
+                  }
+                });
+              }
+
+              setupResponsiveDesign() {
+                const mediaQuery = window.matchMedia("(max-width: 768px)");
+
+                const handleResize = (e) => {
+                  if (e.matches) {
+                    // Mobile view
+                    this.isSidebarOpen = false;
+                  } else {
+                    // Desktop view
+                    this.isSidebarOpen = true;
+                  }
+                  this.updateSidebarState();
+                };
+
+                mediaQuery.addListener(handleResize);
+                handleResize(mediaQuery);
+              }
+
+              updateSidebarState() {
+                console.log("Updating sidebar state:", this.isSidebarOpen);
+
+                if (this.isSidebarOpen) {
+                  this.sidebar?.classList.remove("collapsed");
+                  this.sidebar?.classList.add("open");
+                  this.mainContent?.classList.add("sidebar-visible");
+                  if (window.innerWidth <= 768) {
+                    this.sidebarOverlay.style.display = "block";
+                    setTimeout(() => {
+                      this.sidebarOverlay.style.opacity = "1";
+                    }, 10);
+                  }
+                } else {
+                  this.sidebar?.classList.add("collapsed");
+                  this.sidebar?.classList.remove("open");
+                  this.mainContent?.classList.remove("sidebar-visible");
+                  this.sidebarOverlay.style.opacity = "0";
+                  setTimeout(() => {
+                    this.sidebarOverlay.style.display = "none";
+                  }, 300);
+                }
+              }
+
+              toggleSidebar() {
+                console.log(
+                  "Toggle sidebar called, current state:",
+                  this.isSidebarOpen
+                );
+                this.isSidebarOpen = !this.isSidebarOpen;
+                this.updateSidebarState();
+              }
+
+              closeSidebar() {
+                if (window.innerWidth <= 768) {
+                  this.isSidebarOpen = false;
+                  this.updateSidebarState();
+                }
+              }
+
+              handleInputChange() {
+                try {
+                  const value = this.chatInput?.value.trim() || "";
+                  if (this.sendBtn) {
+                    this.sendBtn.disabled = !value;
+                  } else {
+                    console.error("[NULL VOID AI] Send button not found during input change");
+                  }
+
+                  // Auto-resize textarea
+                  if (this.chatInput) {
+                    this.chatInput.style.height = "auto";
+                    this.chatInput.style.height =
+                      Math.min(this.chatInput.scrollHeight, 200) + "px";
+                  }
+                } catch (error) {
+                  console.error("[NULL VOID AI] Error in handleInputChange:", error);
+                }
+              }
+
+              handleKeyDown(e) {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  this.sendMessage();
+                }
+              }
+
+              async sendMessage() {
+                try {
+                  console.log("[NULL VOID AI] sendMessage called");
+
+                  const message = this.chatInput?.value.trim();
+                  console.log("[NULL VOID AI] Message content:", message);
+
+                  if (!message || this.isTyping) {
+                    console.log("[NULL VOID AI] Message empty or already typing, returning");
+                    return;
+                  }
+
+                  // Hide welcome section
+                  if (this.welcomeSection) {
+                    this.welcomeSection.style.display = "none";
+                  }
+
+                  // Add user message and scroll immediately
+                  this.addMessage(message, true);
+                  this.scrollToNewMessage(); // Use new scroll method for user messages too
+
+                  // Clear input
+                  this.chatInput.value = "";
+                  this.handleInputChange();
+
+                  // Show typing indicator and scroll
+                  this.showTyping();
+                  this.scrollToNewMessage(); // Scroll to show typing indicator
+
+                  // Get AI response (integrate with existing AI system)
+                  const response = await this.getAIResponse(message);
+
+                  // Hide typing indicator
+                  this.hideTyping();
+
+                  // Add AI response with immediate visibility
+                  this.addMessage(response, false);
+
+                  // Scroll to show the new AI response immediately
+                  this.scrollToNewMessage();
+
+                  // Update chat history
+                  this.updateChatHistory(message);
+                } catch (error) {
+                  console.error("Error getting AI response:", error);
+                  this.hideTyping();
+                  this.addMessage(
+                    "I apologize, but I encountered an error. Please try again.",
+                    false,
+                    true
+                  );
+                  this.scrollToNewMessage();
+                }
+              }
+
+              addMessage(text, isUser, isError = false) {
+                const messageEl = document.createElement("div");
+                messageEl.className = `message ${
+                  isUser ? "user-message" : "ai-message"
+                }`;
+
+                const avatarEl = document.createElement("div");
+                avatarEl.className = `message-avatar ${
+                  isUser ? "user-avatar-msg" : "ai-avatar-msg"
+                }`;
+                avatarEl.textContent = isUser ? "U" : "🤖";
+
+                const contentEl = document.createElement("div");
+                contentEl.className = "message-content";
+
+                const textEl = document.createElement("div");
+                textEl.className = "message-text";
+                textEl.textContent = text;
+
+                if (isError) {
+                  textEl.style.color = "#ff6b6b";
+                }
+
+                contentEl.appendChild(textEl);
+                messageEl.appendChild(avatarEl);
+                messageEl.appendChild(contentEl);
+
+                this.chatMessages?.appendChild(messageEl);
+
+                // Enhanced auto-scroll
+                this.scrollToBottom();
+              }
+
+              // Enhanced scroll function
+              scrollToBottom(immediate = false) {
+                if (!this.messagesArea) return;
+
+                const scrollToEnd = () => {
+                  this.messagesArea.scrollTo({
+                    top: this.messagesArea.scrollHeight,
+                    behavior: immediate ? "auto" : "smooth",
+                  });
+                };
+
+                scrollToEnd();
+                setTimeout(scrollToEnd, immediate ? 50 : 150);
+              }
+
+              // New function to scroll to new message like ChatGPT
+              scrollToNewMessage() {
+                if (!this.messagesArea) return;
+
+                // Get the last message element
+                const lastMessage = this.chatMessages?.lastElementChild;
+                if (lastMessage) {
+                  // Scroll to bring the new message into view from the top
+                  lastMessage.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                    inline: "nearest",
+                  });
+
+                  // Ensure we can see the full message
+                  setTimeout(() => {
+                    const messageRect = lastMessage.getBoundingClientRect();
+                    const containerRect = this.messagesArea.getBoundingClientRect();
+
+                    // If message is cut off at bottom, scroll a bit more
+                    if (messageRect.bottom > containerRect.bottom - 100) {
+                      this.messagesArea.scrollTo({
+                        top: this.messagesArea.scrollTop + 80,
+                        behavior: "smooth",
+                      });
+                    }
+                  }, 100);
+                }
+              }
+
+              showTyping() {
+                this.isTyping = true;
+                this.typingIndicator?.classList.add("visible");
+                this.sendBtn.disabled = true;
+
+                setTimeout(() => {
+                  this.scrollToBottom();
+                }, 50);
+              }
+
+              hideTyping() {
+                this.isTyping = false;
+                this.typingIndicator?.classList.remove("visible");
+                this.handleInputChange();
+              }
+
+              async getAIResponse(message) {
+                // Integration point with existing AI system
+                try {
+                  if (typeof getAIResponse === "function") {
+                    const response = await getAIResponse(message);
+                    if (typeof cleanResponseFormatting === "function") {
+                      return cleanResponseFormatting(response);
+                    }
+                    return response;
+                  }
+
+                  return await this.directAPICall(message);
+                } catch (error) {
+                  console.error("AI Response Error:", error);
+                  throw error;
+                }
+              }
+
+              async directAPICall(message) {
+                const AI_CONFIG = {
+                  apiKey: "AIzaSyB-j8iXAEg_W-I2l3PodnJMoO_wgai2VDU",
+                  baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                  model: "gemini-2.5-flash",
+                };
+
+                const response = await fetch(
+                  `${AI_CONFIG.baseUrl}/models/${AI_CONFIG.model}:generateContent?key=${AI_CONFIG.apiKey}`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      contents: [{ parts: [{ text: message }] }],
+                      generationConfig: {
+                        temperature: 0.3,
+                        maxOutputTokens: 1200,
+                      },
+                    }),
+                  }
+                );
+
+                if (!response.ok) {
+                  throw new Error(`AI API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+              }
+
+              startNewChat() {
+                this.chatMessages.innerHTML = "";
+                this.welcomeSection.style.display = "flex";
+                this.currentChatId = null;
+                this.chatInput?.focus();
+              }
+
+              toggleSearch() {
+                console.log("[NULL VOID AI] Toggle search clicked");
+                if (!this.searchPanel) {
+                  console.error("[NULL VOID AI] Search panel not found!");
+                  return;
+                }
+
+                const isOpen = this.searchPanel.classList.contains("open");
+                if (isOpen) {
+                  this.closeSearch();
+                } else {
+                  this.openSearch();
+                }
+              }
+
+              openSearch() {
+                console.log("[NULL VOID AI] Opening search panel");
+                if (this.searchPanel) {
+                  this.searchPanel.classList.add("open");
+                  setTimeout(() => {
+                    this.searchInput?.focus();
+                  }, 100);
+                }
+              }
+
+              closeSearch() {
+                console.log("[NULL VOID AI] Closing search panel");
+                if (this.searchPanel) {
+                  this.searchPanel.classList.remove("open");
+                  if (this.searchInput) {
+                    this.searchInput.value = "";
+                  }
+                  this.showAllChatHistory();
+                }
+              }
+
+              handleSearch(query) {
+                console.log("[NULL VOID AI] Searching for:", query);
+                if (!query.trim()) {
+                  this.showAllChatHistory();
+                  return;
+                }
+
+                const chatHistory = JSON.parse(localStorage.getItem("nullvoid_chat_history") || "[]");
+                const filteredChats = chatHistory.filter(chat => {
+                  const searchText = (chat.title + " " + chat.messages.map(m => m.content).join(" ")).toLowerCase();
+                  return searchText.includes(query.toLowerCase());
+                });
+
+                this.renderChatHistory(filteredChats);
+              }
+
+              showAllChatHistory() {
+                const chatHistory = JSON.parse(localStorage.getItem("nullvoid_chat_history") || "[]");
+                this.renderChatHistory(chatHistory);
+              }
+
+              handleSuggestionClick(e) {
+                const prompt = e.currentTarget.dataset.prompt;
+                if (prompt) {
+                  this.chatInput.value = prompt;
+                  this.handleInputChange();
+                  this.sendMessage();
+                }
+              }
+
+              updateChatHistory(lastMessage) {
+                console.log("Updating chat history with message:", lastMessage);
+
+                const chatHistory = JSON.parse(
+                  localStorage.getItem("nullvoid_chat_history") || "[]"
+                );
+
+                // Create or update current chat
+                if (!this.currentChatId) {
+                  this.currentChatId = Date.now();
+                  const newChat = {
+                    id: this.currentChatId,
+                    title:
+                      lastMessage.length > 30
+                        ? lastMessage.substring(0, 30) + "..."
+                        : lastMessage,
+                    timestamp: new Date().toISOString(),
+                    messages: [
+                      { text: lastMessage, isUser: true, timestamp: Date.now() },
+                    ],
+                  };
+                  chatHistory.unshift(newChat);
+                } else {
+                  // Find existing chat and add message
+                  const existingChat = chatHistory.find(
+                    (chat) => chat.id === this.currentChatId
+                  );
+                  if (existingChat) {
+                    existingChat.messages.push({
+                      text: lastMessage,
+                      isUser: true,
+                      timestamp: Date.now(),
+                    });
+                  }
+                }
+
+                if (chatHistory.length > 20) {
+                  chatHistory.splice(20);
+                }
+
+                localStorage.setItem(
+                  "nullvoid_chat_history",
+                  JSON.stringify(chatHistory)
+                );
+
+                console.log("Chat history saved:", chatHistory);
+                this.renderChatHistory();
+              }
+
+              renderChatHistory(chatsToShow = null) {
+                if (!this.chatHistory) return;
+
+                const chatHistory = chatsToShow || JSON.parse(
+                  localStorage.getItem("nullvoid_chat_history") || "[]"
+                );
+                this.chatHistory.innerHTML = "";
+
+                chatHistory.forEach((chat) => {
+                  const chatItem = document.createElement("div");
+                  chatItem.className = "chat-item";
+                  chatItem.dataset.chatId = chat.id;
+
+                  const title = document.createElement("div");
+                  title.className = "chat-item-title";
+                  title.textContent = chat.title;
+
+                  const actions = document.createElement("div");
+                  actions.className = "chat-item-actions";
+                  actions.innerHTML = `
+                    <button class="chat-action-btn" title="Delete" onclick="window.chatGPTUI.deleteChat(${chat.id})">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                      </svg>
+                    </button>
+                  `;
+
+                  chatItem.appendChild(title);
+                  chatItem.appendChild(actions);
+                  this.chatHistory.appendChild(chatItem);
+                });
+              }
+
+              deleteChat(chatId) {
+                const chatHistory = JSON.parse(
+                  localStorage.getItem("nullvoid_chat_history") || "[]"
+                );
+                const updatedHistory = chatHistory.filter(
+                  (chat) => chat.id !== chatId
+                );
+                localStorage.setItem(
+                  "nullvoid_chat_history",
+                  JSON.stringify(updatedHistory)
+                );
+                this.renderChatHistory();
+              }
+
+              loadChatHistory() {
+                this.renderChatHistory();
+              }
+            }
+
+            // CHROME EXTENSION COMPATIBLE INITIALIZATION
+            function initializeExtension() {
+              console.log(
+                "[NULL VOID AI] Chrome Extension Mode - DOM State:",
+                document.readyState
+              );
+              console.log(
+                "[NULL VOID AI] Initializing extension-compatible interface..."
+              );
+              console.log("[NULL VOID AI] URL:", window.location.href);
+
+              // Check if we're in extension context
+              const isExtension = window.location.protocol === "chrome-extension:";
+              console.log("[NULL VOID AI] Extension context:", isExtension);
+
+              // Enhanced delay for extension loading
+              const initDelay = isExtension ? 300 : 100;
+
+              setTimeout(() => {
+                try {
+                  window.chatGPTUI = new ChatGPTUI();
+                  window.nullVoidUI = window.chatGPTUI; // Backup reference
+
+                  console.log("[NULL VOID AI] Interface ready!");
+                  console.log(
+                    "[NULL VOID AI] Sidebar:",
+                    !!document.getElementById("sidebar")
+                  );
+                  console.log(
+                    "[NULL VOID AI] Toggle button:",
+                    !!document.getElementById("sidebarToggle")
+                  );
+
+                  // Extension-specific setup
+                  if (isExtension) {
+                    console.log(
+                      "[NULL VOID AI] Applying extension-specific configurations..."
+                    );
+
+                    // Force hamburger button setup after a longer delay
+                    setTimeout(() => {
+                      const btn = document.getElementById("sidebarToggle");
+                      if (btn && window.nullVoidUI) {
+                        console.log(
+                          "[NULL VOID AI] Re-setting up hamburger for extension..."
+                        );
+                        btn.onclick = () => {
+                          console.log("[NULL VOID AI] Extension hamburger clicked!");
+                          window.nullVoidUI.toggleSidebar();
+                        };
+                      }
+                    }, 500);
+                  }
+                } catch (error) {
+                  console.error("[NULL VOID AI] Initialization error:", error);
+
+                  // Fallback initialization attempt
+                  setTimeout(() => {
+                    try {
+                      console.log(
+                        "[NULL VOID AI] Attempting fallback initialization..."
+                      );
+                      window.chatGPTUI = new ChatGPTUI();
+                    } catch (fallbackError) {
+                      console.error(
+                        "[NULL VOID AI] Fallback initialization failed:",
+                        fallbackError
+                      );
+                    }
+                  }, 1000);
+                }
+              }, initDelay);
+            }
+
+            // Multiple initialization approaches for maximum compatibility
+            if (document.readyState === "loading") {
+              document.addEventListener("DOMContentLoaded", initializeExtension);
+            } else {
+              // DOM already ready
+              initializeExtension();
+            }
+
+            // Global emergency functions for debugging
+            window.EMERGENCY_TOGGLE = () => {
+              console.log("[NULL VOID AI] Emergency toggle activated!");
+              if (window.nullVoidUI) {
+                window.nullVoidUI.toggleSidebar();
+              }
+            };
+
+            window.EMERGENCY_SEND_TEST = (message = "Emergency test message") => {
+              console.log("[NULL VOID AI] Emergency send test activated!");
+              if (window.nullVoidUI && window.nullVoidUI.chatInput) {
+                window.nullVoidUI.chatInput.value = message;
+                window.nullVoidUI.handleInputChange();
+                window.nullVoidUI.sendMessage();
+              }
+            };
+
+            window.EMERGENCY_DEBUG = () => {
+              console.log("[NULL VOID AI] Emergency debug info:");
+              console.log("nullVoidUI exists:", !!window.nullVoidUI);
+              console.log("chatInput exists:", !!document.getElementById('chatInput'));
+              console.log("sendBtn exists:", !!document.getElementById('sendBtn'));
+              const input = document.getElementById('chatInput');
+              const sendBtn = document.getElementById('sendBtn');
+              if (input) {
+                console.log("Input disabled:", input.disabled);
+                console.log("Input readOnly:", input.readOnly);
+                console.log("Input value:", input.value);
+              }
+              if (sendBtn) {
+                console.log("Send button disabled:", sendBtn.disabled);
+              }
+            };
+        </script>
     </div>
-
-    <!-- About Modal -->
-    <div class="modal-overlay" id="aboutModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 class="modal-title">About NULL VOID AI</h2>
-                <button class="modal-close" id="closeAbout">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                    </svg>
-                </button>
-            </div>
-            <div class="modal-content">
-                <h3>NULL VOID AI v2.0</h3>
-                <p>A free, powerful AI assistant built for everyone. No sign-up required, no limits.</p>
-
-                <h4>Features:</h4>
-                <ul>
-                    <li>Advanced AI conversations</li>
-                    <li>Persistent chat history</li>
-                    <li>Customizable settings</li>
-                    <li>Export conversations</li>
-                    <li>Search functionality</li>
-                    <li>Completely free to use</li>
-                </ul>
-
-                <h4>Privacy:</h4>
-                <p>Your conversations are stored locally in your browser. We don't collect or store your data on our
-                    servers.</p>
-
-                <h4>Support:</h4>
-                <p>For support or feedback, visit our website or contact us through the extension store.</p>
-            </div>
-        </div>
-    </div>
-
-    <script src="ai-chat-full.js?v=2.0"></script>
-</body>
-
+  </body>
 </html>

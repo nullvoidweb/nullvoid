@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NULL VOID - Button Fix Test</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        background: linear-gradient(
+          135deg,
+          #0f0f23 0%,
+          #1a1a2e 50%,
+          #16213e 100%
+        );
+        color: #e8eaed;
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+      }
+      .test-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: rgba(15, 15, 35, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 30px;
+        backdrop-filter: blur(30px);
+      }
+      .test-header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .test-result {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 15px;
+        margin: 10px 0;
+      }
+      .success {
+        border-color: rgba(52, 168, 83, 0.5);
+        background: rgba(52, 168, 83, 0.1);
+      }
+      .error {
+        border-color: rgba(234, 67, 53, 0.5);
+        background: rgba(234, 67, 53, 0.1);
+      }
+      .test-button {
+        background: rgba(66, 133, 244, 0.8);
+        border: 1px solid rgba(66, 133, 244, 0.5);
+        border-radius: 8px;
+        color: white;
+        padding: 12px 24px;
+        cursor: pointer;
+        margin: 10px;
+        transition: all 0.2s ease;
+      }
+      .test-button:hover {
+        background: rgba(66, 133, 244, 1);
+        transform: translateY(-1px);
+      }
+      #results {
+        max-height: 400px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="test-container">
+      <div class="test-header">
+        <h1>🔧 NULL VOID Button Fix Test</h1>
+        <p>Testing hamburger button and search functionality fixes</p>
+      </div>
+
+      <div>
+        <button class="test-button" onclick="testHamburgerButton()">
+          🍔 Test Hamburger Button
+        </button>
+        <button class="test-button" onclick="testSearchButton()">
+          🔍 Test Search Button
+        </button>
+        <button class="test-button" onclick="testAllFunctionality()">
+          🧪 Test All Functionality
+        </button>
+        <button class="test-button" onclick="clearResults()">
+          🗑️ Clear Results
+        </button>
+      </div>
+
+      <div id="results"></div>
+    </div>
+
+    <script>
+      const results = document.getElementById("results");
+
+      function addResult(message, isSuccess = true) {
+        const div = document.createElement("div");
+        div.className = `test-result ${isSuccess ? "success" : "error"}`;
+        div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+        results.appendChild(div);
+        results.scrollTop = results.scrollHeight;
+      }
+
+      function clearResults() {
+        results.innerHTML = "";
+        addResult("Test results cleared", true);
+      }
+
+      async function testHamburgerButton() {
+        addResult("🍔 Testing hamburger button functionality...", true);
+
+        try {
+          // Open the AI chat in an iframe to test
+          const iframe = document.createElement("iframe");
+          iframe.src = "http://localhost:8080/ai-chat-full.html";
+          iframe.style.width = "100%";
+          iframe.style.height = "400px";
+          iframe.style.border = "1px solid rgba(255,255,255,0.2)";
+          iframe.style.borderRadius = "8px";
+          iframe.style.marginTop = "10px";
+
+          iframe.onload = () => {
+            setTimeout(() => {
+              try {
+                const iframeDoc =
+                  iframe.contentDocument || iframe.contentWindow.document;
+                const hamburgerBtn = iframeDoc.getElementById("sidebarToggle");
+                const sidebar = iframeDoc.getElementById("sidebar");
+
+                if (hamburgerBtn) {
+                  addResult("✅ Hamburger button found in iframe", true);
+
+                  // Test click functionality
+                  hamburgerBtn.click();
+
+                  setTimeout(() => {
+                    addResult(
+                      "✅ Hamburger button click executed successfully",
+                      true
+                    );
+
+                    // Test if sidebar visibility changed
+                    const sidebarStyles = window.getComputedStyle(sidebar);
+                    addResult(
+                      `📊 Sidebar state: ${
+                        sidebarStyles.transform || "default"
+                      }`,
+                      true
+                    );
+                  }, 500);
+                } else {
+                  addResult("❌ Hamburger button not found in iframe", false);
+                }
+              } catch (error) {
+                addResult(
+                  `❌ Error accessing iframe content: ${error.message}`,
+                  false
+                );
+              }
+            }, 1000);
+          };
+
+          results.appendChild(iframe);
+        } catch (error) {
+          addResult(`❌ Error creating test iframe: ${error.message}`, false);
+        }
+      }
+
+      async function testSearchButton() {
+        addResult("🔍 Testing search button functionality...", true);
+
+        try {
+          // Open the AI chat in an iframe to test
+          const iframe = document.createElement("iframe");
+          iframe.src = "http://localhost:8080/ai-chat-full.html";
+          iframe.style.width = "100%";
+          iframe.style.height = "400px";
+          iframe.style.border = "1px solid rgba(255,255,255,0.2)";
+          iframe.style.borderRadius = "8px";
+          iframe.style.marginTop = "10px";
+
+          iframe.onload = () => {
+            setTimeout(() => {
+              try {
+                const iframeDoc =
+                  iframe.contentDocument || iframe.contentWindow.document;
+                const searchBtn = iframeDoc.getElementById("searchBtn");
+                const searchPanel = iframeDoc.getElementById("searchPanel");
+
+                if (searchBtn) {
+                  addResult("✅ Search button found in iframe", true);
+
+                  // Test click functionality
+                  searchBtn.click();
+
+                  setTimeout(() => {
+                    addResult(
+                      "✅ Search button click executed successfully",
+                      true
+                    );
+
+                    // Test if search panel opened
+                    const panelStyles = window.getComputedStyle(searchPanel);
+                    const isOpen = searchPanel.classList.contains("open");
+                    addResult(
+                      `📊 Search panel state: ${isOpen ? "OPEN" : "CLOSED"}`,
+                      isOpen
+                    );
+                  }, 500);
+                } else {
+                  addResult("❌ Search button not found in iframe", false);
+                }
+              } catch (error) {
+                addResult(
+                  `❌ Error accessing iframe content: ${error.message}`,
+                  false
+                );
+              }
+            }, 1000);
+          };
+
+          results.appendChild(iframe);
+        } catch (error) {
+          addResult(`❌ Error creating test iframe: ${error.message}`, false);
+        }
+      }
+
+      async function testAllFunctionality() {
+        clearResults();
+        addResult("🧪 Starting comprehensive functionality test...", true);
+
+        // Test server connectivity
+        try {
+          const response = await fetch(
+            "http://localhost:8080/ai-chat-full.html"
+          );
+          if (response.ok) {
+            addResult("✅ Server connection successful", true);
+          } else {
+            addResult("❌ Server returned error status", false);
+            return;
+          }
+        } catch (error) {
+          addResult(`❌ Cannot connect to server: ${error.message}`, false);
+          return;
+        }
+
+        // Test both buttons
+        setTimeout(() => testHamburgerButton(), 1000);
+        setTimeout(() => testSearchButton(), 3000);
+
+        addResult(
+          "📝 Comprehensive test completed - check individual results above",
+          true
+        );
+      }
+
+      // Initialize with welcome message
+      addResult(
+        "🎯 Button Fix Test Ready - Click any test button to begin",
+        true
+      );
+      addResult(
+        "📋 Make sure the development server is running on port 8080",
+        true
+      );
+    </script>
+  </body>
+</html>

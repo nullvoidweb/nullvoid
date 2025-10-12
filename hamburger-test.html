@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hamburger Menu Test</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #1a1a2e;
+        color: white;
+      }
+      .container {
+        display: flex;
+        height: 100vh;
+      }
+      .sidebar {
+        width: 260px;
+        background: rgba(255, 255, 255, 0.1);
+        transition: transform 0.3s ease;
+        padding: 20px;
+      }
+      .sidebar.collapsed {
+        transform: translateX(-100%);
+      }
+      .main {
+        flex: 1;
+        padding: 20px;
+      }
+      .hamburger {
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: white;
+        cursor: pointer;
+        border-radius: 8px;
+      }
+      .hamburger:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+      .log {
+        margin-top: 20px;
+        padding: 10px;
+        background: #000;
+        border-radius: 4px;
+        max-height: 300px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 12px;
+      }
+      .log-entry {
+        padding: 2px 0;
+        color: #4caf50;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <aside class="sidebar" id="sidebar">
+        <h2>Sidebar</h2>
+        <p>This is the sidebar content</p>
+        <p>Click the hamburger menu to toggle</p>
+      </aside>
+      <main class="main">
+        <button class="hamburger" id="hamburger">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
+          </svg>
+        </button>
+        <h1>Hamburger Menu Test</h1>
+        <p>Click the hamburger button above to test the sidebar toggle</p>
+        <div class="log" id="log"></div>
+      </main>
+    </div>
+
+    <script>
+      const sidebar = document.getElementById("sidebar");
+      const hamburger = document.getElementById("hamburger");
+      const log = document.getElementById("log");
+      let isOpen = true;
+
+      function addLog(message) {
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+        console.log(message);
+      }
+
+      function toggleSidebar() {
+        isOpen = !isOpen;
+        if (isOpen) {
+          sidebar.classList.remove("collapsed");
+          addLog("✓ Sidebar OPENED");
+        } else {
+          sidebar.classList.add("collapsed");
+          addLog("✓ Sidebar CLOSED");
+        }
+      }
+
+      // Test 1: addEventListener
+      addLog("Setting up event listener...");
+      hamburger.addEventListener("click", (e) => {
+        e.preventDefault();
+        addLog("Click event fired via addEventListener");
+        toggleSidebar();
+      });
+      addLog("Event listener added successfully");
+
+      // Test 2: onclick fallback
+      hamburger.onclick = function (e) {
+        if (!e.isTrusted) return; // Ignore programmatic clicks
+        addLog("Click event fired via onclick");
+      };
+
+      // Initial state
+      addLog("=== Hamburger Menu Test Ready ===");
+      addLog("Current state: Sidebar is OPEN");
+      addLog("Click the hamburger button to test");
+    </script>
+  </body>
+</html>

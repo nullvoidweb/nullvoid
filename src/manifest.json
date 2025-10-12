@@ -50,8 +50,11 @@
         "rbi-browser.html",
         "file-viewer-secure.html",
         "ai-chat-full.html",
+        "ai-chat-chrome-extension.html",
         "ai-chat-full.js",
-
+        "ai-chat-extension.js",
+        "ai-chat-ui.js",
+        "smart-prevention-system.js",
         "icons/*"
       ],
       "matches": ["<all_urls>"]

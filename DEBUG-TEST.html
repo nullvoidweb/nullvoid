@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NULL VOID AI Debug Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #1a1a2e;
+        color: white;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+      }
+      .status {
+        padding: 5px 10px;
+        border-radius: 4px;
+        display: inline-block;
+        margin: 5px;
+      }
+      .pass {
+        background: #4caf50;
+      }
+      .fail {
+        background: #f44336;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        cursor: pointer;
+        background: #4285f4;
+        color: white;
+        border: none;
+        border-radius: 4px;
+      }
+      #console-output {
+        background: #000;
+        padding: 10px;
+        margin-top: 10px;
+        max-height: 300px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔍 NULL VOID AI Debug Test</h1>
+
+    <div class="test-section">
+      <h2>Test 1: File Loading</h2>
+      <button onclick="testFileLoading()">Test AI Chat File</button>
+      <div id="file-test"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 2: JavaScript Errors</h2>
+      <button onclick="testJavaScript()">Test JS Execution</button>
+      <div id="js-test"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 3: LocalStorage</h2>
+      <button onclick="testLocalStorage()">Test Storage</button>
+      <div id="storage-test"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 4: Open AI Chat</h2>
+      <button onclick="openAIChat()">Open AI Chat Interface</button>
+    </div>
+
+    <div class="test-section">
+      <h2>Console Output:</h2>
+      <div id="console-output"></div>
+    </div>
+
+    <script>
+      // Capture console logs
+      const consoleOutput = document.getElementById("console-output");
+      const originalLog = console.log;
+      const originalError = console.error;
+
+      console.log = function (...args) {
+        originalLog.apply(console, args);
+        consoleOutput.innerHTML += `<div style="color: #4CAF50;">[LOG] ${args.join(
+          " "
+        )}</div>`;
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+      };
+
+      console.error = function (...args) {
+        originalError.apply(console, args);
+        consoleOutput.innerHTML += `<div style="color: #f44336;">[ERROR] ${args.join(
+          " "
+        )}</div>`;
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+      };
+
+      function testFileLoading() {
+        console.log("Testing file loading...");
+        fetch("ai-chat-full.html")
+          .then((response) => {
+            if (response.ok) {
+              document.getElementById("file-test").innerHTML =
+                '<span class="status pass">✓ File loads correctly</span>';
+              console.log("ai-chat-full.html loaded successfully");
+            } else {
+              document.getElementById("file-test").innerHTML =
+                '<span class="status fail">✗ File failed to load</span>';
+              console.error("Failed to load ai-chat-full.html");
+            }
+          })
+          .catch((err) => {
+            document.getElementById("file-test").innerHTML =
+              '<span class="status fail">✗ Error: ' + err.message + "</span>";
+            console.error("Error loading file:", err);
+          });
+      }
+
+      function testJavaScript() {
+        console.log("Testing JavaScript execution...");
+        try {
+          // Test if ai-chat-full.js can be loaded
+          const script = document.createElement("script");
+          script.src = "ai-chat-full.js";
+          script.onload = () => {
+            document.getElementById("js-test").innerHTML =
+              '<span class="status pass">✓ JavaScript loads</span>';
+            console.log("ai-chat-full.js loaded successfully");
+          };
+          script.onerror = () => {
+            document.getElementById("js-test").innerHTML =
+              '<span class="status fail">✗ JavaScript failed to load</span>';
+            console.error("Failed to load ai-chat-full.js");
+          };
+          document.head.appendChild(script);
+        } catch (err) {
+          document.getElementById("js-test").innerHTML =
+            '<span class="status fail">✗ Error: ' + err.message + "</span>";
+          console.error("Error testing JavaScript:", err);
+        }
+      }
+
+      function testLocalStorage() {
+        console.log("Testing localStorage...");
+        try {
+          localStorage.setItem("test", "value");
+          const value = localStorage.getItem("test");
+          localStorage.removeItem("test");
+
+          if (value === "value") {
+            document.getElementById("storage-test").innerHTML =
+              '<span class="status pass">✓ LocalStorage works</span>';
+            console.log("localStorage test passed");
+
+            // Test chat history
+            const history = localStorage.getItem("nullvoid_chat_history");
+            if (history) {
+              console.log(
+                "Found chat history:",
+                JSON.parse(history).length,
+                "chats"
+              );
+            } else {
+              console.log("No chat history found");
+            }
+          } else {
+            document.getElementById("storage-test").innerHTML =
+              '<span class="status fail">✗ LocalStorage test failed</span>';
+            console.error("localStorage test failed");
+          }
+        } catch (err) {
+          document.getElementById("storage-test").innerHTML =
+            '<span class="status fail">✗ Error: ' + err.message + "</span>";
+          console.error("Error testing localStorage:", err);
+        }
+      }
+
+      function openAIChat() {
+        console.log("Opening AI Chat interface...");
+        window.open("ai-chat-full.html", "_blank");
+      }
+
+      // Auto-run tests on load
+      window.addEventListener("load", () => {
+        console.log("=== NULL VOID AI Debug Test Started ===");
+        console.log("Server: http://localhost:8080");
+        console.log("Testing environment...");
+      });
+    </script>
+  </body>
+</html>

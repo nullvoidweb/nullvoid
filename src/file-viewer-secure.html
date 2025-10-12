@@ -12,9 +12,9 @@
         style-src 'self' 'unsafe-inline';
         img-src 'self' data: blob:;
         media-src 'self' data: blob:;
-        object-src 'none';
-        frame-src 'none';
-        connect-src 'none';
+        object-src 'self' data: blob:;
+        frame-src 'self' data: blob:;
+        connect-src 'self';
         font-src 'self';
         base-uri 'none';
         form-action 'none';
@@ -268,6 +268,94 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       }
 
+      /* PDF and Excel viewer specific styles */
+      .pdf-viewer,
+      .excel-viewer {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      .viewer-controls {
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 10px 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .viewer-controls button {
+        background: #495057;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: background-color 0.2s;
+      }
+
+      .viewer-controls button:hover {
+        background: #343a40;
+      }
+
+      .viewer-controls button:disabled {
+        background: #adb5bd;
+        cursor: not-allowed;
+      }
+
+      .viewer-controls select {
+        padding: 6px 10px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        background: white;
+        font-size: 12px;
+      }
+
+      .excel-table {
+        overflow: auto;
+        max-height: 400px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+
+      .excel-table table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: Arial, sans-serif;
+        font-size: 11px;
+      }
+
+      .excel-table th,
+      .excel-table td {
+        border: 1px solid #dee2e6;
+        padding: 6px 8px;
+        text-align: left;
+        vertical-align: top;
+        white-space: nowrap;
+      }
+
+      .excel-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .security-notice {
+        background: #404040;
+        color: #e0e0e0;
+        padding: 10px 15px;
+        border-radius: 6px;
+        font-size: 11px;
+        margin: 10px 0;
+      }
+
       @media (max-width: 768px) {
         .container {
           padding: 15px;
@@ -356,6 +444,39 @@
         </button>
       </div>
     </div>
+
+    <!-- Self-contained file viewer - no external dependencies -->
+    <script>
+      console.log(
+        "[Secure File Viewer] Using self-contained mode - no external libraries needed"
+      );
+
+      // Mark that we're using native mode
+      window.NATIVE_MODE = true;
+
+      // Simple Excel parser for basic .xlsx files
+      window.SimpleExcelParser = {
+        parseXLSX: function (arrayBuffer) {
+          try {
+            // This is a very basic parser - it won't handle all Excel features
+            // but will work for simple spreadsheets
+            const view = new DataView(arrayBuffer);
+            return {
+              sheets: ["Sheet1"],
+              data: [
+                [
+                  "Basic Excel parsing requires external library",
+                  "Download file to view properly",
+                ],
+              ],
+            };
+          } catch (error) {
+            console.error("[Excel] Simple parser failed:", error);
+            return null;
+          }
+        },
+      };
+    </script>
 
     <script src="file-viewer-secure.js"></script>
   </body>

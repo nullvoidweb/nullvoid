@@ -12,7 +12,8 @@
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
         background: linear-gradient(135deg, #4a5568 0%, #718096 100%);
         color: #ffffff;
         min-height: 100vh;
@@ -64,8 +65,8 @@
         display: flex;
         align-items: center;
         gap: 10px;
-      }  
-    .location-badge {
+      }
+      .location-badge {
         background: rgba(59, 130, 246, 0.2);
         color: #60a5fa;
         padding: 6px 12px;
@@ -87,8 +88,13 @@
       }
 
       @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
       }
 
       .btn {
@@ -132,8 +138,8 @@
         align-items: center;
         gap: 10px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      }     
- .nav-btn {
+      }
+      .nav-btn {
         background: rgba(255, 255, 255, 0.1);
         color: #ffffff;
         border: 1px solid rgba(255, 255, 255, 0.2);
@@ -196,8 +202,8 @@
         border: none;
         background: #ffffff;
         border-radius: 0;
-      }   
-   .loading-screen {
+      }
+      .loading-screen {
         position: absolute;
         top: 0;
         left: 0;
@@ -222,8 +228,12 @@
       }
 
       @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
 
       .loading-text {
@@ -256,8 +266,8 @@
         display: flex;
         align-items: center;
         gap: 15px;
-      }      .s
-tatus-item {
+      }
+      .s tatus-item {
         display: flex;
         align-items: center;
         gap: 5px;
@@ -328,13 +338,19 @@ tatus-item {
       }
 
       @keyframes slideInRight {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
       }
     </style>
-  </head>  <body>
-  
-  <!-- Header -->
+  </head>
+  <body>
+    <!-- Header -->
     <div class="header">
       <div class="logo-section">
         <div class="logo">NV</div>
@@ -347,7 +363,9 @@ tatus-item {
         </div>
         <button class="btn btn-danger" id="terminateSession">
           <svg class="svg-icon" viewBox="0 0 24 24">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            <path
+              d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+            />
           </svg>
           End Session
         </button>
@@ -358,34 +376,38 @@ tatus-item {
     <div class="navigation-bar">
       <button class="nav-btn" id="backBtn" title="Go Back" disabled>
         <svg class="svg-icon" viewBox="0 0 24 24">
-          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+          <path
+            d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"
+          />
         </svg>
       </button>
       <button class="nav-btn" id="forwardBtn" title="Go Forward" disabled>
         <svg class="svg-icon" viewBox="0 0 24 24">
-          <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+          <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
         </svg>
       </button>
       <button class="nav-btn" id="refreshBtn" title="Refresh">
         <svg class="svg-icon" viewBox="0 0 24 24">
-          <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          <path
+            d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+          />
         </svg>
       </button>
-      <input 
-        type="text" 
-        class="url-bar" 
-        id="urlInput" 
-        placeholder="Enter URL for secure browsing..." 
+      <input
+        type="text"
+        class="url-bar"
+        id="urlInput"
+        placeholder="Enter URL for secure browsing..."
         value=""
       />
       <button class="btn" id="goBtn">
         <svg class="svg-icon" viewBox="0 0 24 24">
-          <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+          <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
         </svg>
         Go
       </button>
-    </div> 
-   <!-- Browser Container -->
+    </div>
+    <!-- Browser Container -->
     <div class="browser-container" id="browserContainer">
       <!-- Loading Screen -->
       <div class="loading-screen" id="loadingScreen">
@@ -397,7 +419,7 @@ tatus-item {
       </div>
 
       <!-- Browser Frame -->
-      <div id="browserFrame" class="browser-frame" style="display: none;"></div>
+      <div id="browserFrame" class="browser-frame" style="display: none"></div>
     </div>
 
     <!-- Status Bar -->
@@ -406,7 +428,9 @@ tatus-item {
         <div class="status-item">
           <div class="security-badge">
             <svg class="svg-icon" viewBox="0 0 24 24">
-              <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11H16V16H8V11H9.2V10C9.2,8.6 10.6,7 12,7M12,8.2C11.2,8.2 10.4,8.7 10.4,10V11H13.6V10C13.6,8.7 12.8,8.2 12,8.2Z"/>
+              <path
+                d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11H16V16H8V11H9.2V10C9.2,8.6 10.6,7 12,7M12,8.2C11.2,8.2 10.4,8.7 10.4,10V11H13.6V10C13.6,8.7 12.8,8.2 12,8.2Z"
+              />
             </svg>
             Isolated
           </div>
@@ -423,146 +447,11 @@ tatus-item {
       <div class="isolation-info">
         Browserless.io Remote Browser Isolation Active
       </div>
-    </div>    <!--
- Clean RBI Script -->
-    <script>
-        // Clean RBI Browser - Browserless.io Only
-        console.log("NULL VOID Clean RBI Browser Loading...");
+    </div>
+    <!-- Browserless.io Configuration -->
+    <script src="browserless-config.js"></script>
 
-        // Browserless.io Configuration
-        const BROWSERLESS_CONFIG = {
-            apiKey: "2SgiPLlAtLyabl75ea63edb2fb15fcf000d866d90aa96ab13",
-            baseUrl: "https://chrome.browserless.io"
-        };
-
-        // Global state
-        let currentUrl = '';
-        let history = [];
-        let historyIndex = -1;
-        let sessionStartTime = null;
-        let uptimeInterval = null;
-
-        // Initialize when DOM is ready
-        document.addEventListener("DOMContentLoaded", () => {
-            console.log("[Clean RBI] Starting clean RBI browser...");
-            
-            initializeCleanRBI();
-            setupEventListeners();
-            startUptimeCounter();
-        });
-
-        // Clean initialization
-        function initializeCleanRBI() {
-            console.log("[Clean RBI] Initializing Browserless.io RBI...");
-            
-            try {
-                // Get parameters from URL
-                const urlParams = new URLSearchParams(window.location.search);
-                const location = urlParams.get("location") || "singapore";
-                const sessionId = urlParams.get("sessionId") || "rbi_" + Date.now();
-
-                sessionStartTime = Date.now();
-
-                // Update UI
-                updateLocationDisplay(location);
-                updateSessionDisplay(sessionId);
-
-                // Set default URL
-                const urlInput = document.getElementById("urlInput");
-                if (urlInput) {
-                    urlInput.value = "https://www.google.com";
-                    urlInput.placeholder = "Enter URL for secure browsing...";
-                }
-
-                // Hide loading screen
-                hideLoadingScreen();
-                
-                // Load Google.com via Browserless.io
-                setTimeout(() => {
-                    loadUrlViaBrowserless("https://www.google.com");
-                }, 500);
-
-                showNotification("🚀 Browserless.io RBI initialized", "success");
-
-            } catch (error) {
-                console.error("[Clean RBI] Initialization failed:", error);
-                hideLoadingScreen();
-                showErrorScreen("RBI initialization failed: " + error.message);
-            }
-        }        
-// Load URL via Browserless.io
-        async function loadUrlViaBrowserless(targetUrl) {
-            console.log("[Clean RBI] Loading URL via Browserless.io:", targetUrl);
-            
-            const browserFrame = document.getElementById('browserFrame');
-            if (!browserFrame) {
-                console.error("[Clean RBI] Browser frame not found");
-                return;
-            }
-
-            currentUrl = targetUrl;
-            
-            // Add to history
-            if (historyIndex === -1 || history[historyIndex] !== targetUrl) {
-                history = history.slice(0, historyIndex + 1);
-                history.push(targetUrl);
-                historyIndex = history.length - 1;
-            }
-
-            updateNavigationButtons();
-
-            // Show loading state
-            showLoadingState(targetUrl);
-
-            try {
-                // Get screenshot via Browserless.io
-                const screenshotResult = await getBrowserlessScreenshot(targetUrl);
-                
-                if (screenshotResult.success) {
-                    displayScreenshot(screenshotResult.imageUrl, targetUrl);
-                } else {
-                    throw new Error(screenshotResult.error);
-                }
-
-            } catch (error) {
-                console.error("[Clean RBI] Browserless.io failed:", error);
-                showErrorState(targetUrl, error.message);
-            }
-        }
-
-        // Get screenshot via Browserless.io API
-        async function getBrowserlessScreenshot(targetUrl) {
-            try {
-                const screenshotUrl = `${BROWSERLESS_CONFIG.baseUrl}/screenshot?token=${BROWSERLESS_CONFIG.apiKey}`;
-                
-                const requestBody = {
-                    url: targetUrl,
-                    options: {
-                        fullPage: false,
-                        type: 'png',
-                        quality: 90,
-                        width: 1200,
-                        height: 800
-                    },
-                    gotoOptions: {
-                        waitUntil: 'networkidle2',
-                        timeout: 30000
-                    }
-                };
-
-                console.log("[Clean RBI] Requesting screenshot from Browserless.io...");
-
-                const response = await fetch(screenshotUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-
-                if (response.ok) {
-                    const screenshotBlob = await response.blob();
-                    const imageUrl = URL.createObjectURL(screenshotBlob);
-                    console.log("[Clean RBI] Screenshot received successfully");
-                    return { success: true, imageUrl: imageUrl };
-             
+    <!-- Browserless.io RBI Script -->
+    <script src="rbi-browser-browserless.js"></script>
+  </body>
+</html>

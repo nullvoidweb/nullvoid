@@ -1,8 +1,59 @@
 // NULL VOID Extension - Fixed Popup Script
 // Clean, working version with proper event handling
 
-// Use browser-specific API namespace
-const browserAPI = typeof browser !== "undefined" ? browser : chrome;
+// Use browser-specific API namespace with proper error handling
+let browserAPI;
+try {
+  browserAPI =
+    typeof browser !== "undefined"
+      ? browser
+      : typeof chrome !== "undefined"
+      ? chrome
+      : null;
+
+  if (!browserAPI) {
+    console.error("[Popup] Browser extension API not available!");
+    // Create a fallback object to prevent errors
+    browserAPI = {
+      storage: {
+        local: {
+          get: () => Promise.resolve({}),
+          set: () => Promise.resolve(),
+        },
+      },
+      runtime: {
+        sendMessage: () =>
+          Promise.resolve({ success: false, error: "API not available" }),
+        onMessage: {
+          addListener: () => {},
+        },
+      },
+    };
+  } else {
+    console.log(
+      "[Popup] Browser API detected:",
+      browserAPI ? "Available" : "Not Available"
+    );
+  }
+} catch (error) {
+  console.error("[Popup] Error initializing browser API:", error);
+  // Create fallback object
+  browserAPI = {
+    storage: {
+      local: {
+        get: () => Promise.resolve({}),
+        set: () => Promise.resolve(),
+      },
+    },
+    runtime: {
+      sendMessage: () =>
+        Promise.resolve({ success: false, error: "API initialization failed" }),
+      onMessage: {
+        addListener: () => {},
+      },
+    },
+  };
+}
 
 // Global state variables
 let currentDisposableEmailAddress = null;
@@ -18,11 +69,19 @@ let authService = null;
 let isAuthenticated = false;
 let userProfile = null;
 
+// Smart Prevention state tracking
+let smartPreventionState = {
+  enabled: false,
+  lastToggleTime: null,
+  isToggling: false,
+  persistenceTimeout: null,
+};
+
 // AI Configuration
 const AI_CONFIG = {
-  apiKey: "AIzaSyCU4UMlmR_6Y3TxVrZrgqDdFdFxnYFWSX4",
+  apiKey: "AIzaSyB-j8iXAEg_W-I2l3PodnJMoO_wgai2VDU",
   baseUrl: "https://generativelanguage.googleapis.com/v1beta",
-  model: "gemini-1.5-flash",
+  model: "gemini-2.5-flash",
   maxTokens: 8000,
   temperature: 0.7,
 };
@@ -30,19 +89,40 @@ const AI_CONFIG = {
 // Initialize extension when DOM is ready
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("[Popup] 🚀 NULL VOID Extension Loading...");
+  console.log(
+    "[Popup] DOM Content Loaded, current readyState:",
+    document.readyState
+  );
 
   try {
     // Initialize all components
+    console.log("[Popup] Step 1: Initializing buttons...");
     initializeButtons();
+
+    console.log("[Popup] Step 2: Loading saved data...");
     await loadSavedData();
-    await initializeSmartIntegration();
+
+    // Initialize Smart Prevention AFTER buttons are set up
+    console.log("[Popup] Step 3: Initializing Smart Prevention...");
+    await initializeSmartPrevention();
+
+    console.log("[Popup] Step 4: Initializing Auth...");
     await initializeAuth();
 
     // Initialize email on startup
+    console.log("[Popup] Step 5: Initializing Disposable Email...");
     await initializeDisposableEmail();
 
     console.log("[Popup] ✅ Extension loaded successfully");
     showNotification("NULL VOID Extension Ready", "success");
+
+    // Final verification
+    const smartToggle = document.getElementById("smartPrevention");
+    console.log("[Popup] 🔍 Final Smart Prevention toggle check:", {
+      exists: !!smartToggle,
+      checked: smartToggle?.checked,
+      hasListener: smartToggle?.hasAttribute("data-listener-attached"),
+    });
   } catch (error) {
     console.error("[Popup] ❌ Extension loading failed:", error);
     showNotification("Extension loading failed", "error");
@@ -163,11 +243,23 @@ function initializeButtons() {
     console.log("[Popup] ✅ Generate new email button ready");
   }
 
-  // Smart integration toggle
-  const smartToggle = document.getElementById("smartIntegration");
+  // Smart prevention system toggle
+  const smartToggle = document.getElementById("smartPrevention");
   if (smartToggle) {
-    smartToggle.addEventListener("change", handleSmartIntegrationToggle);
-    console.log("[Popup] ✅ Smart integration toggle ready");
+    // DON'T attach listener here - it will be attached in initializeSmartPrevention()
+    console.log(
+      "[Popup] ✅ Smart prevention system toggle element found (listener will be attached in initializeSmartPrevention)"
+    );
+  } else {
+    console.error("[Popup] ❌ Smart prevention toggle element not found!");
+    // List all available elements to debug
+    console.log(
+      "[Popup] Available input elements:",
+      Array.from(document.querySelectorAll("input")).map((el) => ({
+        id: el.id,
+        type: el.type,
+      }))
+    );
   }
 
   // Theme toggle
@@ -479,7 +571,7 @@ async function handleViewFile() {
     });
 
     // Open file viewer
-    const viewerUrl = browserAPI.runtime.getURL("file-viewer.html");
+    const viewerUrl = browserAPI.runtime.getURL("file-viewer-secure.html");
     await browserAPI.tabs.create({
       url: viewerUrl,
       active: true,
@@ -517,7 +609,10 @@ async function handleSendMessage() {
     showTypingIndicator();
 
     // Get AI response
-    const response = await sendAIMessage(message);
+    const rawResponse = await sendAIMessage(message);
+
+    // Clean up formatting in AI response
+    const response = cleanResponseFormatting(rawResponse);
 
     // Remove typing indicator
     hideTypingIndicator();
@@ -540,11 +635,21 @@ async function handleSendMessage() {
   } catch (error) {
     console.error("[AI] Message failed:", error);
     hideTypingIndicator();
-    addChatMessage(
-      "Sorry, I encountered an error. Please try again.",
-      false,
-      true
-    );
+
+    // Provide more specific error messages
+    let errorMessage = "Sorry, I encountered an error. Please try again.";
+    if (error.message.includes("API key invalid")) {
+      errorMessage = "API key error. Please check configuration.";
+    } else if (error.message.includes("Rate limit exceeded")) {
+      errorMessage = "Rate limit exceeded. Please wait a moment and try again.";
+    } else if (error.message.includes("Content blocked")) {
+      errorMessage =
+        "Your message was blocked by safety filters. Please rephrase and try again.";
+    } else if (error.message.includes("quota exceeded")) {
+      errorMessage = "API quota exceeded. Please try again later.";
+    }
+
+    addChatMessage(errorMessage, false, true);
   } finally {
     isAIResponding = false;
     const sendBtn = document.getElementById("sendMessage");
@@ -572,27 +677,168 @@ function handleClearChat() {
   showNotification("Chat cleared", "success");
 }
 
-async function handleSmartIntegrationToggle() {
-  const toggle = document.getElementById("smartIntegration");
-  if (!toggle) return;
+async function handleSmartPreventionToggle() {
+  console.log("[Smart Prevention] Toggle function called");
 
-  const enabled = toggle.checked;
-  console.log("[Smart] Integration toggled:", enabled);
+  // Prevent double-clicking or rapid toggling
+  if (smartPreventionState.isToggling) {
+    console.log("[Smart Prevention] Already toggling, ignoring request");
+    return;
+  }
+
+  smartPreventionState.isToggling = true;
+  smartPreventionState.lastToggleTime = Date.now();
+
+  const toggle = document.getElementById("smartPrevention");
+  if (!toggle) {
+    console.error("[Smart Prevention] Toggle element not found in handler");
+    smartPreventionState.isToggling = false;
+    return;
+  }
+
+  // IMPORTANT: User already clicked, so toggle.checked is ALREADY the new state!
+  const newState = toggle.checked;
+
+  console.log(`[Smart Prevention] User toggled to: ${newState}`);
+
+  // Check if browser API is available
+  if (!browserAPI || !browserAPI.storage || !browserAPI.storage.local) {
+    console.error("[Smart Prevention] Browser storage API not available");
+    showNotification("Browser extension API not available", "error");
+    // Revert toggle
+    toggle.checked = !newState;
+    updateSmartPreventionStatus(!newState);
+    smartPreventionState.isToggling = false;
+    return;
+  }
 
   try {
-    await browserAPI.runtime.sendMessage({
-      action: "toggleSmartIntegration",
-      enabled: enabled,
+    // Clear any existing persistence timeout
+    if (smartPreventionState.persistenceTimeout) {
+      clearTimeout(smartPreventionState.persistenceTimeout);
+      smartPreventionState.persistenceTimeout = null;
+    }
+
+    // UI is already updated by the user click, just update status indicator
+    updateSmartPreventionStatus(newState);
+
+    // Store state immediately with timestamp
+    await browserAPI.storage.local.set({
+      smartPreventionEnabled: newState,
+      smartPreventionTimestamp: Date.now(),
     });
 
-    showNotification(
-      `Smart integration ${enabled ? "enabled" : "disabled"}`,
-      "success"
-    );
+    // Update internal state
+    smartPreventionState.enabled = newState;
+
+    console.log("[Smart Prevention] Storage updated successfully");
+
+    // Send message to background script with timeout (non-blocking)
+    let response;
+    try {
+      if (browserAPI.runtime && browserAPI.runtime.sendMessage) {
+        console.log("[Smart Prevention] Sending message to background...");
+        response = await Promise.race([
+          browserAPI.runtime.sendMessage({
+            action: "toggleSmartPrevention",
+            enabled: newState,
+            timestamp: Date.now(),
+          }),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Background response timeout after 5s")),
+              5000
+            )
+          ),
+        ]);
+        console.log(
+          "[Smart Prevention] Background response received:",
+          response
+        );
+
+        if (response && response.success) {
+          showNotification(
+            `Smart prevention system ${newState ? "enabled" : "disabled"}`,
+            "success"
+          );
+          console.log(
+            "[Smart Prevention] Toggle operation completed successfully"
+          );
+        } else {
+          // Background responded but with error - not critical
+          console.warn(
+            "[Smart Prevention] Background reported issue:",
+            response?.error
+          );
+          showNotification(
+            `Smart prevention system ${
+              newState ? "enabled" : "disabled"
+            } (some features may not work)`,
+            "success"
+          );
+        }
+      } else {
+        console.warn("[Smart Prevention] Runtime messaging API not available");
+        // Continue without background communication
+        showNotification(
+          `Smart prevention system ${
+            newState ? "enabled" : "disabled"
+          } (local only)`,
+          "success"
+        );
+      }
+    } catch (communicationError) {
+      // Background communication failed - NOT critical, state is already saved
+      console.warn(
+        "[Smart Prevention] Background communication error (non-critical):",
+        communicationError.message
+      );
+
+      // State is already saved to storage, so this is still a success
+      showNotification(
+        `Smart prevention system ${newState ? "enabled" : "disabled"}`,
+        "success"
+      );
+    }
+
+    // Set persistence timeout to maintain state regardless of background communication
+    smartPreventionState.persistenceTimeout = setTimeout(() => {
+      console.log(
+        "[Smart Prevention] State persistence timeout - reinforcing state"
+      );
+      if (toggle.checked !== smartPreventionState.enabled) {
+        console.warn("[Smart Prevention] Correcting state drift");
+        toggle.checked = smartPreventionState.enabled;
+        updateSmartPreventionStatus(smartPreventionState.enabled);
+      }
+    }, 2000);
   } catch (error) {
-    console.error("[Smart] Toggle failed:", error);
-    showNotification("Failed to toggle smart integration", "error");
-    toggle.checked = !enabled; // Revert
+    console.error(
+      "[Smart Prevention] Critical toggle operation failed:",
+      error
+    );
+
+    // Only revert for storage errors or other critical failures
+    try {
+      if (browserAPI.storage && browserAPI.storage.local) {
+        await browserAPI.storage.local.set({
+          smartPreventionEnabled: !newState,
+          smartPreventionTimestamp: Date.now(),
+        });
+      }
+      toggle.checked = !newState;
+      smartPreventionState.enabled = !newState;
+      updateSmartPreventionStatus(!newState);
+      showNotification("Failed to toggle smart prevention system", "error");
+    } catch (revertError) {
+      console.error("[Smart Prevention] Failed to revert state:", revertError);
+      showNotification(
+        "Smart prevention system state may be inconsistent",
+        "error"
+      );
+    }
+  } finally {
+    smartPreventionState.isToggling = false;
   }
 }
 
@@ -1030,16 +1276,26 @@ async function handleOpenFullAI() {
     );
     console.log("[AI] AI Chat URL:", aiChatUrl);
 
+    // Create a new tab for the AI chat instead of popup window
     await browserAPI.tabs.create({
       url: aiChatUrl,
       active: true,
     });
 
-    showNotification("Gemini-style AI Chat opened", "success");
-    console.log("[AI] ✅ Gemini-style AI Chat tab created successfully");
+    showNotification("NULL VOID AI Chat opened in new tab", "success");
+    console.log("[AI] ✅ NULL VOID AI Chat tab created successfully");
   } catch (error) {
     console.error("[AI] Failed to open full chat:", error);
-    showNotification("Failed to open AI chat: " + error.message, "error");
+    // Fallback to tab if window creation fails
+    try {
+      await browserAPI.tabs.create({
+        url: aiChatUrl,
+        active: true,
+      });
+      showNotification("AI Chat opened in new tab", "success");
+    } catch (tabError) {
+      showNotification("Failed to open AI chat: " + error.message, "error");
+    }
   }
 }
 
@@ -1476,36 +1732,176 @@ function deleteEmail(emailIndex) {
   showNotification("Delete functionality coming soon!", "info");
 }
 
+// Clean up AI response formatting to remove asterisks and markdown
+function cleanResponseFormatting(response) {
+  if (!response) return response;
+
+  let cleanedResponse = response;
+
+  // Remove markdown bold formatting (**text**)
+  cleanedResponse = cleanedResponse.replace(/\*\*([^*]+)\*\*/g, "$1");
+
+  // Remove markdown italic formatting (*text*)
+  cleanedResponse = cleanedResponse.replace(/\*([^*]+)\*/g, "$1");
+
+  // Remove markdown headers (### text)
+  cleanedResponse = cleanedResponse.replace(/^#{1,6}\s+(.+)$/gm, "$1");
+
+  // Replace markdown bullet points (* text) with clean hyphens (- text)
+  cleanedResponse = cleanedResponse.replace(/^\s*\*\s+/gm, "- ");
+
+  // Remove any remaining standalone asterisks
+  cleanedResponse = cleanedResponse.replace(/\*/g, "");
+
+  // Clean up backticks and code formatting
+  cleanedResponse = cleanedResponse.replace(/`([^`]+)`/g, "$1");
+  cleanedResponse = cleanedResponse.replace(/```[^`]*```/g, "");
+
+  // Clean up extra whitespace
+  cleanedResponse = cleanedResponse.replace(/\n{3,}/g, "\n\n");
+  cleanedResponse = cleanedResponse.trim();
+
+  return cleanedResponse;
+}
+
 async function sendAIMessage(message) {
-  const requestBody = {
-    contents: [
-      {
-        parts: [
-          {
-            text: `You are a helpful AI assistant. Provide a detailed, comprehensive response to: ${message}`,
-          },
-        ],
+  try {
+    // User-friendly prompt for popup AI with clean formatting
+    const userFriendlyPrompt = `You are NULL VOID AI, a helpful assistant for users of the NULL VOID browser extension.
+
+🛡️ YOUR ROLE:
+- Help users understand and use NULL VOID extension features
+- Provide simple, easy-to-follow guidance
+- Keep explanations user-friendly and accessible
+- Focus on what users can see and do in the extension
+
+🎯 RESPONSE FORMATTING RULES:
+- Write in clean, natural sentences without asterisks or special formatting
+- Use simple bullet points with hyphens (-) when listing steps
+- Write clear paragraph breaks for easy reading
+- Use everyday language that flows naturally
+- Avoid markdown formatting, asterisks, or special characters in responses
+- Make responses feel like friendly conversation, not technical documentation
+
+🎯 RESPONSE GUIDELINES:
+- Use simple, clear language that anyone can understand
+- Give step-by-step instructions using the extension's buttons and menus
+- Focus on user interface elements, not technical details
+- Never mention file names, code, or internal configurations
+- Be encouraging and helpful
+- Keep cybersecurity advice practical and easy to follow
+- Format responses as natural, readable text without special characters
+
+⚠️ IMPORTANT:
+- NO technical jargon or developer terms
+- NO file names or internal system details
+- NO asterisks (*) or markdown formatting in responses
+- Focus on visible buttons, menus, and options in the extension
+- Explain what features do for users, not how they work internally
+- Write like you're having a friendly conversation
+
+User Question: ${message}
+
+Provide helpful, user-friendly guidance with clean formatting:`;
+
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            {
+              text: userFriendlyPrompt,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.3, // Slightly higher for more natural, friendly responses
+        maxOutputTokens: AI_CONFIG.maxTokens,
+        topP: 0.8,
+        topK: 40,
       },
-    ],
-    generationConfig: {
-      temperature: AI_CONFIG.temperature,
-      maxOutputTokens: AI_CONFIG.maxTokens,
-    },
-  };
+      safetySettings: [
+        {
+          category: "HARM_CATEGORY_HARASSMENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE",
+        },
+        {
+          category: "HARM_CATEGORY_HATE_SPEECH",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE",
+        },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE",
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE",
+        },
+      ],
+    };
 
-  const response = await fetch(
-    `${AI_CONFIG.baseUrl}/models/${AI_CONFIG.model}:generateContent?key=${AI_CONFIG.apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+    const response = await fetch(
+      `${AI_CONFIG.baseUrl}/models/${AI_CONFIG.model}:generateContent?key=${AI_CONFIG.apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[POPUP AI] API Error Response:", errorText);
+
+      if (response.status === 400) {
+        throw new Error("Bad request - check your message format");
+      } else if (response.status === 403) {
+        throw new Error("API key invalid or quota exceeded");
+      } else if (response.status === 429) {
+        throw new Error("Rate limit exceeded - please wait a moment");
+      } else {
+        throw new Error(`AI API Error: ${response.status} - ${errorText}`);
+      }
     }
-  );
 
-  if (!response.ok) throw new Error(`AI API Error: ${response.status}`);
+    const data = await response.json();
 
-  const data = await response.json();
-  return data.candidates[0].content.parts[0].text;
+    // Enhanced response validation
+    if (!data) {
+      throw new Error("Empty response from AI API");
+    }
+
+    if (data.error) {
+      console.error("[POPUP AI] API returned error:", data.error);
+      throw new Error(`AI API Error: ${data.error.message || data.error}`);
+    }
+
+    if (!data.candidates || data.candidates.length === 0) {
+      if (data.promptFeedback && data.promptFeedback.blockReason) {
+        throw new Error(`Content blocked: ${data.promptFeedback.blockReason}`);
+      }
+      throw new Error("No response candidates from AI API");
+    }
+
+    const candidate = data.candidates[0];
+
+    if (candidate.finishReason && candidate.finishReason === "SAFETY") {
+      throw new Error("SAFETY: Content was blocked by safety filters");
+    }
+
+    if (
+      !candidate.content ||
+      !candidate.content.parts ||
+      candidate.content.parts.length === 0
+    ) {
+      throw new Error("Invalid response structure from AI API");
+    }
+
+    return candidate.content.parts[0].text;
+  } catch (error) {
+    console.error("[POPUP AI] sendAIMessage Error:", error);
+    throw error;
+  }
 }
 
 function addChatMessage(message, isUser = false, isError = false) {
@@ -1853,18 +2249,220 @@ async function loadSavedData() {
   }
 }
 
-async function initializeSmartIntegration() {
+async function initializeSmartPrevention() {
   try {
-    const response = await browserAPI.runtime.sendMessage({
-      action: "getSmartIntegrationStatus",
-    });
+    console.log(
+      "[Smart Prevention] Starting Smart Prevention initialization..."
+    );
 
-    const toggle = document.getElementById("smartIntegration");
-    if (toggle && response) {
-      toggle.checked = response.enabled;
+    // Check if browser API is available
+    if (!browserAPI) {
+      console.error(
+        "[Smart Prevention] Browser API not available during initialization"
+      );
+      return;
     }
+
+    // Wait a bit to ensure DOM is fully ready
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // First check if the toggle element exists
+    const toggle = document.getElementById("smartPrevention");
+    if (!toggle) {
+      console.error(
+        "[Smart Prevention] Toggle element 'smartPrevention' not found in DOM!"
+      );
+      console.log(
+        "[Smart Prevention] Available elements with 'smart':",
+        Array.from(document.querySelectorAll('[id*="smart"]')).map(
+          (el) => el.id
+        )
+      );
+      return;
+    }
+
+    console.log("[Smart Prevention] Toggle element found:", toggle);
+
+    // Check storage first for most recent state
+    let storageResult;
+    try {
+      if (browserAPI.storage && browserAPI.storage.local) {
+        storageResult = await browserAPI.storage.local.get([
+          "smartPreventionEnabled",
+          "smartPreventionTimestamp",
+        ]);
+        console.log("[Smart Prevention] Storage result:", storageResult);
+      } else {
+        console.warn("[Smart Prevention] Storage API not available");
+        storageResult = {};
+      }
+    } catch (error) {
+      console.warn("[Smart Prevention] Storage access failed:", error);
+      storageResult = {};
+    }
+
+    // Get current status from background script with timeout
+    let response;
+    try {
+      if (browserAPI.runtime && browserAPI.runtime.sendMessage) {
+        response = await Promise.race([
+          browserAPI.runtime.sendMessage({
+            action: "getSmartPreventionStatus",
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Timeout")), 5000)
+          ),
+        ]);
+        console.log("[Smart Prevention] Background response:", response);
+      } else {
+        console.warn("[Smart Prevention] Runtime messaging API not available");
+        response = null;
+      }
+    } catch (error) {
+      console.warn(
+        "[Smart Prevention] Background communication failed:",
+        error
+      );
+      response = null;
+    }
+
+    // Determine the current state (prioritize storage with recent timestamp)
+    let currentState = false;
+    const storageTimestamp = storageResult.smartPreventionTimestamp || 0;
+    const now = Date.now();
+    const isRecentStorage = now - storageTimestamp < 30000; // Within 30 seconds
+
+    if (storageResult.smartPreventionEnabled !== undefined && isRecentStorage) {
+      currentState = storageResult.smartPreventionEnabled;
+      console.log(
+        "[Smart Prevention] Using recent storage state:",
+        currentState
+      );
+    } else if (storageResult.smartPreventionEnabled !== undefined) {
+      currentState = storageResult.smartPreventionEnabled;
+      console.log("[Smart Prevention] Using storage state:", currentState);
+    } else if (response && typeof response.enabled === "boolean") {
+      currentState = response.enabled;
+      console.log("[Smart Prevention] Using background state:", currentState);
+    } else {
+      console.log("[Smart Prevention] Using default state: false");
+    }
+
+    // Update internal state tracking
+    smartPreventionState.enabled = currentState;
+    smartPreventionState.lastToggleTime = storageTimestamp;
+
+    // Set the toggle state
+    toggle.checked = currentState;
+    console.log("[Smart Prevention] Toggle state set to:", currentState);
+
+    // Update UI status indicator
+    updateSmartPreventionStatus(currentState);
+
+    // Set up persistence timeout to maintain state
+    if (smartPreventionState.persistenceTimeout) {
+      clearTimeout(smartPreventionState.persistenceTimeout);
+    }
+
+    smartPreventionState.persistenceTimeout = setTimeout(() => {
+      console.log("[Smart Prevention] Post-init persistence check");
+      if (toggle.checked !== smartPreventionState.enabled) {
+        console.log("[Smart Prevention] Correcting toggle state drift");
+        toggle.checked = smartPreventionState.enabled;
+        updateSmartPreventionStatus(smartPreventionState.enabled);
+      }
+    }, 1000);
+
+    // Ensure the toggle event listener is attached
+    if (!toggle.hasAttribute("data-listener-attached")) {
+      toggle.addEventListener("change", handleSmartPreventionToggle);
+      toggle.setAttribute("data-listener-attached", "true");
+      console.log("[Smart Prevention] Event listener attached to toggle");
+    }
+
+    console.log("[Smart Prevention] Initialization completed successfully");
   } catch (error) {
-    console.warn("[Smart] Failed to initialize:", error);
+    console.error("[Smart Prevention] Failed to initialize:", error);
+
+    // Set default state on error
+    const toggle = document.getElementById("smartPrevention");
+    if (toggle) {
+      toggle.checked = false;
+      smartPreventionState.enabled = false;
+      updateSmartPreventionStatus(false);
+
+      // Ensure event listener is still attached even on error
+      if (!toggle.hasAttribute("data-listener-attached")) {
+        toggle.addEventListener("change", handleSmartPreventionToggle);
+        toggle.setAttribute("data-listener-attached", "true");
+      }
+    }
+  }
+}
+
+// Cleanup function to maintain state when popup is closed
+function cleanupSmartPreventionState() {
+  console.log("[Smart Prevention] Cleaning up state on popup close");
+
+  // Clear any existing persistence timeouts
+  if (smartPreventionState.persistenceTimeout) {
+    clearTimeout(smartPreventionState.persistenceTimeout);
+    smartPreventionState.persistenceTimeout = null;
+  }
+
+  // Store final state to ensure persistence
+  if (browserAPI && browserAPI.storage && browserAPI.storage.local) {
+    const toggle = document.getElementById("smartPrevention");
+    if (toggle) {
+      browserAPI.storage.local
+        .set({
+          smartPreventionEnabled: smartPreventionState.enabled,
+          smartPreventionTimestamp: Date.now(),
+        })
+        .catch((error) => {
+          console.warn(
+            "[Smart Prevention] Failed to save state on cleanup:",
+            error
+          );
+        });
+    }
+  }
+}
+
+// Listen for popup unload to maintain state
+window.addEventListener("beforeunload", cleanupSmartPreventionState);
+window.addEventListener("pagehide", cleanupSmartPreventionState);
+
+// Also listen for visibility changes to reinforce state
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    cleanupSmartPreventionState();
+  } else {
+    // Popup is visible again, reinforce current state
+    setTimeout(() => {
+      const toggle = document.getElementById("smartPrevention");
+      if (toggle && toggle.checked !== smartPreventionState.enabled) {
+        console.log(
+          "[Smart Prevention] Correcting state after visibility change"
+        );
+        toggle.checked = smartPreventionState.enabled;
+        updateSmartPreventionStatus(smartPreventionState.enabled);
+      }
+    }, 100);
+  }
+});
+
+// Update Smart Prevention status indicator
+function updateSmartPreventionStatus(enabled) {
+  const statusElement = document.getElementById("integrationStatus");
+  if (statusElement) {
+    if (enabled) {
+      statusElement.classList.add("active");
+      statusElement.title = "Smart Prevention System Active";
+    } else {
+      statusElement.classList.remove("active");
+      statusElement.title = "Smart Prevention System Inactive";
+    }
   }
 }
 

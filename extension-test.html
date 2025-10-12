@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Extension Compatibility Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #1a1a1a;
+        color: white;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      .test-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: #2a2a2a;
+        padding: 20px;
+        border-radius: 10px;
+      }
+      .test-result {
+        background: #333;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+        border-left: 4px solid #007acc;
+      }
+      .success {
+        border-left-color: #0f0;
+      }
+      .error {
+        border-left-color: #f00;
+      }
+      .warning {
+        border-left-color: #ff0;
+      }
+      .test-btn {
+        background: #007acc;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      .console-output {
+        background: #000;
+        color: #0f0;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="test-container">
+      <h1>🧪 NULL VOID AI - Extension Compatibility Test</h1>
+
+      <div class="test-result">
+        <h3>Current Context:</h3>
+        <div id="contextInfo"></div>
+      </div>
+
+      <div class="test-result">
+        <h3>Test Actions:</h3>
+        <button class="test-btn" onclick="testDirectAccess()">
+          Test HTTP Access
+        </button>
+        <button class="test-btn" onclick="testExtensionAccess()">
+          Simulate Extension
+        </button>
+        <button class="test-btn" onclick="openAIChat()">Open AI Chat</button>
+        <button class="test-btn" onclick="clearConsole()">Clear Console</button>
+      </div>
+
+      <div class="test-result">
+        <h3>Live Console Output:</h3>
+        <div class="console-output" id="consoleOutput"></div>
+      </div>
+
+      <div class="test-result">
+        <h3>Instructions:</h3>
+        <p><strong>To Test Extension Context:</strong></p>
+        <ol>
+          <li>Load the NULL VOID extension in Chrome</li>
+          <li>Open extension popup</li>
+          <li>Click the AI chat button</li>
+          <li>
+            The URL should be:
+            <code>chrome-extension://[id]/ai-chat-full.html</code>
+          </li>
+          <li>Test the hamburger menu (☰) button</li>
+          <li>Check browser console for log messages</li>
+        </ol>
+
+        <p><strong>Expected Behavior:</strong></p>
+        <ul>
+          <li>
+            ✅ Hamburger button should work in both HTTP and extension contexts
+          </li>
+          <li>✅ Console should show "[NULL VOID AI]" prefixed messages</li>
+          <li>✅ Sidebar should slide in/out smoothly</li>
+          <li>✅ Chat functionality should work normally</li>
+        </ul>
+      </div>
+    </div>
+
+    <script>
+      // Console capture for testing
+      const originalLog = console.log;
+      const originalError = console.error;
+      const consoleOutput = document.getElementById("consoleOutput");
+
+      function addToConsole(message, type = "log") {
+        const timestamp = new Date().toLocaleTimeString();
+        const color =
+          type === "error" ? "#f00" : type === "warn" ? "#ff0" : "#0f0";
+        consoleOutput.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+      }
+
+      console.log = function (...args) {
+        originalLog.apply(console, args);
+        addToConsole(args.join(" "), "log");
+      };
+
+      console.error = function (...args) {
+        originalError.apply(console, args);
+        addToConsole(args.join(" "), "error");
+      };
+
+      // Context detection
+      function detectContext() {
+        const isExtension = window.location.protocol === "chrome-extension:";
+        const isHTTP = window.location.protocol.startsWith("http");
+        const isFile = window.location.protocol === "file:";
+
+        let context = "Unknown";
+        let contextClass = "warning";
+
+        if (isExtension) {
+          context = "Chrome Extension Context ✅";
+          contextClass = "success";
+        } else if (isHTTP) {
+          context = "HTTP Server Context ✅";
+          contextClass = "success";
+        } else if (isFile) {
+          context = "Local File Context ⚠️";
+          contextClass = "warning";
+        }
+
+        document.getElementById("contextInfo").innerHTML = `
+                <div class="${contextClass}">
+                    <strong>Context:</strong> ${context}<br>
+                    <strong>URL:</strong> ${window.location.href}<br>
+                    <strong>Protocol:</strong> ${window.location.protocol}<br>
+                    <strong>User Agent:</strong> ${
+                      navigator.userAgent.includes("Chrome")
+                        ? "Chrome ✅"
+                        : "Other Browser ⚠️"
+                    }
+                </div>
+            `;
+      }
+
+      function testDirectAccess() {
+        addToConsole("Testing direct HTTP access...", "log");
+        window.open("http://localhost:8080/src/ai-chat-full.html", "_blank");
+      }
+
+      function testExtensionAccess() {
+        addToConsole("Simulating extension context...", "log");
+        addToConsole(
+          "Note: Real extension test requires loading extension in Chrome",
+          "warn"
+        );
+        addToConsole(
+          "Extension URL format: chrome-extension://[extension-id]/ai-chat-full.html",
+          "log"
+        );
+      }
+
+      function openAIChat() {
+        addToConsole("Opening AI Chat interface...", "log");
+        window.open("src/ai-chat-full.html", "_blank");
+      }
+
+      function clearConsole() {
+        consoleOutput.innerHTML = "";
+        addToConsole("Console cleared", "log");
+      }
+
+      // Initialize
+      detectContext();
+      addToConsole("Extension compatibility test initialized", "log");
+      addToConsole("Ready to test NULL VOID AI in different contexts", "log");
+    </script>
+  </body>
+</html>

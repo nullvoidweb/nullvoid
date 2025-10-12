@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🔧 NULL VOID AI - Complete Functionality Test</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(
+          135deg,
+          #0f0f23 0%,
+          #1a1a2e 50%,
+          #16213e 100%
+        );
+        color: #e8eaed;
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: rgba(15, 15, 35, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 30px;
+        backdrop-filter: blur(20px);
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .test-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+      .test-panel {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+      }
+      .iframe-panel {
+        grid-column: 1 / -1;
+        height: 600px;
+      }
+      .test-button {
+        background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        padding: 12px 20px;
+        cursor: pointer;
+        margin: 5px;
+        transition: all 0.2s ease;
+        font-weight: 500;
+      }
+      .test-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(66, 133, 244, 0.3);
+      }
+      .test-button.danger {
+        background: linear-gradient(135deg, #ea4335 0%, #d33b2c 100%);
+      }
+      .test-button.success {
+        background: linear-gradient(135deg, #34a853 0%, #0f9d58 100%);
+      }
+      .console-output {
+        background: #000;
+        color: #0f0;
+        padding: 15px;
+        border-radius: 8px;
+        height: 300px;
+        overflow-y: auto;
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        margin-top: 15px;
+        border: 1px solid #333;
+      }
+      .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+      .status-good {
+        background: #4caf50;
+      }
+      .status-bad {
+        background: #f44336;
+      }
+      .status-warning {
+        background: #ff9800;
+      }
+      .iframe-container {
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        overflow: hidden;
+        height: 100%;
+      }
+      .quick-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+      }
+      h3 {
+        margin-top: 0;
+        color: #4285f4;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🔧 NULL VOID AI - Complete Functionality Test</h1>
+        <p>
+          Comprehensive testing for all features: hamburger, search, and input
+          functionality
+        </p>
+      </div>
+
+      <div class="test-grid">
+        <div class="test-panel">
+          <h3>🍔 Hamburger Button Tests</h3>
+          <div class="quick-actions">
+            <button class="test-button" onclick="testHamburgerBasic()">
+              Basic Test
+            </button>
+            <button class="test-button" onclick="testHamburgerEmergency()">
+              Emergency Test
+            </button>
+            <button class="test-button" onclick="testHamburgerGlobal()">
+              Global Function
+            </button>
+          </div>
+          <div id="hamburgerStatus">
+            <span class="status-indicator status-warning"></span>
+            Ready to test hamburger functionality
+          </div>
+        </div>
+
+        <div class="test-panel">
+          <h3>🔍 Search Button Tests</h3>
+          <div class="quick-actions">
+            <button class="test-button" onclick="testSearchBasic()">
+              Basic Test
+            </button>
+            <button class="test-button" onclick="testSearchEmergency()">
+              Emergency Test
+            </button>
+            <button class="test-button" onclick="testSearchFunctionality()">
+              Full Search
+            </button>
+          </div>
+          <div id="searchStatus">
+            <span class="status-indicator status-warning"></span>
+            Ready to test search functionality
+          </div>
+        </div>
+
+        <div class="test-panel">
+          <h3>💬 Input & Send Tests</h3>
+          <div class="quick-actions">
+            <button class="test-button" onclick="testInputBasic()">
+              Basic Input
+            </button>
+            <button class="test-button" onclick="testSendMessage()">
+              Send Message
+            </button>
+            <button class="test-button" onclick="testInputEmergency()">
+              Emergency Send
+            </button>
+          </div>
+          <div id="inputStatus">
+            <span class="status-indicator status-warning"></span>
+            Ready to test input functionality
+          </div>
+        </div>
+
+        <div class="test-panel">
+          <h3>🔧 System Tests</h3>
+          <div class="quick-actions">
+            <button class="test-button success" onclick="runAllTests()">
+              Run All Tests
+            </button>
+            <button class="test-button" onclick="debugElements()">
+              Debug Elements
+            </button>
+            <button class="test-button danger" onclick="clearConsole()">
+              Clear Console
+            </button>
+          </div>
+          <div id="systemStatus">
+            <span class="status-indicator status-warning"></span>
+            System ready for testing
+          </div>
+        </div>
+      </div>
+
+      <div class="test-grid">
+        <div class="test-panel iframe-panel">
+          <h3>🎯 Live AI Chat Interface</h3>
+          <div class="iframe-container">
+            <iframe
+              id="chatFrame"
+              src="http://localhost:8082/ai-chat-full.html"
+              style="width: 100%; height: 100%; border: none"
+            ></iframe>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-panel">
+        <h3>📊 Test Console Output</h3>
+        <div class="console-output" id="consoleOutput"></div>
+      </div>
+    </div>
+
+    <script>
+      const consoleOutput = document.getElementById("consoleOutput");
+
+      function log(message, type = "info") {
+        const time = new Date().toLocaleTimeString();
+        const colors = {
+          info: "#fff",
+          success: "#4caf50",
+          error: "#f44336",
+          warning: "#ff9800",
+          debug: "#2196f3",
+        };
+
+        consoleOutput.innerHTML += `<div style="color:${colors[type]}">[${time}] ${message}</div>`;
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        console.log(`[${time}] ${message}`);
+      }
+
+      function updateStatus(elementId, message, status) {
+        const element = document.getElementById(elementId);
+        const indicator = element.querySelector(".status-indicator");
+        const statusClasses = {
+          good: "status-good",
+          bad: "status-bad",
+          warning: "status-warning",
+        };
+
+        indicator.className = `status-indicator ${statusClasses[status]}`;
+        element.innerHTML = `<span class="status-indicator ${statusClasses[status]}"></span>${message}`;
+      }
+
+      function clearConsole() {
+        consoleOutput.innerHTML = "";
+        log("Console cleared", "info");
+      }
+
+      async function getFrame() {
+        const frame = document.getElementById("chatFrame");
+        await waitForFrameLoad(frame);
+        return {
+          frame,
+          doc: frame.contentDocument,
+          window: frame.contentWindow,
+        };
+      }
+
+      async function waitForFrameLoad(frame) {
+        return new Promise((resolve) => {
+          if (frame.contentDocument.readyState === "complete") {
+            resolve();
+          } else {
+            frame.onload = resolve;
+          }
+        });
+      }
+
+      async function testHamburgerBasic() {
+        log("🍔 Testing hamburger button basic functionality...", "info");
+        updateStatus(
+          "hamburgerStatus",
+          "Testing hamburger button...",
+          "warning"
+        );
+
+        try {
+          const { doc } = await getFrame();
+          const hamburgerBtn = doc.getElementById("sidebarToggle");
+          const sidebar = doc.getElementById("sidebar");
+
+          if (!hamburgerBtn) {
+            log("❌ Hamburger button not found", "error");
+            updateStatus(
+              "hamburgerStatus",
+              "Hamburger button not found",
+              "bad"
+            );
+            return;
+          }
+
+          log("✅ Hamburger button found", "success");
+
+          // Test click
+          hamburgerBtn.click();
+
+          setTimeout(() => {
+            const isCollapsed = sidebar.classList.contains("collapsed");
+            log(
+              `📊 Sidebar state after click: ${
+                isCollapsed ? "collapsed" : "visible"
+              }`,
+              "info"
+            );
+
+            if (isCollapsed !== undefined) {
+              log("✅ Hamburger button click successful", "success");
+              updateStatus(
+                "hamburgerStatus",
+                "Hamburger button working!",
+                "good"
+              );
+            } else {
+              log("⚠️ Could not determine sidebar state", "warning");
+              updateStatus(
+                "hamburgerStatus",
+                "Hamburger state unclear",
+                "warning"
+              );
+            }
+          }, 500);
+        } catch (error) {
+          log(`❌ Error testing hamburger: ${error.message}`, "error");
+          updateStatus("hamburgerStatus", "Hamburger test failed", "bad");
+        }
+      }
+
+      async function testHamburgerEmergency() {
+        log("🚨 Testing hamburger emergency function...", "warning");
+
+        try {
+          const { window: frameWindow } = await getFrame();
+
+          if (frameWindow.EMERGENCY_TOGGLE) {
+            frameWindow.EMERGENCY_TOGGLE();
+            log("✅ EMERGENCY_TOGGLE function called", "success");
+            updateStatus(
+              "hamburgerStatus",
+              "Emergency toggle working!",
+              "good"
+            );
+          } else {
+            log("❌ EMERGENCY_TOGGLE function not found", "error");
+            updateStatus(
+              "hamburgerStatus",
+              "Emergency function missing",
+              "bad"
+            );
+          }
+        } catch (error) {
+          log(`❌ Error testing emergency toggle: ${error.message}`, "error");
+          updateStatus("hamburgerStatus", "Emergency test failed", "bad");
+        }
+      }
+
+      async function testHamburgerGlobal() {
+        log("🌐 Testing hamburger global function...", "info");
+
+        try {
+          const { window: frameWindow } = await getFrame();
+
+          if (frameWindow.toggleSidebarExtension) {
+            frameWindow.toggleSidebarExtension();
+            log("✅ toggleSidebarExtension function called", "success");
+            updateStatus("hamburgerStatus", "Global function working!", "good");
+          } else {
+            log("❌ toggleSidebarExtension function not found", "error");
+            updateStatus("hamburgerStatus", "Global function missing", "bad");
+          }
+        } catch (error) {
+          log(`❌ Error testing global toggle: ${error.message}`, "error");
+          updateStatus("hamburgerStatus", "Global test failed", "bad");
+        }
+      }
+
+      async function testSearchBasic() {
+        log("🔍 Testing search button basic functionality...", "info");
+        updateStatus("searchStatus", "Testing search button...", "warning");
+
+        try {
+          const { doc } = await getFrame();
+          const searchBtn = doc.getElementById("searchBtn");
+          const searchPanel = doc.getElementById("searchPanel");
+
+          if (!searchBtn) {
+            log("❌ Search button not found", "error");
+            updateStatus("searchStatus", "Search button not found", "bad");
+            return;
+          }
+
+          log("✅ Search button found", "success");
+
+          // Test click
+          searchBtn.click();
+
+          setTimeout(() => {
+            const isOpen = searchPanel.classList.contains("open");
+            log(
+              `📊 Search panel state after click: ${
+                isOpen ? "open" : "closed"
+              }`,
+              "info"
+            );
+
+            if (isOpen) {
+              log(
+                "✅ Search button click successful - panel opened",
+                "success"
+              );
+              updateStatus("searchStatus", "Search button working!", "good");
+            } else {
+              log("⚠️ Search panel did not open", "warning");
+              updateStatus("searchStatus", "Search not opening", "warning");
+            }
+          }, 300);
+        } catch (error) {
+          log(`❌ Error testing search: ${error.message}`, "error");
+          updateStatus("searchStatus", "Search test failed", "bad");
+        }
+      }
+
+      async function testSearchEmergency() {
+        log("🚨 Testing search emergency function...", "warning");
+
+        try {
+          const { window: frameWindow } = await getFrame();
+
+          if (frameWindow.EMERGENCY_SEARCH_TOGGLE) {
+            frameWindow.EMERGENCY_SEARCH_TOGGLE();
+            log("✅ EMERGENCY_SEARCH_TOGGLE function called", "success");
+            updateStatus("searchStatus", "Emergency search working!", "good");
+          } else {
+            log("❌ EMERGENCY_SEARCH_TOGGLE function not found", "error");
+            updateStatus("searchStatus", "Emergency search missing", "bad");
+          }
+        } catch (error) {
+          log(`❌ Error testing emergency search: ${error.message}`, "error");
+          updateStatus("searchStatus", "Emergency search failed", "bad");
+        }
+      }
+
+      async function testSearchFunctionality() {
+        log("🔍 Testing full search functionality...", "info");
+
+        try {
+          const { doc } = await getFrame();
+          const searchBtn = doc.getElementById("searchBtn");
+          const searchPanel = doc.getElementById("searchPanel");
+          const searchInput = doc.getElementById("searchInput");
+
+          // Open search panel
+          searchBtn.click();
+
+          setTimeout(() => {
+            if (searchPanel.classList.contains("open")) {
+              // Type in search
+              searchInput.value = "test search";
+              const inputEvent = new Event("input", { bubbles: true });
+              searchInput.dispatchEvent(inputEvent);
+
+              log("✅ Search typing test completed", "success");
+              updateStatus("searchStatus", "Full search working!", "good");
+            } else {
+              log("❌ Could not open search panel for typing test", "error");
+              updateStatus("searchStatus", "Search panel not opening", "bad");
+            }
+          }, 300);
+        } catch (error) {
+          log(`❌ Error testing full search: ${error.message}`, "error");
+          updateStatus("searchStatus", "Full search test failed", "bad");
+        }
+      }
+
+      async function testInputBasic() {
+        log("💬 Testing input field basic functionality...", "info");
+        updateStatus("inputStatus", "Testing input field...", "warning");
+
+        try {
+          const { doc } = await getFrame();
+          const chatInput = doc.getElementById("chatInput");
+          const sendBtn = doc.getElementById("sendBtn");
+
+          if (!chatInput) {
+            log("❌ Chat input not found", "error");
+            updateStatus("inputStatus", "Chat input not found", "bad");
+            return;
+          }
+
+          log("✅ Chat input found", "success");
+          log(`📊 Input disabled: ${chatInput.disabled}`, "debug");
+          log(`📊 Input readOnly: ${chatInput.readOnly}`, "debug");
+          log(`📊 Send button disabled: ${sendBtn.disabled}`, "debug");
+
+          // Test typing
+          chatInput.focus();
+          chatInput.value = "Test message for input functionality";
+
+          // Trigger input event
+          const inputEvent = new Event("input", { bubbles: true });
+          chatInput.dispatchEvent(inputEvent);
+
+          setTimeout(() => {
+            log(
+              `📊 Send button disabled after typing: ${sendBtn.disabled}`,
+              "debug"
+            );
+
+            if (!sendBtn.disabled) {
+              log(
+                "✅ Input functionality working - send button enabled",
+                "success"
+              );
+              updateStatus("inputStatus", "Input working!", "good");
+            } else {
+              log("⚠️ Send button still disabled after typing", "warning");
+              updateStatus("inputStatus", "Input may have issues", "warning");
+            }
+          }, 200);
+        } catch (error) {
+          log(`❌ Error testing input: ${error.message}`, "error");
+          updateStatus("inputStatus", "Input test failed", "bad");
+        }
+      }
+
+      async function testSendMessage() {
+        log("📤 Testing send message functionality...", "info");
+
+        try {
+          const { doc } = await getFrame();
+          const chatInput = doc.getElementById("chatInput");
+          const sendBtn = doc.getElementById("sendBtn");
+
+          // Set test message
+          chatInput.value =
+            "Hello AI, this is a test message from the diagnostic tool!";
+
+          // Trigger input event to enable send button
+          const inputEvent = new Event("input", { bubbles: true });
+          chatInput.dispatchEvent(inputEvent);
+
+          setTimeout(() => {
+            if (!sendBtn.disabled) {
+              // Click send button
+              sendBtn.click();
+              log(
+                "✅ Send button clicked - message should appear in chat",
+                "success"
+              );
+              updateStatus("inputStatus", "Send message working!", "good");
+
+              // Check if input was cleared (indicates successful send)
+              setTimeout(() => {
+                if (chatInput.value === "") {
+                  log(
+                    "✅ Input cleared after send - message was sent successfully",
+                    "success"
+                  );
+                } else {
+                  log(
+                    "⚠️ Input not cleared - message may not have been sent",
+                    "warning"
+                  );
+                }
+              }, 1000);
+            } else {
+              log("❌ Send button is disabled, cannot send message", "error");
+              updateStatus("inputStatus", "Send button disabled", "bad");
+            }
+          }, 200);
+        } catch (error) {
+          log(`❌ Error testing send message: ${error.message}`, "error");
+          updateStatus("inputStatus", "Send test failed", "bad");
+        }
+      }
+
+      async function testInputEmergency() {
+        log("🚨 Testing input emergency function...", "warning");
+
+        try {
+          const { window: frameWindow } = await getFrame();
+
+          if (frameWindow.EMERGENCY_SEND_TEST) {
+            frameWindow.EMERGENCY_SEND_TEST(
+              "Emergency test message from diagnostic tool"
+            );
+            log("✅ EMERGENCY_SEND_TEST function called", "success");
+            updateStatus("inputStatus", "Emergency send working!", "good");
+          } else {
+            log("❌ EMERGENCY_SEND_TEST function not found", "error");
+            updateStatus("inputStatus", "Emergency send missing", "bad");
+          }
+        } catch (error) {
+          log(`❌ Error testing emergency send: ${error.message}`, "error");
+          updateStatus("inputStatus", "Emergency send failed", "bad");
+        }
+      }
+
+      async function debugElements() {
+        log("🔧 Running element debug analysis...", "debug");
+
+        try {
+          const { doc, window: frameWindow } = await getFrame();
+
+          // Check all key elements
+          const elements = {
+            chatInput: doc.getElementById("chatInput"),
+            sendBtn: doc.getElementById("sendBtn"),
+            sidebarToggle: doc.getElementById("sidebarToggle"),
+            searchBtn: doc.getElementById("searchBtn"),
+            searchPanel: doc.getElementById("searchPanel"),
+            sidebar: doc.getElementById("sidebar"),
+          };
+
+          log("📊 Element Analysis:", "debug");
+          Object.entries(elements).forEach(([name, element]) => {
+            log(
+              `  ${name}: ${element ? "✅ Found" : "❌ Missing"}`,
+              element ? "success" : "error"
+            );
+          });
+
+          // Check global functions
+          const functions = {
+            nullVoidUI: frameWindow.nullVoidUI,
+            toggleSidebarExtension: frameWindow.toggleSidebarExtension,
+            EMERGENCY_TOGGLE: frameWindow.EMERGENCY_TOGGLE,
+            EMERGENCY_SEND_TEST: frameWindow.EMERGENCY_SEND_TEST,
+            EMERGENCY_DEBUG: frameWindow.EMERGENCY_DEBUG,
+          };
+
+          log("📊 Function Analysis:", "debug");
+          Object.entries(functions).forEach(([name, func]) => {
+            log(
+              `  ${name}: ${func ? "✅ Available" : "❌ Missing"}`,
+              func ? "success" : "error"
+            );
+          });
+
+          // Call frame's debug function if available
+          if (frameWindow.EMERGENCY_DEBUG) {
+            frameWindow.EMERGENCY_DEBUG();
+            log("✅ Frame debug function called", "success");
+          }
+
+          updateStatus("systemStatus", "Debug analysis complete", "good");
+        } catch (error) {
+          log(`❌ Error in debug analysis: ${error.message}`, "error");
+          updateStatus("systemStatus", "Debug analysis failed", "bad");
+        }
+      }
+
+      async function runAllTests() {
+        log("🚀 Running comprehensive test suite...", "info");
+        updateStatus("systemStatus", "Running all tests...", "warning");
+
+        clearConsole();
+        log("🎯 Starting NULL VOID AI comprehensive test suite", "info");
+
+        // Run all tests with delays
+        await testHamburgerBasic();
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        await testSearchBasic();
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        await testInputBasic();
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        await testSendMessage();
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        await debugElements();
+
+        log("✅ Comprehensive test suite completed!", "success");
+        updateStatus("systemStatus", "All tests completed!", "good");
+      }
+
+      // Auto-run basic test when frame loads
+      setTimeout(() => {
+        log("🎯 Auto-running basic connectivity test...", "info");
+        debugElements();
+      }, 2000);
+
+      log("🔧 NULL VOID AI Test Tool Ready", "success");
+      log("💡 Use the buttons above to test different functionality", "info");
+      log(
+        "📱 The live chat interface is embedded below for manual testing",
+        "info"
+      );
+    </script>
+  </body>
+</html>

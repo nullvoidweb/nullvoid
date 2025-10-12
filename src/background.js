@@ -1,15 +1,64 @@
 // Use browser-specific API namespace
 const browserAPI = typeof browser !== "undefined" ? browser : chrome;
 
-// --- Smart Integration Configuration ---
-let smartIntegrationEnabled = false;
+// --- Smart Prevention System Configuration ---
+let smartPreventionEnabled = false;
 
-// Listen for storage changes
+// Initialize Smart Prevention System state from storage on startup
+async function initializeSmartPreventionState() {
+  try {
+    const result = await browserAPI.storage.local.get([
+      "smartPreventionEnabled",
+    ]);
+    smartPreventionEnabled = result.smartPreventionEnabled || false;
+    console.log(
+      "[Background] Smart Prevention System initialized:",
+      smartPreventionEnabled
+    );
+
+    // Setup web request blocking if enabled
+    if (smartPreventionEnabled) {
+      await setupWebRequestBlocking();
+    }
+  } catch (error) {
+    console.error(
+      "[Background] Failed to initialize Smart Prevention state:",
+      error
+    );
+  }
+}
+
+// Initialize on startup
+initializeSmartPreventionState();
+
+// Listen for storage changes - but prevent infinite loops
 browserAPI.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === "local" && changes.smartIntegrationEnabled) {
-    const newValue = changes.smartIntegrationEnabled.newValue;
-    if (newValue !== smartIntegrationEnabled) {
-      handleSmartIntegrationToggle(newValue);
+  if (namespace === "local" && changes.smartPreventionEnabled) {
+    const newValue = changes.smartPreventionEnabled.newValue;
+    const oldValue = changes.smartPreventionEnabled.oldValue;
+
+    console.log("[Background] Storage change detected:", {
+      oldValue,
+      newValue,
+      currentState: smartPreventionEnabled,
+    });
+
+    // Only handle if the value actually changed and differs from current state
+    if (newValue !== oldValue && newValue !== smartPreventionEnabled) {
+      console.log("[Background] Syncing state to match storage:", newValue);
+      smartPreventionEnabled = newValue;
+
+      // Don't call handleSmartPreventionToggle as it will re-save to storage
+      // Just update the internal state and web request blocking
+      if (newValue) {
+        setupWebRequestBlocking().catch((error) => {
+          console.error("[Background] Failed to setup blocking:", error);
+        });
+      }
+    } else {
+      console.log(
+        "[Background] Ignoring storage change (no actual change or already in sync)"
+      );
     }
   }
 });
@@ -56,48 +105,61 @@ async function handleRBISessionInit(region) {
 
 // Get region endpoint configuration
 function getRegionEndpoint(region) {
+  // Use Browserless.io configuration
+  const browserlessConfig = {
+    apiKey: "2SgiPLlAtLyabl75ea63edb2fb15fcf000d866d90aa96ab13",
+    baseUrl: "https://chrome.browserless.io",
+    wsUrl: "wss://chrome.browserless.io",
+  };
+
   const endpoints = {
     singapore: {
-      api: "https://sg-rbi-api.nullvoid.com",
-      stream: "wss://sg-rbi-stream.nullvoid.com",
+      api: browserlessConfig.baseUrl,
+      ws: browserlessConfig.wsUrl,
       region: "ap-southeast-1",
       flag: "🇸🇬",
       location: "Singapore",
+      browserless: browserlessConfig,
     },
     usa: {
-      api: "https://us-rbi-api.nullvoid.com",
-      stream: "wss://us-rbi-stream.nullvoid.com",
+      api: browserlessConfig.baseUrl,
+      ws: browserlessConfig.wsUrl,
       region: "us-east-1",
       flag: "🇺🇸",
       location: "United States",
+      browserless: browserlessConfig,
     },
     uk: {
-      api: "https://uk-rbi-api.nullvoid.com",
-      stream: "wss://uk-rbi-stream.nullvoid.com",
+      api: browserlessConfig.baseUrl,
+      ws: browserlessConfig.wsUrl,
       region: "eu-west-2",
       flag: "🇬🇧",
       location: "United Kingdom",
+      browserless: browserlessConfig,
     },
     canada: {
-      api: "https://ca-rbi-api.nullvoid.com",
-      stream: "wss://ca-rbi-stream.nullvoid.com",
+      api: browserlessConfig.baseUrl,
+      ws: browserlessConfig.wsUrl,
       region: "ca-central-1",
       flag: "🇨🇦",
       location: "Canada",
+      browserless: browserlessConfig,
     },
     europe: {
-      api: "https://eu-rbi-api.nullvoid.com",
-      stream: "wss://eu-rbi-stream.nullvoid.com",
+      api: browserlessConfig.baseUrl,
+      ws: browserlessConfig.wsUrl,
       region: "eu-west-1",
       flag: "🇪🇺",
       location: "Europe",
+      browserless: browserlessConfig,
     },
     japan: {
-      api: "https://jp-rbi-api.nullvoid.com",
-      stream: "wss://jp-rbi-stream.nullvoid.com",
+      api: browserlessConfig.baseUrl,
+      ws: browserlessConfig.wsUrl,
       region: "ap-northeast-1",
       flag: "🇯🇵",
       location: "Japan",
+      browserless: browserlessConfig,
     },
   };
 
@@ -235,8 +297,8 @@ let previousMessageCount = 0;
 browserAPI.runtime.onInstalled.addListener(() => {
   console.log("NULL VOID Extension Installed");
 
-  // Initialize smart integration
-  initializeSmartIntegration();
+  // Initialize smart prevention system
+  initializeSmartPrevention();
 
   // Initialize background email polling
   initializeEmailPolling();
@@ -246,24 +308,22 @@ browserAPI.runtime.onInstalled.addListener(() => {
 browserAPI.runtime.onStartup.addListener(() => {
   console.log("NULL VOID Extension Started");
 
-  // Initialize smart integration
-  initializeSmartIntegration();
+  // Initialize smart prevention system
+  initializeSmartPrevention();
 
   // Initialize background email polling
   initializeEmailPolling();
 });
 
-// --- Smart Integration Functions ---
-async function initializeSmartIntegration() {
-  console.log("Initializing Smart Integration...");
+// --- Smart Prevention System Functions ---
+async function initializeSmartPrevention() {
+  console.log("Initializing Smart Prevention System...");
 
-  // Get stored smart integration status
-  const result = await browserAPI.storage.local.get([
-    "smartIntegrationEnabled",
-  ]);
-  smartIntegrationEnabled = result.smartIntegrationEnabled || false;
+  // Get stored smart prevention system status
+  const result = await browserAPI.storage.local.get(["smartPreventionEnabled"]);
+  smartPreventionEnabled = result.smartPreventionEnabled || false;
 
-  console.log("Smart Integration Status:", smartIntegrationEnabled);
+  console.log("Smart Prevention System Status:", smartPreventionEnabled);
 
   // Set up web request blocking if enabled
   if (smartIntegrationEnabled) {
@@ -272,46 +332,72 @@ async function initializeSmartIntegration() {
 
   // Listen for tab updates to inject content script
   browserAPI.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (
-      changeInfo.status === "complete" &&
-      tab.url &&
-      smartIntegrationEnabled
-    ) {
-      injectSmartIntegrationScript(tabId);
+    if (changeInfo.status === "complete" && tab.url && smartPreventionEnabled) {
+      injectSmartPreventionScript(tabId);
     }
   });
 }
 
-// Inject smart integration content script into tabs
-async function injectSmartIntegrationScript(tabId) {
+// Inject smart prevention system content script into tabs
+async function injectSmartPreventionScript(tabId) {
   try {
     const tab = await browserAPI.tabs.get(tabId);
 
-    // Skip special pages
-    if (
-      tab.url.startsWith("chrome://") ||
-      tab.url.startsWith("moz-extension://") ||
-      tab.url.startsWith("chrome-extension://")
-    ) {
+    // Skip special pages and extension pages
+    const skipUrls = [
+      "chrome://",
+      "moz-extension://",
+      "chrome-extension://",
+      "edge://",
+      "about:",
+      "data:",
+      "file://",
+      "ftp://",
+    ];
+
+    if (skipUrls.some((prefix) => tab.url.startsWith(prefix))) {
+      console.log(
+        `[Background] Skipping script injection for protected URL: ${tab.url}`
+      );
       return;
     }
 
-    // Inject the smart integration script
+    // Check if scripting API is available
+    if (!browserAPI.scripting) {
+      console.warn("[Background] Scripting API not available");
+      return;
+    }
+
+    // Inject the smart prevention system script
     await browserAPI.scripting.executeScript({
       target: { tabId: tabId },
-      files: ["smart-integration.js"],
+      files: ["smart-prevention-system.js"],
     });
 
-    console.log(`Smart Integration script injected into tab ${tabId}`);
+    console.log(
+      `[Background] Smart Prevention System script injected into tab ${tabId} (${tab.url})`
+    );
   } catch (error) {
-    console.error("Error injecting smart integration script:", error);
+    // Don't log as error since many injection failures are expected (protected pages, etc.)
+    console.warn(
+      `[Background] Could not inject script into tab ${tabId}:`,
+      error.message
+    );
   }
 }
 
 // Setup web request blocking for malicious sites and ads
 async function setupWebRequestBlocking() {
   try {
-    if (smartIntegrationEnabled) {
+    // Check if declarativeNetRequest API is available
+    if (!browserAPI.declarativeNetRequest) {
+      console.warn(
+        "[Background] declarativeNetRequest API not available, skipping web request blocking"
+      );
+      return;
+    }
+
+    if (smartPreventionEnabled) {
       // Enable ad blocking and malicious site blocking rules
       await browserAPI.declarativeNetRequest.updateEnabledRulesets({
         enableRulesetIds: ["nullvoid_ad_blocker", "nullvoid_malicious_blocker"],
@@ -328,20 +414,44 @@ async function setupWebRequestBlocking() {
       console.log("Web request blocking rules disabled");
     }
   } catch (error) {
-    console.error("Error setting up web request blocking:", error);
+    console.warn(
+      "[Background] Web request blocking setup failed (non-critical):",
+      error
+    );
+    // Don't throw the error - this is not critical for the toggle operation
   }
 }
 
 // Handle messages from popup and content scripts
 browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  switch (message.action) {
-    case "toggleSmartIntegration":
-      handleSmartIntegrationToggle(message.enabled);
-      sendResponse({ success: true });
-      break;
+  console.log("[Background] Received message:", message);
 
-    case "getSmartIntegrationStatus":
-      sendResponse({ enabled: smartIntegrationEnabled });
+  switch (message.action) {
+    case "toggleSmartPrevention":
+      console.log(
+        "[Background] Processing toggleSmartPrevention:",
+        message.enabled
+      );
+      handleSmartPreventionToggle(message.enabled)
+        .then(() => {
+          console.log("[Background] Toggle completed successfully");
+          sendResponse({ success: true });
+        })
+        .catch((error) => {
+          console.error("[Background] Toggle failed:", error);
+          sendResponse({ success: false, error: error.message });
+        });
+      return true; // Keep message channel open for async response
+
+    case "getSmartPreventionStatus":
+      console.log(
+        "[Background] Getting Smart Prevention status:",
+        smartPreventionEnabled
+      );
+      sendResponse({
+        enabled: smartPreventionEnabled,
+        success: true,
+      });
       break;
 
     case "reportMaliciousSite":
@@ -357,30 +467,34 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case "authComplete":
       console.log("[Auth] Authentication completed:", message);
       // Forward to popup if it's open
-      browserAPI.runtime.sendMessage({
-        action: "authStateChanged",
-        isAuthenticated: true,
-        userProfile: message.user
-      }).catch(() => {
-        // Ignore if popup is not open
-      });
+      browserAPI.runtime
+        .sendMessage({
+          action: "authStateChanged",
+          isAuthenticated: true,
+          userProfile: message.user,
+        })
+        .catch(() => {
+          // Ignore if popup is not open
+        });
       sendResponse({ success: true });
       break;
 
     case "authFailed":
       console.log("[Auth] Authentication failed:", message.error);
       // Forward to popup if it's open
-      browserAPI.runtime.sendMessage({
-        action: "authStateChanged",
-        isAuthenticated: false,
-        userProfile: null
-      }).catch(() => {
-        // Ignore if popup is not open
-      });
+      browserAPI.runtime
+        .sendMessage({
+          action: "authStateChanged",
+          isAuthenticated: false,
+          userProfile: null,
+        })
+        .catch(() => {
+          // Ignore if popup is not open
+        });
       sendResponse({ success: true });
       break;
 
-    // OSINT functionality removed // Keep message channel open for async response
+      // OSINT functionality removed // Keep message channel open for async response
       break;
 
     case "initializeRBISession":
@@ -419,56 +533,130 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true; // Keep the message channel open for async response
 });
 
-// Handle smart integration toggle
-async function handleSmartIntegrationToggle(enabled) {
-  smartIntegrationEnabled = enabled;
+// Handle smart prevention system toggle
+async function handleSmartPreventionToggle(enabled) {
+  console.log(
+    `[Background] handleSmartPreventionToggle called with: ${enabled}`
+  );
 
-  // Store the setting
-  await browserAPI.storage.local.set({ smartIntegrationEnabled: enabled });
+  try {
+    // Update state FIRST to prevent race conditions with storage listener
+    smartPreventionEnabled = enabled;
 
-  console.log(`Smart Integration ${enabled ? "enabled" : "disabled"}`);
+    // Store the setting
+    await browserAPI.storage.local.set({
+      smartPreventionEnabled: enabled,
+      smartPreventionTimestamp: Date.now(),
+    });
+    console.log(
+      `[Background] Storage updated: smartPreventionEnabled = ${enabled}`
+    );
 
-  // Update web request blocking rules
-  await setupWebRequestBlocking();
+    // Update web request blocking rules (non-critical - don't let this fail the whole operation)
+    try {
+      await setupWebRequestBlocking();
+      console.log("[Background] Web request blocking updated successfully");
+    } catch (blockingError) {
+      console.warn(
+        "[Background] Web request blocking failed (non-critical):",
+        blockingError.message
+      );
+      // Continue anyway
+    }
 
-  if (enabled) {
-    // Inject script into all existing tabs
-    const tabs = await browserAPI.tabs.query({});
-    for (const tab of tabs) {
-      if (
-        tab.id &&
-        tab.url &&
-        !tab.url.startsWith("chrome://") &&
-        !tab.url.startsWith("moz-extension://") &&
-        !tab.url.startsWith("chrome-extension://")
-      ) {
-        try {
-          await injectSmartIntegrationScript(tab.id);
-        } catch (error) {
-          console.error(`Error injecting into tab ${tab.id}:`, error);
+    if (enabled) {
+      console.log("[Background] Injecting scripts into existing tabs...");
+      // Inject script into all existing tabs (non-critical - don't let this fail the whole operation)
+      try {
+        const tabs = await browserAPI.tabs.query({});
+        let injectedCount = 0;
+
+        for (const tab of tabs) {
+          if (
+            tab.id &&
+            tab.url &&
+            !tab.url.startsWith("chrome://") &&
+            !tab.url.startsWith("moz-extension://") &&
+            !tab.url.startsWith("chrome-extension://") &&
+            !tab.url.startsWith("edge://") &&
+            !tab.url.startsWith("about:")
+          ) {
+            try {
+              await injectSmartPreventionScript(tab.id);
+              injectedCount++;
+            } catch (error) {
+              console.warn(
+                `[Background] Could not inject into tab ${tab.id}:`,
+                error.message
+              );
+            }
+          }
         }
+        console.log(
+          `[Background] Successfully injected scripts into ${injectedCount} tabs`
+        );
+      } catch (tabError) {
+        console.warn(
+          "[Background] Tab script injection failed (non-critical):",
+          tabError.message
+        );
+        // Continue anyway
+      }
+    } else {
+      console.log("[Background] Disabling protection in existing tabs...");
+      // Disable protection in all tabs (non-critical)
+      try {
+        const tabs = await browserAPI.tabs.query({});
+        let disabledCount = 0;
+
+        for (const tab of tabs) {
+          if (tab.id) {
+            try {
+              await browserAPI.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => {
+                  // Disable smart prevention system in this tab
+                  if (window.nullVoidSmartPrevention) {
+                    window.nullVoidSmartPrevention.disableProtection();
+                  }
+                },
+              });
+              disabledCount++;
+            } catch (error) {
+              console.warn(
+                `[Background] Could not disable protection in tab ${tab.id}:`,
+                error.message
+              );
+            }
+          }
+        }
+        console.log(
+          `[Background] Successfully disabled protection in ${disabledCount} tabs`
+        );
+      } catch (tabError) {
+        console.warn(
+          "[Background] Tab script removal failed (non-critical):",
+          tabError.message
+        );
+        // Continue anyway
       }
     }
-  } else {
-    // Disable protection in all tabs
-    const tabs = await browserAPI.tabs.query({});
-    for (const tab of tabs) {
-      if (tab.id) {
-        try {
-          await browserAPI.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
-              // Disable smart integration in this tab
-              if (window.nullVoidSmartIntegration) {
-                window.nullVoidSmartIntegration.disableProtection();
-              }
-            },
-          });
-        } catch (error) {
-          // Ignore errors for tabs that can't be accessed
-        }
-      }
-    }
+
+    console.log(
+      `[Background] Smart Prevention System ${
+        enabled ? "enabled" : "disabled"
+      } successfully`
+    );
+
+    // Always return success if storage update succeeded
+    return { success: true, enabled: enabled };
+  } catch (error) {
+    console.error(
+      `[Background] Critical error in handleSmartPreventionToggle:`,
+      error
+    );
+    // Only throw if storage failed
+    throw error;
   }
 }
 
@@ -740,7 +928,7 @@ browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// --- Smart Integration Security System ---
+// --- Smart Prevention System Security System ---
 let securityEnabled = true;
 let securityStats = {
   malwareBlocked: 0,
@@ -749,7 +937,7 @@ let securityStats = {
   lastUpdated: Date.now(),
 };
 
-// Handle Smart Integration security messages
+// Handle Smart Prevention System security messages
 browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.action) {
     case "enableSecurity":
@@ -811,7 +999,7 @@ async function enableSecuritySystems(systems) {
   // Set up request blocking
   setupRequestBlocking();
 
-  console.log("[Smart Integration] Security systems enabled");
+  console.log("[Smart Prevention System] Security systems enabled");
 }
 
 async function disableSecuritySystems() {
@@ -842,7 +1030,7 @@ async function disableSecuritySystems() {
   // Clear badge
   browserAPI.action.setBadgeText({ text: "" });
 
-  console.log("[Smart Integration] Security systems disabled");
+  console.log("[Smart Prevention System] Security systems disabled");
 }
 
 function setupRequestBlocking() {
@@ -893,7 +1081,7 @@ function setupRequestBlocking() {
       })
       .catch((error) => {
         console.warn(
-          "[Smart Integration] Could not set up request blocking:",
+          "[Smart Prevention System] Could not set up request blocking:",
           error
         );
       });
@@ -1001,13 +1189,13 @@ browserAPI.runtime.onInstalled.addListener(async () => {
 async function handleOsintSearch(query, type) {
   const API_KEY = "ijVL3k0b35IyrwhRG1nC1OUnNuqF90CWt";
   const BASE_URL = "https://api.shodan.io";
-  
+
   try {
     console.log(`[OSINT Background] Performing ${type} search for: ${query}`);
-    
+
     let endpoint;
     let params = new URLSearchParams({ key: API_KEY });
-    
+
     switch (type) {
       case "host":
         // Host lookup - get info about specific IP
@@ -1016,20 +1204,20 @@ async function handleOsintSearch(query, type) {
         }
         endpoint = `${BASE_URL}/shodan/host/${query}`;
         break;
-        
+
       case "search":
         // General search
         endpoint = `${BASE_URL}/shodan/host/search`;
         params.append("query", query);
         params.append("limit", "10");
         break;
-        
+
       case "count":
         // Count search results
         endpoint = `${BASE_URL}/shodan/host/count`;
         params.append("query", query);
         break;
-        
+
       case "honeypot":
         // Honeypot check
         if (!isValidIP(query)) {
@@ -1038,19 +1226,20 @@ async function handleOsintSearch(query, type) {
         endpoint = `${BASE_URL}/labs/honeyscore/${query}`;
         params = new URLSearchParams({ key: API_KEY });
         break;
-        
+
       default:
         throw new Error("Invalid search type");
     }
-    
-    const url = type === "host" || type === "honeypot" 
-      ? `${endpoint}?${params.toString()}`
-      : `${endpoint}?${params.toString()}`;
-    
+
+    const url =
+      type === "host" || type === "honeypot"
+        ? `${endpoint}?${params.toString()}`
+        : `${endpoint}?${params.toString()}`;
+
     console.log("[OSINT Background] Fetching:", url);
-    
+
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       if (response.status === 401) {
         throw new Error("Invalid API key");
@@ -1062,16 +1251,15 @@ async function handleOsintSearch(query, type) {
         throw new Error(`API error: ${response.status}`);
       }
     }
-    
+
     const data = await response.json();
-    
+
     return {
       query: query,
       type: type,
       data: data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    
   } catch (error) {
     console.error("[OSINT Background] Shodan API error:", error);
     throw error;
@@ -1079,9 +1267,10 @@ async function handleOsintSearch(query, type) {
 }
 
 function isValidIP(ip) {
-  const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  const ipRegex =
+    /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
   return ipRegex.test(ip);
-
+}
 
 // --- Browserless.io Integration ---
 const BROWSERLESS_API_KEY = "2SgiPLlAtLyabl75ea63edb2fb15fcf000d866d90aa96ab13";
@@ -1091,28 +1280,34 @@ const BROWSERLESS_BASE_URL = "https://chrome.browserless.io";
 async function handleBrowserlessRBIInit(region) {
   try {
     console.log(`[Browserless RBI] Initializing session for region: ${region}`);
-    
+
     // Test connection to Browserless.io
-    const response = await fetch(`${BROWSERLESS_BASE_URL}/json/version?token=${BROWSERLESS_API_KEY}`);
-    
+    const response = await fetch(
+      `${BROWSERLESS_BASE_URL}/json/version?token=${BROWSERLESS_API_KEY}`
+    );
+
     if (!response.ok) {
       throw new Error(`Browserless.io connection failed: ${response.status}`);
     }
-    
+
     const versionInfo = await response.json();
-    console.log('[Browserless RBI] Connection successful:', versionInfo);
-    
+    console.log("[Browserless RBI] Connection successful:", versionInfo);
+
     // Generate session ID
-    const sessionId = "browserless_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
-    
+    const sessionId =
+      "browserless_" +
+      Date.now() +
+      "_" +
+      Math.random().toString(36).substr(2, 9);
+
     // Store active session
     activeSessions.set(sessionId, {
       region: region,
       startTime: Date.now(),
       status: "active",
-      type: "browserless"
+      type: "browserless",
     });
-    
+
     return {
       success: true,
       sessionId: sessionId,
@@ -1120,15 +1315,14 @@ async function handleBrowserlessRBIInit(region) {
       endpoint: {
         api: BROWSERLESS_BASE_URL,
         apiKey: BROWSERLESS_API_KEY,
-        type: "browserless"
-      }
+        type: "browserless",
+      },
     };
-    
   } catch (error) {
     console.error("[Browserless RBI] Session initialization failed:", error);
     return {
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -1137,8 +1331,8 @@ async function handleBrowserlessRBIInit(region) {
 browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "initializeBrowserlessRBI") {
     handleBrowserlessRBIInit(message.region)
-      .then(result => sendResponse(result))
-      .catch(error => sendResponse({ success: false, error: error.message }));
+      .then((result) => sendResponse(result))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
 });

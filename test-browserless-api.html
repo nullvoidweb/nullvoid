@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Browserless API</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 40px;
+        background: #f5f5f5;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 10px 5px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .result {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 6px;
+        font-family: monospace;
+        white-space: pre-wrap;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .info {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+      img {
+        max-width: 100%;
+        margin-top: 20px;
+        border: 1px solid #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🧪 Browserless.io API Test</h1>
+      <p>
+        <strong>API Key:</strong>
+        2SgiPLlAtLyabl75ea63edb2fb15fcf000d866d90aa96ab13
+      </p>
+      <p><strong>Endpoint:</strong> https://chrome.browserless.io</p>
+
+      <div>
+        <button onclick="testConnection()">1. Test Connection</button>
+        <button onclick="testScreenshot()">2. Test Screenshot API</button>
+        <button onclick="testGoogleScreenshot()">3. Screenshot Google</button>
+      </div>
+
+      <div id="result"></div>
+    </div>
+
+    <script>
+      const API_KEY = "2SgiPLlAtLyabl75ea63edb2fb15fcf000d866d90aa96ab13";
+      const BASE_URL = "https://chrome.browserless.io";
+
+      function showResult(message, type = "info") {
+        const resultDiv = document.getElementById("result");
+        resultDiv.className = "result " + type;
+        resultDiv.textContent = message;
+        console.log(message);
+      }
+
+      async function testConnection() {
+        showResult("Testing connection...", "info");
+
+        try {
+          const url = `${BASE_URL}/json/version?token=${API_KEY}`;
+          console.log("Requesting:", url);
+
+          const response = await fetch(url);
+          const data = await response.json();
+
+          showResult(
+            "✅ CONNECTION SUCCESSFUL!\n\n" +
+              `Status: ${response.status} ${response.statusText}\n` +
+              `Browser: ${data["Browser"] || "Unknown"}\n` +
+              `Protocol-Version: ${data["Protocol-Version"] || "Unknown"}\n` +
+              `User-Agent: ${data["User-Agent"] || "Unknown"}\n` +
+              `V8-Version: ${data["V8-Version"] || "Unknown"}\n` +
+              `WebKit-Version: ${data["WebKit-Version"] || "Unknown"}\n\n` +
+              JSON.stringify(data, null, 2),
+            "success"
+          );
+        } catch (error) {
+          showResult(
+            "❌ CONNECTION FAILED!\n\n" +
+              `Error: ${error.message}\n\n` +
+              `This could mean:\n` +
+              `1. Invalid API key\n` +
+              `2. Network connectivity issues\n` +
+              `3. CORS restrictions\n` +
+              `4. Browserless.io service is down`,
+            "error"
+          );
+        }
+      }
+
+      async function testScreenshot() {
+        showResult("Testing screenshot API...", "info");
+
+        try {
+          const url = `${BASE_URL}/screenshot?token=${API_KEY}`;
+          console.log("Requesting screenshot:", url);
+
+          const requestBody = {
+            url: "https://example.com",
+            options: {
+              type: "png",
+              quality: 90,
+              fullPage: false,
+            },
+            gotoOptions: {
+              waitUntil: "networkidle2",
+              timeout: 30000,
+            },
+            viewport: {
+              width: 1920,
+              height: 1080,
+            },
+          };
+
+          console.log("Request body:", requestBody);
+
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestBody),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const blob = await response.blob();
+          const imageUrl = URL.createObjectURL(blob);
+
+          const resultDiv = document.getElementById("result");
+          resultDiv.className = "result success";
+          resultDiv.innerHTML = `
+                    ✅ SCREENSHOT API WORKS!\n\n
+                    Status: ${response.status} ${response.statusText}\n
+                    Image Size: ${(blob.size / 1024).toFixed(2)} KB\n
+                    Content-Type: ${response.headers.get("content-type")}\n\n
+                    <img src="${imageUrl}" alt="Screenshot of example.com" />
+                `;
+        } catch (error) {
+          showResult(
+            "❌ SCREENSHOT API FAILED!\n\n" +
+              `Error: ${error.message}\n\n` +
+              `Check:\n` +
+              `1. API key is valid\n` +
+              `2. You have available credits\n` +
+              `3. Request payload is correct\n` +
+              `4. Target URL is accessible`,
+            "error"
+          );
+        }
+      }
+
+      async function testGoogleScreenshot() {
+        showResult("Taking screenshot of Google.com...", "info");
+
+        try {
+          const url = `${BASE_URL}/screenshot?token=${API_KEY}`;
+
+          const requestBody = {
+            url: "https://www.google.com",
+            options: {
+              type: "png",
+              quality: 90,
+              fullPage: false,
+            },
+            gotoOptions: {
+              waitUntil: "networkidle2",
+              timeout: 30000,
+            },
+            viewport: {
+              width: 1920,
+              height: 1080,
+              deviceScaleFactor: 1,
+            },
+          };
+
+          const startTime = Date.now();
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestBody),
+          });
+          const endTime = Date.now();
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const blob = await response.blob();
+          const imageUrl = URL.createObjectURL(blob);
+
+          const resultDiv = document.getElementById("result");
+          resultDiv.className = "result success";
+          resultDiv.innerHTML = `
+                    ✅ GOOGLE SCREENSHOT SUCCESS!\n\n
+                    Status: ${response.status} ${response.statusText}\n
+                    Time Taken: ${endTime - startTime}ms\n
+                    Image Size: ${(blob.size / 1024).toFixed(2)} KB\n
+                    Resolution: 1920x1080\n\n
+                    <img src="${imageUrl}" alt="Screenshot of Google.com" />
+                `;
+        } catch (error) {
+          showResult(
+            "❌ GOOGLE SCREENSHOT FAILED!\n\n" + `Error: ${error.message}`,
+            "error"
+          );
+        }
+      }
+    </script>
+  </body>
+</html>

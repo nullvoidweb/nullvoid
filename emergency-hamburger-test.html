@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🛠️ Hamburger Button Emergency Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #1a1a1a;
+        color: white;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      .emergency-panel {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(255, 0, 0, 0.9);
+        padding: 20px;
+        border-radius: 10px;
+        border: 2px solid #ff4444;
+        z-index: 999999;
+        max-width: 300px;
+      }
+      .test-btn {
+        background: #ff4444;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px 0;
+        width: 100%;
+        font-size: 14px;
+      }
+      .test-btn:hover {
+        background: #ff6666;
+      }
+      .success {
+        color: #0f0;
+      }
+      .error {
+        color: #f00;
+      }
+      .warning {
+        color: #ff0;
+      }
+      .code {
+        background: #000;
+        color: #0f0;
+        padding: 8px;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 12px;
+        margin: 5px 0;
+        word-break: break-all;
+      }
+      .instruction {
+        background: rgba(0, 100, 200, 0.2);
+        padding: 15px;
+        border-radius: 8px;
+        margin: 10px 0;
+        border: 1px solid rgba(0, 100, 200, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🛠️ Emergency Hamburger Button Test</h1>
+
+    <div class="emergency-panel">
+      <h3>🚨 EMERGENCY CONTROLS</h3>
+      <button class="test-btn" onclick="emergencyToggle()">
+        Emergency Toggle
+      </button>
+      <button class="test-btn" onclick="testHamburger()">Test Hamburger</button>
+      <button class="test-btn" onclick="forceReload()">Force Reload</button>
+      <button class="test-btn" onclick="debugInfo()">Debug Info</button>
+      <div id="emergency-log" style="font-size: 12px; margin-top: 10px"></div>
+    </div>
+
+    <div class="instruction">
+      <h2>🎯 STEP-BY-STEP EMERGENCY TEST:</h2>
+
+      <h3>1. Open AI Chat in Extension:</h3>
+      <p>Load your extension and open the AI chat interface</p>
+
+      <h3>2. Open DevTools:</h3>
+      <p>Press <strong>F12</strong> and go to Console tab</p>
+
+      <h3>3. Run Emergency Commands:</h3>
+      <div class="code">
+        // Test 1: Direct element access
+        document.getElementById('sidebarToggle').click() // Test 2: Emergency
+        toggle function window.EMERGENCY_TOGGLE() // Test 3: Force sidebar open
+        document.getElementById('sidebar').classList.add('open') // Test 4:
+        Check if functions exist console.log('chatGPTUI:', !!window.chatGPTUI)
+        console.log('nullVoidUI:', !!window.nullVoidUI)
+        console.log('EMERGENCY_TOGGLE:', !!window.EMERGENCY_TOGGLE)
+      </div>
+
+      <h3>4. Manual CSS Test:</h3>
+      <div class="code">
+        // Force sidebar visibility with CSS const sidebar =
+        document.getElementById('sidebar'); const main =
+        document.getElementById('mainContent'); sidebar.style.transform =
+        'translateX(0)'; sidebar.style.left = '0'; main.style.marginLeft =
+        '300px';
+      </div>
+
+      <h3>5. Event Listener Test:</h3>
+      <div class="code">
+        // Add direct event listener const btn =
+        document.getElementById('sidebarToggle'); btn.addEventListener('click',
+        function(e) { console.log('MANUAL CLICK WORKED!'); const sidebar =
+        document.getElementById('sidebar'); const isOpen =
+        sidebar.classList.contains('open'); if (isOpen) {
+        sidebar.classList.remove('open'); sidebar.classList.add('collapsed'); }
+        else { sidebar.classList.add('open');
+        sidebar.classList.remove('collapsed'); } });
+      </div>
+    </div>
+
+    <div class="instruction">
+      <h2>🔍 Expected Results:</h2>
+      <ul>
+        <li>
+          <span class="success">✅ SUCCESS:</span> If any test works, hamburger
+          should toggle sidebar
+        </li>
+        <li>
+          <span class="warning">⚠️ PARTIAL:</span> If only CSS works, it's a
+          JavaScript issue
+        </li>
+        <li>
+          <span class="error">❌ FAILURE:</span> If nothing works, there's a
+          deeper problem
+        </li>
+      </ul>
+
+      <h3>Console Messages to Look For:</h3>
+      <div class="code">
+        [HAMBURGER FIX] Button found! Setting up handlers... [HAMBURGER FIX] ALL
+        METHODS APPLIED! [EMERGENCY] Emergency toggle called! [ChatGPTUI]
+        Emergency toggle override called
+      </div>
+    </div>
+
+    <div class="instruction">
+      <h2>🔧 If Still Not Working:</h2>
+      <ol>
+        <li>
+          <strong>Check Element Exists:</strong>
+          <code>!!document.getElementById('sidebarToggle')</code>
+        </li>
+        <li>
+          <strong>Check CSS Classes:</strong> Look for
+          <code>.sidebar-toggle</code> styles
+        </li>
+        <li>
+          <strong>Check Z-Index:</strong> Button might be behind another element
+        </li>
+        <li>
+          <strong>Check Pointer Events:</strong> CSS might be blocking clicks
+        </li>
+        <li>
+          <strong>Check JavaScript Errors:</strong> Look for any script errors
+          in console
+        </li>
+      </ol>
+    </div>
+
+    <script>
+      function emergencyToggle() {
+        const log = document.getElementById("emergency-log");
+
+        try {
+          if (window.EMERGENCY_TOGGLE) {
+            window.EMERGENCY_TOGGLE();
+            log.innerHTML =
+              '<span class="success">✅ Emergency toggle called</span>';
+          } else {
+            // Manual emergency toggle
+            const sidebar = document.getElementById("sidebar");
+            const main = document.getElementById("mainContent");
+
+            if (sidebar && main) {
+              const isOpen = sidebar.classList.contains("open");
+              if (isOpen) {
+                sidebar.classList.remove("open");
+                sidebar.classList.add("collapsed");
+                main.classList.remove("sidebar-visible");
+              } else {
+                sidebar.classList.add("open");
+                sidebar.classList.remove("collapsed");
+                main.classList.add("sidebar-visible");
+              }
+              log.innerHTML =
+                '<span class="success">✅ Manual toggle worked</span>';
+            } else {
+              log.innerHTML =
+                '<span class="error">❌ Elements not found</span>';
+            }
+          }
+        } catch (error) {
+          log.innerHTML =
+            '<span class="error">❌ Error: ' + error.message + "</span>";
+        }
+      }
+
+      function testHamburger() {
+        const log = document.getElementById("emergency-log");
+
+        try {
+          const btn = document.getElementById("sidebarToggle");
+          if (btn) {
+            btn.click();
+            log.innerHTML = '<span class="success">✅ Hamburger clicked</span>';
+          } else {
+            log.innerHTML =
+              '<span class="error">❌ Hamburger button not found</span>';
+          }
+        } catch (error) {
+          log.innerHTML =
+            '<span class="error">❌ Error: ' + error.message + "</span>";
+        }
+      }
+
+      function forceReload() {
+        window.location.reload(true);
+      }
+
+      function debugInfo() {
+        const log = document.getElementById("emergency-log");
+        const info = {
+          chatGPTUI: !!window.chatGPTUI,
+          nullVoidUI: !!window.nullVoidUI,
+          emergencyToggle: !!window.EMERGENCY_TOGGLE,
+          sidebarElement: !!document.getElementById("sidebar"),
+          hamburgerElement: !!document.getElementById("sidebarToggle"),
+          url: window.location.href.substring(0, 50) + "...",
+        };
+
+        log.innerHTML =
+          '<div class="code">' + JSON.stringify(info, null, 2) + "</div>";
+      }
+
+      // Auto-run debug info
+      setTimeout(debugInfo, 1000);
+    </script>
+  </body>
+</html>

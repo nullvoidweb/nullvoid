@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🧪 NULL VOID AI Extension Test</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #333;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+      .header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+      .content {
+        padding: 30px;
+      }
+      .test-section {
+        margin: 25px 0;
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 5px solid #28a745;
+        background: #f8f9fa;
+      }
+      .test-area {
+        background: #2c3e50;
+        color: #ecf0f1;
+        padding: 20px;
+        border-radius: 10px;
+        font-family: "Courier New", monospace;
+        margin: 20px 0;
+        white-space: pre-wrap;
+        max-height: 600px;
+        overflow-y: auto;
+      }
+      button {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border: none;
+        padding: 12px 25px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+      }
+      .chat-input {
+        width: 70%;
+        padding: 12px;
+        border: 2px solid #28a745;
+        border-radius: 25px;
+        font-size: 14px;
+        outline: none;
+        margin: 10px;
+      }
+      .formatting-analysis {
+        background: #e3f2fd;
+        color: #1565c0;
+        margin: 10px 0;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 0.9em;
+        border-left: 4px solid #2196f3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🧪 NULL VOID AI Extension Test</h1>
+        <p>Testing the actual extension AI system with cleanup functions</p>
+      </div>
+
+      <div class="content">
+        <div class="test-section">
+          <h3>🎯 Clean Formatting Test</h3>
+          <p>
+            This test loads the actual AI system from the extension and tests if
+            the cleanup functions work correctly.
+          </p>
+
+          <input
+            type="text"
+            class="chat-input"
+            id="testInput"
+            placeholder="Ask about NULL VOID features..."
+            onkeypress="handleKeypress(event)"
+          />
+          <button onclick="testCleanFormatting()">Test Clean Formatting</button>
+          <button onclick="testAllFeatures()">Test All Features</button>
+          <button onclick="clearResults()">Clear</button>
+
+          <div id="testResults" class="test-area"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Load the actual extension AI system -->
+    <script src="src/ai-chat-full.js"></script>
+
+    <script>
+      // Wait for AI system to load
+      window.addEventListener("load", () => {
+        logResult("🎯 NULL VOID AI Extension Test Loaded");
+        logResult(
+          "Testing the actual extension AI system with cleanup functions"
+        );
+        logResult("=" * 60);
+      });
+
+      function logResult(message) {
+        const testResults = document.getElementById("testResults");
+        const timestamp = new Date().toLocaleTimeString();
+        testResults.textContent += `[${timestamp}] ${message}\n`;
+        testResults.scrollTop = testResults.scrollHeight;
+      }
+
+      function analyzeFormatting(response) {
+        const asteriskCount = (response.match(/\*/g) || []).length;
+        const boldPatterns = (response.match(/\*\*[^*]+\*\*/g) || []).length;
+        const italicPatterns = (response.match(/\*[^*]+\*/g) || []).length;
+        const headerPatterns = (response.match(/^#{1,6}\s+/gm) || []).length;
+
+        const issues = [];
+        if (asteriskCount > 0) issues.push(`${asteriskCount} asterisks`);
+        if (boldPatterns > 0) issues.push(`${boldPatterns} bold patterns`);
+        if (italicPatterns > 0)
+          issues.push(`${italicPatterns} italic patterns`);
+        if (headerPatterns > 0)
+          issues.push(`${headerPatterns} header patterns`);
+
+        const isClean =
+          asteriskCount === 0 &&
+          boldPatterns === 0 &&
+          italicPatterns === 0 &&
+          headerPatterns === 0;
+
+        return {
+          isClean,
+          asteriskCount,
+          issues: issues.join(", ") || "None",
+          summary: `${
+            isClean ? "✅ CLEAN" : "❌ NEEDS WORK"
+          } | Asterisks: ${asteriskCount} | Issues: ${issues.length}`,
+        };
+      }
+
+      async function testAIResponse(question) {
+        try {
+          logResult(`\n🔍 Testing: "${question}"`);
+
+          // Check if the AI system is available
+          if (typeof getAIResponse !== "function") {
+            logResult(
+              "❌ AI system not loaded - getAIResponse function not found"
+            );
+            return;
+          }
+
+          // Test the actual extension AI response
+          const response = await getAIResponse(question);
+          const analysis = analyzeFormatting(response);
+
+          logResult(`📊 Analysis: ${analysis.summary}`);
+          logResult(`📝 Response length: ${response.length} characters`);
+
+          if (!analysis.isClean) {
+            logResult(`⚠️ Issues found: ${analysis.issues}`);
+          }
+
+          logResult(`\n📄 Response Preview:`);
+          logResult(`"${response.substring(0, 200)}..."`);
+
+          return analysis;
+        } catch (error) {
+          logResult(`❌ Error: ${error.message}`);
+          return { isClean: false, error: error.message };
+        }
+      }
+
+      async function testCleanFormatting() {
+        const input = document.getElementById("testInput");
+        const question =
+          input.value.trim() ||
+          "How does NULL VOID protect me from dangerous websites?";
+
+        logResult("\n🧪 Running Clean Formatting Test...");
+        await testAIResponse(question);
+      }
+
+      async function testAllFeatures() {
+        logResult("\n🎯 Running Full Feature Test Suite...");
+
+        const testQuestions = [
+          "How does NULL VOID protect me from dangerous websites?",
+          "How do I use the disposable browser feature?",
+          "Can you explain all the features of NULL VOID?",
+          "What should I do if I see a 'Fallback Mode' warning?",
+          "How do I use the temporary email feature?",
+        ];
+
+        let passCount = 0;
+        let totalAsterisks = 0;
+
+        for (const question of testQuestions) {
+          const analysis = await testAIResponse(question);
+          if (analysis && analysis.isClean) passCount++;
+          if (analysis && analysis.asteriskCount)
+            totalAsterisks += analysis.asteriskCount;
+
+          // Brief pause between tests
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+
+        logResult(`\n${"=".repeat(60)}`);
+        logResult(`📊 FINAL RESULTS:`);
+        logResult(`Tests Passed: ${passCount}/${testQuestions.length}`);
+        logResult(`Total Asterisks: ${totalAsterisks}`);
+        logResult(
+          `Overall Status: ${
+            totalAsterisks === 0
+              ? "✅ CLEAN FORMATTING ACHIEVED"
+              : "❌ FORMATTING NEEDS WORK"
+          }`
+        );
+      }
+
+      function handleKeypress(event) {
+        if (event.key === "Enter") {
+          testCleanFormatting();
+        }
+      }
+
+      function clearResults() {
+        document.getElementById("testResults").textContent = "";
+      }
+    </script>
+  </body>
+</html>
