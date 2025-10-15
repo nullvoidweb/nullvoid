@@ -1,100 +1,186 @@
-// NULL VOID Remote Browser Isolation - Browserless.io Integration v2.0
-// Production-ready implementation with proper API usage and clean UI
+// NULL VOID Remote Browser Isolation - Minimal Browserless.io integration
+// Provides secure remote rendering with a stripped-down brand-forward UI.
 
-console.log("NULL VOID Browserless.io RBI Browser v2.0 Loading...");
+console.log("NULL VOID Browserless.io RBI (minimal) loading...");
 
-// Use browser-specific API namespace
 const browserAPI = typeof browser !== "undefined" ? browser : chrome;
 
-// Get Browserless configuration
-const BROWSERLESS_API_KEY =
-  window.BROWSERLESS_CONFIG?.apiKey ||
-  "2SgiPLlAtLyabl75ea63edb2fb15fcf000d866d90aa96ab13";
-const BROWSERLESS_BASE_URL =
-  window.BROWSERLESS_CONFIG?.baseUrl || "https://chrome.browserless.io";
+const DEFAULT_BROWSERLESS_SETTINGS = {
+  apiKey: "",
+  baseUrl: "https://production-sfo.browserless.io",
+  wsUrl: "wss://production-sfo.browserless.io",
+  endpoints: {
+    screenshot: "/screenshot",
+    version: "/json/version",
+  },
+  gotoOptions: {
+    waitUntil: "networkidle2",
+    timeout: 30000,
+  },
+  screenshotOptions: {
+    type: "png",
+    quality: 90,
+    fullPage: false,
+  },
+};
 
-// Global state
-let currentLocation = "singapore";
-let currentUrl = "";
-let sessionStartTime = null;
-let uptimeInterval = null;
-let navigationHistory = [];
-let historyIndex = -1;
+let BROWSERLESS_API_KEY = DEFAULT_BROWSERLESS_SETTINGS.apiKey;
+let BROWSERLESS_BASE_URL = DEFAULT_BROWSERLESS_SETTINGS.baseUrl;
+let BROWSERLESS_WS_URL = DEFAULT_BROWSERLESS_SETTINGS.wsUrl;
+
+let browserlessConfigResolved = null;
+let browserlessConfigCache = null;
+
 let isApiConnected = false;
 let isAuthFailure = false;
+let isServicePaused = false;
 
-// Initialize when DOM is ready
+let currentUrl = "";
+let navigationHistory = [];
+let historyIndex = -1;
+let suppressHistoryUpdate = false;
+let lastScreenshotObjectUrl = null;
+let sessionStartTime = null;
+let uptimeInterval = null;
+
+const remoteState = {
+  socket: null,
+  sessionId: null,
+  commandId: 0,
+  pending: new Map(),
+  canvas: null,
+  ctx: null,
+  overlay: null,
+  statusNode: null,
+  lastMetadata: null,
+  isStreaming: false,
+  currentUrl: "",
+  targetId: null,
+  hasRenderedFrame: false,
+  expectingClose: false,
+};
+
+const MINIMAL_STYLE_ID = "null-void-rbi-minimal";
+
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[RBI v2.0] Starting initialization...");
+  injectMinimalStyles();
+  initializeNullVoidBrowser().catch((error) => {
+    console.error("[NULL VOID RBI] Initialization error", error);
+    showNotification("Initialization failed: " + error.message, "error");
+    showBrowserReady(false);
+  });
+});
 
-  setTimeout(() => {
-    initializeBrowserlessRBI();
-  }, 100);
+async function initializeNullVoidBrowser() {
+  console.log("[NULL VOID RBI] Initializing minimal Browserless experience");
 
   setupEventListeners();
   startUptimeCounter();
-});
 
-// Initialize Browserless RBI
-async function initializeBrowserlessRBI() {
-  console.log("[RBI v2.0] Initializing Browserless.io RBI...");
+  await ensureBrowserlessConfig();
 
-  try {
-    // Get parameters from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const location = urlParams.get("location") || "singapore";
-    const sessionId = urlParams.get("sessionId") || "browserless_" + Date.now();
+  const params = new URLSearchParams(window.location.search);
+  const location = params.get("location") || "singapore";
+  const sessionId = params.get("sessionId") || `nv_${Date.now()}`;
 
-    currentLocation = location;
-    sessionStartTime = Date.now();
+  updateLocationDisplay(location);
+  updateSessionDisplay(sessionId);
 
-    // Update UI
-    updateLocationDisplay(location);
-    updateSessionDisplay(sessionId);
+  sessionStartTime = Date.now();
 
-    // Hide loading and show ready state
-    hideLoadingScreen();
+  hideLoadingScreen();
+  showBrowserReady(false);
 
-    // Set default URL
-    const urlInput = document.getElementById("urlInput");
-    if (urlInput) {
-      urlInput.value = "https://www.google.com";
-    }
+  const connected = await verifyBrowserlessConnection();
+  if (connected) {
+    showNotification("Connected to Browserless.io", "success");
+    showBrowserReady(true);
 
-    // Verify Browserless API connection
-    const connected = await verifyBrowserlessConnection();
-
-    if (connected) {
-      showNotification("✅ Connected to Browserless.io API", "success");
-      showBrowserReady(true);
-
-      // Auto-navigate to Google after 2 seconds
-      setTimeout(() => {
-        console.log("[RBI v2.0] Auto-navigating to Google...");
-        navigateTo("https://www.google.com");
-      }, 2000);
-    } else {
-      showNotification(
-        "⚠️ Browserless API unavailable - Using fallback mode",
-        "warning"
-      );
-      showBrowserReady(false);
-    }
-
-    console.log("[RBI v2.0] Initialization completed");
-  } catch (error) {
-    console.error("[RBI v2.0] Initialization failed:", error);
-    showNotification("Initialization error: " + error.message, "error");
+    setTimeout(() => {
+      if (!currentUrl) {
+        navigateTo("https://www.google.com").catch((error) => {
+          console.warn("[NULL VOID RBI] Auto navigation failed", error);
+        });
+      }
+    }, 1200);
+  } else {
+    showNotification("Browserless API unavailable - fallback mode", "warning");
     showBrowserReady(false);
   }
+
+  console.log("[NULL VOID RBI] Initialization complete");
 }
 
-// Verify Browserless.io connection
+async function ensureBrowserlessConfig() {
+  if (!browserlessConfigResolved) {
+    browserlessConfigResolved = resolveBrowserlessConfigSource()
+      .catch((error) => {
+        console.warn("[NULL VOID RBI] Failed to resolve config", error.message);
+        return null;
+      })
+      .then((config) => {
+        browserlessConfigCache = {
+          ...DEFAULT_BROWSERLESS_SETTINGS,
+          ...(config || {}),
+        };
+
+        if (browserlessConfigCache.apiKey) {
+          BROWSERLESS_API_KEY = browserlessConfigCache.apiKey;
+        } else {
+          console.warn(
+            "[NULL VOID RBI] Browserless API key missing from configuration"
+          );
+        }
+        if (browserlessConfigCache.baseUrl) {
+          BROWSERLESS_BASE_URL = stripTrailingSlash(
+            browserlessConfigCache.baseUrl
+          );
+        }
+        if (browserlessConfigCache.wsUrl) {
+          BROWSERLESS_WS_URL = browserlessConfigCache.wsUrl;
+        }
+
+        return browserlessConfigCache;
+      });
+  }
+
+  return browserlessConfigResolved;
+}
+
+function resolveBrowserlessConfigSource() {
+  if (typeof window !== "undefined") {
+    if (window.BROWSERLESS_CONFIG_PROMISE) {
+      return window.BROWSERLESS_CONFIG_PROMISE;
+    }
+    if (window.BROWSERLESS_CONFIG) {
+      return Promise.resolve(window.BROWSERLESS_CONFIG);
+    }
+  }
+  return Promise.resolve(null);
+}
+
 async function verifyBrowserlessConnection() {
   try {
-    console.log("[RBI v2.0] Verifying Browserless.io API connection...");
+    await ensureBrowserlessConfig();
 
-    const testUrl = `${BROWSERLESS_BASE_URL}/json/version?token=${BROWSERLESS_API_KEY}`;
+    if (!BROWSERLESS_API_KEY) {
+      console.warn("[NULL VOID RBI] Browserless API key missing");
+      handleApiAuthFailure(
+        0,
+        "Missing API Key",
+        "Set BROWSERLESS_API_KEY in .env"
+      );
+      return false;
+    }
+
+    const endpoint = buildEndpoint(
+      BROWSERLESS_BASE_URL,
+      browserlessConfigCache?.endpoints?.version ||
+        DEFAULT_BROWSERLESS_SETTINGS.endpoints.version
+    );
+    const testUrl = `${endpoint}?token=${encodeURIComponent(
+      BROWSERLESS_API_KEY
+    )}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -104,104 +190,832 @@ async function verifyBrowserlessConnection() {
 
     if (response.ok) {
       const data = await response.json();
-      console.log("[RBI v2.0] ✅ Browserless API connected:", data);
+      console.log("[NULL VOID RBI] Browserless API connected", data);
       isApiConnected = true;
+      isAuthFailure = false;
+      isServicePaused = false;
       return true;
-    } else {
-      const errorText = await safeReadResponseText(response);
-      console.warn(
-        "[RBI v2.0] API returned error:",
-        response.status,
-        response.statusText,
-        errorText
-      );
+    }
 
-      if (response.status === 401 || response.status === 403) {
-        handleApiAuthFailure(response.status, response.statusText, errorText);
-      }
+    const errorText = await safeReadResponseText(response);
 
-      isApiConnected = false;
+    if (response.status === 401 || response.status === 403) {
+      handleApiAuthFailure(response.status, response.statusText, errorText);
       return false;
     }
+
+    if (
+      response.status === 402 ||
+      /temporarily paused|deployment paused/i.test(errorText)
+    ) {
+      showBrowserlessServicePaused(errorText.trim());
+      return false;
+    }
+
+    console.warn(
+      "[NULL VOID RBI] Browserless version endpoint failed",
+      response.status,
+      errorText
+    );
+    return false;
   } catch (error) {
-    console.warn("[RBI v2.0] API verification failed:", error.message);
-    isApiConnected = false;
+    console.warn(
+      "[NULL VOID RBI] Browserless verification failed",
+      error.message
+    );
     return false;
   }
 }
 
-// Navigate to URL - Main navigation function
 async function navigateTo(url) {
+  await ensureBrowserlessConfig();
+
   if (isAuthFailure) {
     showNotification(
-      "Browserless authentication has failed. Please update the API key and retry.",
-      "error"
+      "Browserless authentication failed. Using fallback renderer.",
+      "warning"
     );
+    showBrowserReady(false);
+  }
+
+  if (!url || !url.trim()) {
+    showNotification("Please enter a valid URL", "warning");
     return;
   }
+
+  let normalizedUrl = url.trim();
+  if (!/^https?:\/\//i.test(normalizedUrl)) {
+    normalizedUrl = "https://" + normalizedUrl;
+  }
+
+  currentUrl = normalizedUrl;
+
+  const urlInput = document.getElementById("urlInput");
+  if (urlInput) {
+    urlInput.value = normalizedUrl;
+  }
+
+  if (!suppressHistoryUpdate) {
+    addToHistory(normalizedUrl);
+  } else {
+    suppressHistoryUpdate = false;
+  }
+
+  teardownRemoteStream();
+  showLoadingState(normalizedUrl);
+
   try {
-    // Validate and fix URL
-    if (!url || !url.trim()) {
-      showNotification("Please enter a valid URL", "warning");
-      return;
-    }
+    if (isApiConnected && !isServicePaused && !isAuthFailure) {
+      const streamReady = await loadViaRemoteStream(normalizedUrl);
+      if (streamReady) {
+        return;
+      }
 
-    url = url.trim();
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      url = "https://" + url;
-    }
-
-    currentUrl = url;
-    console.log("[RBI v2.0] Navigating to:", url);
-
-    // Update URL input
-    const urlInput = document.getElementById("urlInput");
-    if (urlInput) {
-      urlInput.value = url;
-    }
-
-    // Add to history
-    addToHistory(url);
-
-    // Show loading state
-    showLoadingState(url);
-
-    // Try Browserless API first
-    if (isApiConnected) {
-      const success = await loadViaScreenshotAPI(url);
+      const success = await loadViaScreenshotAPI(normalizedUrl);
       if (success) {
         return;
       }
     }
 
-    // Fallback to iframe
-    console.log("[RBI v2.0] Using fallback iframe mode");
-    loadViaIframe(url);
+    console.log("[NULL VOID RBI] Falling back to iframe rendering");
+    loadViaIframe(normalizedUrl);
   } catch (error) {
-    console.error("[RBI v2.0] Navigation error:", error);
-    showNotification("Navigation failed: " + error.message, "error");
-    showErrorState(url, error.message);
+    console.error("[NULL VOID RBI] Navigation error", error.message);
+    showErrorState(normalizedUrl, error.message);
   }
 }
 
-// Load page using Browserless Screenshot API
+async function loadViaRemoteStream(url) {
+  if (!BROWSERLESS_API_KEY || !BROWSERLESS_WS_URL) {
+    console.warn("[NULL VOID RBI] Missing Browserless websocket configuration");
+    return false;
+  }
+
+  renderRemoteStreamStage(url);
+
+  const wsEndpoint = buildWebsocketEndpoint(BROWSERLESS_WS_URL, {
+    token: BROWSERLESS_API_KEY,
+    headless: "true",
+    stealth: "true",
+    "--window-size": "1280,720",
+    "--hide-scrollbars": "true",
+    "--mute-audio": "true",
+  });
+
+  let resolved = false;
+  let connectionTimeout = null;
+
+  return new Promise((resolve) => {
+    let socket;
+    try {
+      socket = new WebSocket(wsEndpoint);
+    } catch (error) {
+      console.warn(
+        "[NULL VOID RBI] Failed to open Browserless websocket",
+        error.message
+      );
+      updateStreamStatus(
+        true,
+        "Unable to reach Browserless websocket endpoint"
+      );
+      resolve(false);
+      return;
+    }
+
+    remoteState.socket = socket;
+    remoteState.commandId = 0;
+    remoteState.pending = new Map();
+    remoteState.sessionId = null;
+    remoteState.lastMetadata = null;
+    remoteState.isStreaming = false;
+    remoteState.currentUrl = url;
+    remoteState.targetId = null;
+    remoteState.hasRenderedFrame = false;
+    remoteState.expectingClose = false;
+
+    const finalize = (success, message) => {
+      if (resolved) {
+        return;
+      }
+      resolved = true;
+      clearTimeout(connectionTimeout);
+      if (!success) {
+        teardownRemoteStream(message);
+      } else {
+        remoteState.isStreaming = true;
+        updateStreamStatus(true, "Waiting for remote frames…");
+      }
+      resolve(success);
+    };
+
+    connectionTimeout = setTimeout(() => {
+      finalize(false, "Timed out connecting to Browserless");
+    }, 15000);
+
+    socket.addEventListener("open", async () => {
+      try {
+        const { targetId } = await sendRootCommand("Target.createTarget", {
+          url: "about:blank",
+          newWindow: false,
+        });
+
+        remoteState.targetId = targetId;
+
+        const attachResult = await sendRootCommand("Target.attachToTarget", {
+          targetId,
+          flatten: true,
+        });
+
+        remoteState.sessionId = attachResult.sessionId;
+
+        await Promise.all([
+          sendSessionCommand("Runtime.enable"),
+          sendSessionCommand("Page.enable"),
+          sendSessionCommand("Network.enable"),
+        ]);
+
+        await sendSessionCommand("Emulation.setDeviceMetricsOverride", {
+          width: 1280,
+          height: 720,
+          deviceScaleFactor: 1,
+          mobile: false,
+          screenOrientation: {
+            type: "landscapePrimary",
+            angle: 0,
+          },
+        });
+
+        await sendSessionCommand("Page.navigate", { url });
+        await sendSessionCommand("Page.startScreencast", {
+          format: "jpeg",
+          quality: 80,
+          everyNthFrame: 1,
+          maxWidth: 1280,
+          maxHeight: 720,
+        });
+
+        finalize(true);
+      } catch (error) {
+        console.warn("[NULL VOID RBI] Remote streaming failed", error.message);
+        showNotification(
+          "Remote streaming unavailable. Trying alternate renderer.",
+          "warning"
+        );
+        finalize(false, error.message);
+      }
+    });
+
+    socket.addEventListener("message", (event) => {
+      handleCdpMessage(event.data);
+    });
+
+    socket.addEventListener("error", (event) => {
+      const errorMessage = event?.message || "Browserless websocket error";
+      console.warn("[NULL VOID RBI] Websocket error", errorMessage);
+      finalize(false, errorMessage);
+    });
+
+    socket.addEventListener("close", (event) => {
+      console.warn(
+        "[NULL VOID RBI] Websocket closed",
+        event.code,
+        event.reason
+      );
+      const expected = remoteState.expectingClose;
+      remoteState.expectingClose = false;
+
+      if (!resolved && !expected) {
+        finalize(false, event.reason || "Connection closed");
+        return;
+      }
+
+      if (expected) {
+        return;
+      }
+
+      updateStreamStatus(true, "Remote session ended");
+      showNotification(
+        "Remote session ended. Switching to snapshot mode.",
+        "warning"
+      );
+
+      const fallbackUrl = remoteState.currentUrl || url;
+      teardownRemoteStream("Remote connection closed");
+
+      if (fallbackUrl) {
+        showLoadingState(fallbackUrl);
+        loadViaScreenshotAPI(fallbackUrl).catch((error) => {
+          console.warn(
+            "[NULL VOID RBI] Failed to fallback after remote close",
+            error.message
+          );
+          loadViaIframe(fallbackUrl);
+        });
+      }
+    });
+  });
+}
+
+function renderRemoteStreamStage(url) {
+  setBrowserFrame(
+    `
+      <div class="nv-stage" data-mode="stream">
+        <header class="nv-stage__bar">
+          <span class="nv-stage__brand">NULL VOID</span>
+          <span class="nv-stage__status" title="${escapeHtml(
+            url
+          )}">${escapeHtml(extractDomain(url))}</span>
+          <span class="nv-stage__tag">REMOTE</span>
+        </header>
+        <div class="nv-stage__content nv-stage__content--stream">
+          <canvas class="nv-stream__canvas" id="nvStreamCanvas"></canvas>
+          <div
+            class="nv-stream__overlay"
+            id="nvStreamOverlay"
+            tabindex="0"
+            role="application"
+            aria-label="Remote browser surface"
+          ></div>
+          <div class="nv-stream__status" id="nvStreamStatus">
+            <div class="nv-spinner"></div>
+            <div class="nv-stream__label">Connecting to remote browser…</div>
+          </div>
+        </div>
+      </div>
+    `,
+    (container) => {
+      remoteState.canvas = container.querySelector("#nvStreamCanvas");
+      remoteState.ctx = remoteState.canvas
+        ? remoteState.canvas.getContext("2d", { alpha: false })
+        : null;
+      remoteState.overlay = container.querySelector("#nvStreamOverlay");
+      remoteState.statusNode = container.querySelector("#nvStreamStatus");
+      remoteState.hasRenderedFrame = false;
+
+      if (remoteState.overlay) {
+        bindRemoteOverlayEvents(remoteState.overlay);
+        setTimeout(() => {
+          try {
+            remoteState.overlay.focus({ preventScroll: true });
+          } catch (error) {
+            /* ignore focus errors */
+          }
+        }, 20);
+      }
+
+      updateStreamStatus(true, "Connecting to remote browser…");
+    }
+  );
+}
+
+function bindRemoteOverlayEvents(overlay) {
+  overlay.addEventListener("pointerdown", handleRemotePointerDown);
+  overlay.addEventListener("pointermove", handleRemotePointerMove);
+  overlay.addEventListener("pointerup", handleRemotePointerUp);
+  overlay.addEventListener("pointercancel", handleRemotePointerUp);
+  overlay.addEventListener("pointerleave", handleRemotePointerUp);
+  overlay.addEventListener("wheel", handleRemoteWheel, { passive: false });
+  overlay.addEventListener("keydown", handleRemoteKeyDown);
+  overlay.addEventListener("keyup", handleRemoteKeyUp);
+  overlay.addEventListener("contextmenu", (event) => event.preventDefault());
+  overlay.addEventListener("pointerdown", () => {
+    try {
+      overlay.focus({ preventScroll: true });
+    } catch (error) {
+      /* ignore focus errors */
+    }
+  });
+}
+
+function updateStreamStatus(visible, message) {
+  if (!remoteState.statusNode) {
+    return;
+  }
+
+  if (visible) {
+    remoteState.statusNode.classList.remove("is-hidden");
+    if (message) {
+      const label = remoteState.statusNode.querySelector(".nv-stream__label");
+      if (label) {
+        label.textContent = message;
+      }
+    }
+  } else {
+    remoteState.statusNode.classList.add("is-hidden");
+  }
+}
+
+function sendRootCommand(method, params = {}) {
+  return sendCdpCommand(method, params, null);
+}
+
+function sendSessionCommand(method, params = {}) {
+  if (!remoteState.sessionId) {
+    return Promise.reject(new Error("No active Browserless session"));
+  }
+  return sendCdpCommand(method, params, remoteState.sessionId);
+}
+
+function sendCdpCommand(method, params = {}, sessionId = null) {
+  const { socket } = remoteState;
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    return Promise.reject(new Error("Browserless websocket not open"));
+  }
+
+  const id = ++remoteState.commandId;
+
+  return new Promise((resolve, reject) => {
+    remoteState.pending.set(id, { resolve, reject, method });
+    const payload = { id, method, params };
+    if (sessionId) {
+      payload.sessionId = sessionId;
+    }
+
+    try {
+      socket.send(JSON.stringify(payload));
+    } catch (error) {
+      remoteState.pending.delete(id);
+      reject(error);
+    }
+  });
+}
+
+function handleCdpMessage(rawMessage) {
+  if (!rawMessage) {
+    return;
+  }
+
+  let message;
+  try {
+    message = JSON.parse(rawMessage);
+  } catch (error) {
+    console.warn("[NULL VOID RBI] Failed to parse CDP message", error.message);
+    return;
+  }
+
+  if (typeof message.id === "number") {
+    const pending = remoteState.pending.get(message.id);
+    if (pending) {
+      remoteState.pending.delete(message.id);
+      if (message.error) {
+        pending.reject(
+          new Error(message.error.message || "CDP command failed")
+        );
+      } else {
+        pending.resolve(message.result || {});
+      }
+    }
+    return;
+  }
+
+  if (!message.method) {
+    return;
+  }
+
+  if (
+    remoteState.sessionId &&
+    message.sessionId &&
+    message.sessionId !== remoteState.sessionId
+  ) {
+    return;
+  }
+
+  switch (message.method) {
+    case "Page.screencastFrame":
+      processScreencastFrame(message.params);
+      break;
+    case "Runtime.consoleAPICalled": {
+      const args = message.params?.args || [];
+      const text = args.map((arg) => arg.value || arg.description).join(" ");
+      if (text) {
+        console.log(`[Remote Console] ${text}`);
+      }
+      break;
+    }
+    case "Runtime.exceptionThrown":
+      console.warn(
+        "[NULL VOID RBI] Remote script exception",
+        message.params?.exceptionDetails?.text || ""
+      );
+      break;
+    case "Page.loadEventFired":
+      updateStreamStatus(true, "Remote page loaded");
+      setTimeout(() => updateStreamStatus(false), 1200);
+      break;
+    case "Target.detachedFromTarget":
+      if (message.params?.targetId === remoteState.targetId) {
+        showNotification("Remote session closed", "warning");
+        teardownRemoteStream("Target detached");
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+function processScreencastFrame(params) {
+  if (!params) {
+    return;
+  }
+
+  const { data, metadata, sessionId } = params;
+  remoteState.lastMetadata = metadata || null;
+
+  const canvas = remoteState.canvas;
+  const ctx = remoteState.ctx;
+
+  if (!canvas || !ctx || !data) {
+    sendSessionCommand("Page.screencastFrameAck", { sessionId }).catch(
+      () => {}
+    );
+    return;
+  }
+
+  const deviceWidth = metadata?.deviceWidth || metadata?.width || 1280;
+  const deviceHeight = metadata?.deviceHeight || metadata?.height || 720;
+
+  if (canvas.width !== deviceWidth || canvas.height !== deviceHeight) {
+    canvas.width = deviceWidth;
+    canvas.height = deviceHeight;
+  }
+
+  const blob = base64ToBlob(data, "image/jpeg");
+
+  createImageBitmap(blob)
+    .then((bitmap) => {
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      if (!remoteState.hasRenderedFrame) {
+        remoteState.hasRenderedFrame = true;
+        updateStreamStatus(false);
+        showNotification(
+          `Remote isolation active: ${extractDomain(remoteState.currentUrl)}`,
+          "success"
+        );
+      }
+    })
+    .catch((error) => {
+      console.warn(
+        "[NULL VOID RBI] Failed to render remote frame",
+        error.message
+      );
+    })
+    .finally(() => {
+      sendSessionCommand("Page.screencastFrameAck", { sessionId }).catch(
+        (ackError) => {
+          console.warn(
+            "[NULL VOID RBI] Screencast ack failed",
+            ackError.message
+          );
+        }
+      );
+    });
+}
+
+function teardownRemoteStream(reason) {
+  if (reason) {
+    console.log("[NULL VOID RBI] Closing remote stream:", reason);
+  }
+
+  if (remoteState.socket) {
+    remoteState.expectingClose = true;
+    try {
+      remoteState.socket.close();
+    } catch (error) {
+      console.warn("[NULL VOID RBI] Error closing websocket", error.message);
+    }
+  }
+
+  remoteState.socket = null;
+  remoteState.sessionId = null;
+  remoteState.targetId = null;
+  remoteState.isStreaming = false;
+  remoteState.currentUrl = "";
+  remoteState.lastMetadata = null;
+  remoteState.hasRenderedFrame = false;
+
+  remoteState.pending.forEach(({ reject }) => {
+    try {
+      reject(new Error(reason || "Remote stream closed"));
+    } catch (error) {
+      /* ignore rejection errors */
+    }
+  });
+  remoteState.pending = new Map();
+
+  remoteState.canvas = null;
+  remoteState.ctx = null;
+  remoteState.overlay = null;
+  remoteState.statusNode = null;
+}
+
+function base64ToBlob(base64, mimeType) {
+  const byteCharacters = atob(base64);
+  const byteArrays = [];
+  const chunkSize = 1024;
+
+  for (let offset = 0; offset < byteCharacters.length; offset += chunkSize) {
+    const slice = byteCharacters.slice(offset, offset + chunkSize);
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i += 1) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    byteArrays.push(new Uint8Array(byteNumbers));
+  }
+
+  return new Blob(byteArrays, { type: mimeType });
+}
+
+function translatePointer(event) {
+  const canvas = remoteState.canvas;
+  const metadata = remoteState.lastMetadata;
+
+  if (!canvas || !metadata) {
+    return null;
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) {
+    return null;
+  }
+
+  const deviceWidth = metadata.deviceWidth || metadata.width || rect.width;
+  const deviceHeight = metadata.deviceHeight || metadata.height || rect.height;
+
+  const scaleX = deviceWidth / rect.width;
+  const scaleY = deviceHeight / rect.height;
+
+  const x =
+    (event.clientX - rect.left) * scaleX + (metadata.scrollOffsetX || 0);
+  const y = (event.clientY - rect.top) * scaleY + (metadata.scrollOffsetY || 0);
+
+  return { x, y };
+}
+
+function sendMouseEvent(type, event) {
+  if (!remoteState.sessionId) {
+    return;
+  }
+  const position = translatePointer(event);
+  if (!position) {
+    return;
+  }
+
+  const params = {
+    type,
+    x: position.x,
+    y: position.y,
+    modifiers: calculateModifiers(event),
+    pointerType: "mouse",
+    buttons: mapButtonsMask(event.buttons),
+  };
+
+  if (type === "mousePressed" || type === "mouseReleased") {
+    params.button = mapMouseButton(event.button);
+    params.clickCount = Math.max(event.detail, 1);
+  }
+
+  sendSessionCommand("Input.dispatchMouseEvent", params).catch((error) => {
+    console.warn(`[NULL VOID RBI] ${type} dispatch failed`, error.message);
+  });
+}
+
+function handleRemotePointerDown(event) {
+  if (event.pointerType !== "mouse") {
+    return;
+  }
+  if (!remoteState.sessionId) {
+    return;
+  }
+  try {
+    event.target.setPointerCapture(event.pointerId);
+  } catch (error) {
+    /* ignore pointer capture errors */
+  }
+  sendMouseEvent("mousePressed", event);
+  event.preventDefault();
+}
+
+function handleRemotePointerMove(event) {
+  if (event.pointerType !== "mouse") {
+    return;
+  }
+  if (!remoteState.sessionId) {
+    return;
+  }
+  sendMouseEvent("mouseMoved", event);
+}
+
+function handleRemotePointerUp(event) {
+  if (event.pointerType !== "mouse") {
+    return;
+  }
+  if (!remoteState.sessionId) {
+    return;
+  }
+  sendMouseEvent("mouseReleased", event);
+  try {
+    event.target.releasePointerCapture(event.pointerId);
+  } catch (error) {
+    /* ignore pointer capture errors */
+  }
+  event.preventDefault();
+}
+
+function handleRemoteWheel(event) {
+  if (!remoteState.sessionId) {
+    return;
+  }
+  const position = translatePointer(event);
+  if (!position) {
+    return;
+  }
+
+  sendSessionCommand("Input.dispatchMouseEvent", {
+    type: "mouseWheel",
+    x: position.x,
+    y: position.y,
+    deltaX: event.deltaX,
+    deltaY: event.deltaY,
+    modifiers: calculateModifiers(event),
+    pointerType: "mouse",
+    buttons: mapButtonsMask(event.buttons),
+  }).catch((error) => {
+    console.warn("[NULL VOID RBI] Wheel dispatch failed", error.message);
+  });
+
+  event.preventDefault();
+}
+
+function handleRemoteKeyDown(event) {
+  if (!remoteState.sessionId) {
+    return;
+  }
+  const params = buildKeyEventParams("keyDown", event);
+  sendSessionCommand("Input.dispatchKeyEvent", params).catch((error) => {
+    console.warn("[NULL VOID RBI] Key down dispatch failed", error.message);
+  });
+
+  if (shouldInsertText(event)) {
+    sendSessionCommand("Input.insertText", { text: event.key }).catch(
+      (error) => {
+        console.warn("[NULL VOID RBI] Text insert failed", error.message);
+      }
+    );
+  }
+
+  event.preventDefault();
+}
+
+function handleRemoteKeyUp(event) {
+  if (!remoteState.sessionId) {
+    return;
+  }
+  const params = buildKeyEventParams("keyUp", event);
+  sendSessionCommand("Input.dispatchKeyEvent", params).catch((error) => {
+    console.warn("[NULL VOID RBI] Key up dispatch failed", error.message);
+  });
+  event.preventDefault();
+}
+
+function buildKeyEventParams(type, event) {
+  const params = {
+    type,
+    key: event.key,
+    code: event.code,
+    autoRepeat: event.repeat,
+    modifiers: calculateModifiers(event),
+    windowsVirtualKeyCode: event.keyCode,
+    nativeVirtualKeyCode: event.keyCode,
+  };
+
+  if (event.location) {
+    params.location = event.location;
+  }
+
+  if (event.key && event.key.length === 1) {
+    params.text = event.key;
+    params.unmodifiedText = event.key;
+  }
+
+  return params;
+}
+
+function shouldInsertText(event) {
+  return (
+    event.key &&
+    event.key.length === 1 &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey
+  );
+}
+
+function calculateModifiers(event) {
+  let modifiers = 0;
+  if (event.altKey) modifiers |= 1;
+  if (event.ctrlKey) modifiers |= 2;
+  if (event.metaKey) modifiers |= 4;
+  if (event.shiftKey) modifiers |= 8;
+  return modifiers;
+}
+
+function mapMouseButton(button) {
+  switch (button) {
+    case 1:
+      return "middle";
+    case 2:
+      return "right";
+    case 3:
+      return "back";
+    case 4:
+      return "forward";
+    default:
+      return "left";
+  }
+}
+
+function mapButtonsMask(buttons) {
+  if (typeof buttons === "number") {
+    return buttons;
+  }
+  return 0;
+}
+
+function buildWebsocketEndpoint(base, params) {
+  try {
+    const endpoint = new URL(base);
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value === undefined || value === null) {
+        return;
+      }
+      endpoint.searchParams.set(key, value);
+    });
+    return endpoint.toString();
+  } catch (error) {
+    console.warn("[NULL VOID RBI] Invalid websocket base URL", error.message);
+    const tokenParam = params?.token
+      ? `token=${encodeURIComponent(params.token)}`
+      : "";
+    return `${base}?${tokenParam}`;
+  }
+}
+
 async function loadViaScreenshotAPI(url) {
   try {
-    console.log("[RBI v2.0] Loading via Browserless Screenshot API:", url);
-
-    const screenshotUrl = `${BROWSERLESS_BASE_URL}/screenshot?token=${BROWSERLESS_API_KEY}`;
+    const screenshotEndpoint = buildEndpoint(
+      BROWSERLESS_BASE_URL,
+      browserlessConfigCache?.endpoints?.screenshot ||
+        DEFAULT_BROWSERLESS_SETTINGS.endpoints.screenshot
+    );
 
     const requestBody = {
-      url: url,
-      options: {
-        fullPage: false,
-        type: "png",
-        quality: 90,
-      },
-      gotoOptions: {
-        waitUntil: "networkidle2",
-        timeout: 30000,
-      },
+      url,
+      options:
+        browserlessConfigCache?.screenshotOptions ||
+        DEFAULT_BROWSERLESS_SETTINGS.screenshotOptions,
+      gotoOptions:
+        browserlessConfigCache?.gotoOptions ||
+        DEFAULT_BROWSERLESS_SETTINGS.gotoOptions,
       viewport: {
         width: 1920,
         height: 1080,
@@ -209,19 +1023,20 @@ async function loadViaScreenshotAPI(url) {
       },
     };
 
-    console.log("[RBI v2.0] Sending screenshot request...");
-
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 35000);
 
-    const response = await fetch(screenshotUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-    });
+    const response = await fetch(
+      `${screenshotEndpoint}?token=${encodeURIComponent(BROWSERLESS_API_KEY)}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      }
+    );
 
     clearTimeout(timeoutId);
 
@@ -230,339 +1045,235 @@ async function loadViaScreenshotAPI(url) {
 
       if (response.status === 401 || response.status === 403) {
         handleApiAuthFailure(response.status, response.statusText, errorText);
+        return false;
       }
 
-      throw new Error(
-        `API Error: ${response.status} ${response.statusText} ${errorText}`
-      );
+      if (
+        response.status === 402 ||
+        /temporarily paused|deployment paused/i.test(errorText)
+      ) {
+        showBrowserlessServicePaused(errorText.trim(), url);
+        return true;
+      }
+
+      throw new Error(`Browserless error ${response.status}: ${errorText}`);
     }
 
     const blob = await response.blob();
-    console.log(
-      "[RBI v2.0] ✅ Screenshot received:",
-      (blob.size / 1024).toFixed(2),
-      "KB"
-    );
+
+    if (lastScreenshotObjectUrl) {
+      URL.revokeObjectURL(lastScreenshotObjectUrl);
+    }
 
     const imageUrl = URL.createObjectURL(blob);
+    lastScreenshotObjectUrl = imageUrl;
+    isServicePaused = false;
 
-    // Display screenshot in clean browser-like layout
     displayScreenshot(imageUrl, url);
 
     showNotification(
-      `✅ Loaded via Browserless.io: ${extractDomain(url)}`,
+      `Rendered via Browserless.io: ${extractDomain(url)}`,
       "success"
     );
-
     return true;
   } catch (error) {
-    console.error("[RBI v2.0] Screenshot API failed:", error);
-    showNotification("Screenshot API failed: " + error.message, "warning");
+    console.warn("[NULL VOID RBI] Screenshot API failed", error.message);
+    showNotification(
+      "Browserless rendering failed: " + error.message,
+      "warning"
+    );
     return false;
   }
 }
 
-// Display screenshot in clean browser-like layout
 function displayScreenshot(imageUrl, url) {
-  const browserFrame = document.getElementById("browserFrame");
-
-  browserFrame.innerHTML = `
-    <div style="width: 100%; height: 100%; display: flex; flex-direction: column; background: #ffffff;">
-      <!-- Top bar with URL and status -->
-      <div style="background: #f8f9fa; border-bottom: 1px solid #dee2e6; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
-        <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="#28a745" style="flex-shrink: 0;">
-            <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11H16V16H8V11H9.2V10C9.2,8.6 10.6,7 12,7M12,8.2C11.2,8.2 10.4,8.7 10.4,10V11H13.6V10C13.6,8.7 12.8,8.2 12,8.2Z"/>
-          </svg>
-          <span style="font-size: 13px; color: #495057; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${url}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-          <span style="font-size: 11px; color: #28a745; font-weight: 600; background: rgba(40, 167, 69, 0.1); padding: 4px 8px; border-radius: 4px; display: flex; align-items: center; gap: 4px;">
-            <span style="width: 6px; height: 6px; background: #28a745; border-radius: 50%; display: inline-block;"></span>
-            BROWSERLESS.IO
-          </span>
+  teardownRemoteStream("Displaying static screenshot");
+  setBrowserFrame(
+    `
+      <div class="nv-stage" data-mode="remote">
+        <header class="nv-stage__bar">
+          <span class="nv-stage__brand">NULL VOID</span>
+          <span class="nv-stage__status" title="${escapeHtml(
+            url
+          )}">${escapeHtml(extractDomain(url))}</span>
+          <span class="nv-stage__tag">REMOTE</span>
+        </header>
+        <div class="nv-stage__content">
+          <img class="nv-stage__screenshot" src="${imageUrl}" alt="Rendered via Browserless.io" />
         </div>
       </div>
-      
-      <!-- Screenshot content area -->
-      <div style="flex: 1; overflow: auto; background: #ffffff; position: relative;">
-        <img id="pageScreenshot" 
-             src="${imageUrl}" 
-             style="width: 100%; height: auto; display: block; background: white;"
-             alt="Page content rendered by Browserless.io" />
-      </div>
-    </div>
-  `;
-
-  console.log("[RBI v2.0] Screenshot displayed successfully");
-}
-
-// Load page using iframe (fallback)
-function loadViaIframe(url) {
-  console.log("[RBI v2.0] Loading via iframe fallback:", url);
-
-  const browserFrame = document.getElementById("browserFrame");
-
-  browserFrame.innerHTML = `
-    <div style="width: 100%; height: 100%; display: flex; flex-direction: column; background: #ffffff;">
-      <!-- Fallback mode indicator -->
-      <div style="background: #fff3cd; border-bottom: 1px solid #ffc107; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="#856404">
-            <path d="M13 13h-2V7h2m0 10h-2v-2h2M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z"/>
-          </svg>
-          <span style="font-size: 13px; color: #856404; font-weight: 500;">Fallback Mode - Direct iframe (less secure)</span>
-        </div>
-        <span style="font-size: 11px; color: #856404; background: rgba(255, 193, 7, 0.2); padding: 4px 8px; border-radius: 4px;">
-          ⚠️ FALLBACK
-        </span>
-      </div>
-      
-      <!-- Iframe content -->
-      <iframe id="rbiIframe"
-              src="${url}" 
-              style="flex: 1; width: 100%; border: none; background: white;"
-              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation allow-downloads"
-              onload="console.log('[RBI v2.0] Iframe loaded')"
-              onerror="console.error('[RBI v2.0] Iframe error')">
-      </iframe>
-    </div>
-  `;
-
-  showNotification(
-    `⚠️ Loaded in fallback mode: ${extractDomain(url)}`,
-    "warning"
+    `
   );
 }
 
-// Show loading state
+function loadViaIframe(url) {
+  teardownRemoteStream("Switching to iframe fallback");
+  setBrowserFrame(
+    `
+      <div class="nv-stage" data-mode="fallback">
+        <header class="nv-stage__bar nv-stage__bar--warning">
+          <span class="nv-stage__brand">NULL VOID</span>
+          <span class="nv-stage__status" title="${escapeHtml(
+            url
+          )}">${escapeHtml(extractDomain(url))}</span>
+          <span class="nv-stage__tag">FALLBACK</span>
+        </header>
+        <div class="nv-stage__content nv-stage__content--iframe">
+          <iframe
+            class="nv-frame"
+            id="rbiIframe"
+            src="${escapeAttribute(url)}"
+            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation allow-downloads"
+          ></iframe>
+        </div>
+      </div>
+    `,
+    () => {
+      const iframe = document.getElementById("rbiIframe");
+      if (iframe) {
+        iframe.addEventListener("load", () => {
+          console.log("[NULL VOID RBI] Iframe loaded");
+        });
+        iframe.addEventListener("error", () => {
+          console.warn("[NULL VOID RBI] Iframe error");
+        });
+      }
+    }
+  );
+
+  showNotification(`Loaded in fallback mode: ${extractDomain(url)}`, "warning");
+}
+
+function showBrowserlessServicePaused(details = "", pendingUrl) {
+  teardownRemoteStream("Browserless deployment paused");
+  console.warn("[NULL VOID RBI] Browserless deployment paused", details);
+  isServicePaused = true;
+  isApiConnected = false;
+
+  const trimmedDetails =
+    details.trim() ||
+    "Browserless deployment is paused. Resume the deployment to restore remote isolation.";
+
+  setBrowserFrame(
+    `
+      <div class="nv-shell" data-tone="warning">
+        <div class="nv-brand">NULL VOID</div>
+        <div class="nv-subline">REMOTE SERVICE PAUSED</div>
+        <div class="nv-note">${escapeHtml(trimmedDetails)}</div>
+        <div class="nv-actions">
+          <button class="nv-button" data-action="fallback">Use fallback mode</button>
+          <a class="nv-button nv-button--ghost" href="https://docs.browserless.io/docs/deployments" target="_blank" rel="noreferrer">Manage deployment</a>
+        </div>
+      </div>
+    `,
+    (container) => {
+      const action = container.querySelector('[data-action="fallback"]');
+      if (action && pendingUrl) {
+        action.addEventListener("click", () => {
+          loadViaIframe(pendingUrl);
+        });
+      }
+    }
+  );
+
+  showNotification("Browserless deployment paused", "warning");
+}
+
 function showLoadingState(url) {
-  const browserFrame = document.getElementById("browserFrame");
-
-  browserFrame.innerHTML = `
-    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-      <div style="text-align: center; color: white; max-width: 500px;">
-        <div style="width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 24px;"></div>
-        <h3 style="font-size: 22px; font-weight: 600; margin-bottom: 12px;">Loading via Browserless.io</h3>
-        <p style="color: rgba(255,255,255,0.9); font-size: 16px; margin-bottom: 8px;">${extractDomain(
-          url
-        )}</p>
-        <p style="color: rgba(255,255,255,0.7); font-size: 14px;">Rendering page securely on remote server...</p>
+  teardownRemoteStream("Switching to loading state");
+  setBrowserFrame(
+    `
+      <div class="nv-shell" data-tone="info">
+        <div class="nv-brand">NULL VOID</div>
+        <div class="nv-spinner"></div>
+        <div class="nv-subline">REMOTE RENDERING</div>
+        <div class="nv-note">${escapeHtml(extractDomain(url))}</div>
       </div>
-    </div>
-  `;
+    `
+  );
 }
 
-// Show error state
 function showErrorState(url, error) {
-  const browserFrame = document.getElementById("browserFrame");
-
-  browserFrame.innerHTML = `
-    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
-      <div style="text-align: center; color: white; max-width: 500px; padding: 40px;">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="white" style="margin-bottom: 20px;">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-        </svg>
-        <h3 style="font-size: 24px; font-weight: 600; margin-bottom: 15px;">Navigation Failed</h3>
-        <p style="color: rgba(255,255,255,0.9); line-height: 1.6; margin-bottom: 20px;">
-          Could not load <strong>${extractDomain(url)}</strong>
-        </p>
-        <div style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-          <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0; word-break: break-word;">
-            ${error}
-          </p>
+  teardownRemoteStream("Showing error state");
+  setBrowserFrame(
+    `
+      <div class="nv-shell" data-tone="error">
+        <div class="nv-brand">NULL VOID</div>
+        <div class="nv-subline">UNABLE TO LOAD</div>
+        <div class="nv-note">${escapeHtml(error)}</div>
+        <div class="nv-actions">
+          <button class="nv-button" data-action="retry">Retry</button>
         </div>
-        <button onclick="navigateTo('${url}')" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
-          🔄 Retry
-        </button>
       </div>
-    </div>
-  `;
+    `,
+    (container) => {
+      const retry = container.querySelector('[data-action="retry"]');
+      if (retry) {
+        retry.addEventListener("click", () => navigateTo(url));
+      }
+    }
+  );
 }
 
-// Show browser ready state
 function showBrowserReady(apiConnected) {
-  const browserFrame = document.getElementById("browserFrame");
-
-  if (browserFrame) {
-    browserFrame.style.display = "block";
-    browserFrame.innerHTML = `
-      <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div style="text-align: center; color: white; max-width: 600px; padding: 40px;">
-          <svg width="80" height="80" viewBox="0 0 24 24" fill="white" style="margin-bottom: 24px;">
-            <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11H16V16H8V11H9.2V10C9.2,8.6 10.6,7 12,7M12,8.2C11.2,8.2 10.4,8.7 10.4,10V11H13.6V10C13.6,8.7 12.8,8.2 12,8.2Z"/>
-          </svg>
-          <h2 style="font-size: 32px; font-weight: 700; margin-bottom: 16px;">Disposable Browser Ready</h2>
-          <p style="color: rgba(255,255,255,0.9); font-size: 18px; line-height: 1.6; margin-bottom: 24px;">
-            ${
-              apiConnected
-                ? "✅ <strong>Browserless.io API Connected</strong><br>Your browsing is fully isolated and secure"
-                : "⚠️ Using fallback mode<br>Direct iframe rendering (less isolated)"
-            }
-          </p>
-          <div style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <p style="color: rgba(255,255,255,0.95); font-size: 15px; margin: 0; line-height: 1.8;">
-              🌐 Remote browser rendering<br>
-              🔒 Zero local code execution<br>
-              🛡️ Enterprise-grade security<br>
-              ${
-                apiConnected
-                  ? "⚡ Browserless.io powered"
-                  : "📦 Iframe fallback mode"
-              }
-            </p>
-          </div>
-          <p style="color: rgba(255,255,255,0.8); font-size: 14px;">
-            Enter a URL in the address bar above to start browsing
-          </p>
+  teardownRemoteStream("Ready screen");
+  setBrowserFrame(
+    `
+      <div class="nv-shell" data-tone="default">
+        <div class="nv-brand">NULL VOID</div>
+        <div class="nv-subline">${
+          apiConnected ? "REMOTE ISOLATION READY" : "FALLBACK MODE AVAILABLE"
+        }</div>
+        <div class="nv-note">
+          ${
+            apiConnected
+              ? "Remote pages render via Browserless infrastructure. Enter a URL above to start."
+              : "Browserless is unavailable. You can still browse using the fallback iframe renderer."
+          }
         </div>
       </div>
-    `;
-  }
+    `
+  );
 }
 
-// Setup event listeners
-function setupEventListeners() {
-  const goBtn = document.getElementById("goBtn");
-  const urlInput = document.getElementById("urlInput");
-  const refreshBtn = document.getElementById("refreshBtn");
-  const backBtn = document.getElementById("backBtn");
-  const forwardBtn = document.getElementById("forwardBtn");
-  const terminateBtn = document.getElementById("terminateSession");
+function handleApiAuthFailure(status, statusText, errorText = "") {
+  isAuthFailure = true;
+  isApiConnected = false;
 
-  if (goBtn) {
-    goBtn.addEventListener("click", handleGoClick);
-  }
+  const trimmedError = errorText.trim();
+  const message = `Browserless rejected the request (${status} ${statusText}).`;
 
-  if (urlInput) {
-    urlInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        handleGoClick();
-      }
-    });
-    urlInput.addEventListener("focus", () => {
-      urlInput.select();
-    });
-  }
+  showNotification(message, "error");
 
-  if (refreshBtn) {
-    refreshBtn.addEventListener("click", handleRefresh);
-  }
-
-  if (backBtn) {
-    backBtn.addEventListener("click", handleBack);
-  }
-
-  if (forwardBtn) {
-    forwardBtn.addEventListener("click", handleForward);
-  }
-
-  if (terminateBtn) {
-    terminateBtn.addEventListener("click", handleTermination);
-  }
-
-  // Keyboard shortcuts
-  document.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey && e.key === "r") || e.key === "F5") {
-      e.preventDefault();
-      handleRefresh();
-    }
-    if (e.altKey && e.key === "ArrowLeft") {
-      e.preventDefault();
-      handleBack();
-    }
-    if (e.altKey && e.key === "ArrowRight") {
-      e.preventDefault();
-      handleForward();
-    }
-    if (e.ctrlKey && e.key === "l") {
-      e.preventDefault();
-      const urlInput = document.getElementById("urlInput");
-      if (urlInput) {
-        urlInput.focus();
-        urlInput.select();
-      }
-    }
-  });
+  teardownRemoteStream("Authentication failure");
+  setBrowserFrame(
+    `
+      <div class="nv-shell" data-tone="error">
+        <div class="nv-brand">NULL VOID</div>
+        <div class="nv-subline">AUTHENTICATION FAILED</div>
+        <div class="nv-note">${escapeHtml(trimmedError || message)}</div>
+      </div>
+    `
+  );
 }
 
-// Event handlers
-function handleGoClick() {
-  const urlInput = document.getElementById("urlInput");
-  const goBtn = document.getElementById("goBtn");
-
-  if (!urlInput || !urlInput.value.trim()) {
-    showNotification("Please enter a valid URL", "warning");
+function addToHistory(url) {
+  if (!url) {
     return;
   }
 
-  const url = urlInput.value.trim();
-
-  if (goBtn) {
-    goBtn.disabled = true;
-    setTimeout(() => {
-      goBtn.disabled = false;
-    }, 3000);
-  }
-
-  navigateTo(url);
-}
-
-function handleRefresh() {
-  if (currentUrl) {
-    showNotification("Refreshing page...", "info");
-    navigateTo(currentUrl);
-  } else {
-    showNotification("No page to refresh", "warning");
-  }
-}
-
-function handleBack() {
-  if (historyIndex > 0) {
-    historyIndex--;
-    const url = navigationHistory[historyIndex];
-    showNotification("Navigating back...", "info");
-    navigateTo(url);
+  if (historyIndex >= 0 && navigationHistory[historyIndex] === url) {
     updateNavigationButtons();
+    return;
   }
-}
 
-function handleForward() {
   if (historyIndex < navigationHistory.length - 1) {
-    historyIndex++;
-    const url = navigationHistory[historyIndex];
-    showNotification("Navigating forward...", "info");
-    navigateTo(url);
-    updateNavigationButtons();
+    navigationHistory = navigationHistory.slice(0, historyIndex + 1);
   }
-}
 
-function handleTermination() {
-  if (confirm("Are you sure you want to end this secure browsing session?")) {
-    showNotification("Session terminated", "success");
-    setTimeout(() => {
-      window.close();
-    }, 1000);
-  }
-}
-
-// History management
-function addToHistory(url) {
-  if (url && url !== currentUrl) {
-    if (historyIndex < navigationHistory.length - 1) {
-      navigationHistory = navigationHistory.slice(0, historyIndex + 1);
-    }
-
-    navigationHistory.push(url);
-    historyIndex = navigationHistory.length - 1;
-
-    if (navigationHistory.length > 50) {
-      navigationHistory = navigationHistory.slice(-50);
-      historyIndex = navigationHistory.length - 1;
-    }
-
-    updateNavigationButtons();
-  }
+  navigationHistory.push(url);
+  historyIndex = navigationHistory.length - 1;
+  updateNavigationButtons();
 }
 
 function updateNavigationButtons() {
@@ -574,85 +1285,209 @@ function updateNavigationButtons() {
   }
 
   if (forwardBtn) {
-    forwardBtn.disabled = historyIndex >= navigationHistory.length - 1;
+    forwardBtn.disabled =
+      historyIndex === -1 || historyIndex >= navigationHistory.length - 1;
   }
 }
 
-async function safeReadResponseText(response) {
-  try {
-    const text = await response.text();
-    return text;
-  } catch (error) {
-    console.warn("[RBI v2.0] Unable to read response body:", error.message);
-    return "";
+function setupEventListeners() {
+  const goBtn = document.getElementById("goBtn");
+  const urlInput = document.getElementById("urlInput");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const backBtn = document.getElementById("backBtn");
+  const forwardBtn = document.getElementById("forwardBtn");
+  const terminateBtn = document.getElementById("terminateSession");
+
+  if (goBtn) {
+    goBtn.addEventListener("click", () => handleGoClick());
+  }
+
+  if (urlInput) {
+    urlInput.addEventListener("keypress", (event) => {
+      if (event.key === "Enter") {
+        handleGoClick();
+      }
+    });
+    urlInput.addEventListener("focus", () => urlInput.select());
+  }
+
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => handleRefresh());
+  }
+
+  if (backBtn) {
+    backBtn.addEventListener("click", () => handleBack());
+  }
+
+  if (forwardBtn) {
+    forwardBtn.addEventListener("click", () => handleForward());
+  }
+
+  if (terminateBtn) {
+    terminateBtn.addEventListener("click", () => handleTermination());
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey && event.key === "r") || event.key === "F5") {
+      event.preventDefault();
+      handleRefresh();
+    }
+    if (event.altKey && event.key === "ArrowLeft") {
+      event.preventDefault();
+      handleBack();
+    }
+    if (event.altKey && event.key === "ArrowRight") {
+      event.preventDefault();
+      handleForward();
+    }
+    if (event.ctrlKey && event.key.toLowerCase() === "l") {
+      event.preventDefault();
+      const input = document.getElementById("urlInput");
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+  });
+
+  updateNavigationButtons();
+}
+
+async function handleGoClick() {
+  const urlInput = document.getElementById("urlInput");
+  if (!urlInput) {
+    return;
+  }
+
+  await navigateTo(urlInput.value);
+}
+
+async function handleRefresh() {
+  if (currentUrl) {
+    showNotification("Refreshing...", "info");
+    await navigateTo(currentUrl);
+  } else {
+    showNotification("Nothing to refresh", "warning");
   }
 }
 
-function handleApiAuthFailure(status, statusText, errorText = "") {
-  isAuthFailure = true;
-  const trimmedError = (errorText || "").trim();
-  const baseMessage = `Browserless API rejected the request (${status} ${statusText}).`;
-  const fullMessage = trimmedError
-    ? `${baseMessage} Details: ${trimmedError}`
-    : baseMessage;
+async function handleBack() {
+  if (historyIndex > 0) {
+    historyIndex -= 1;
+    suppressHistoryUpdate = true;
+    const targetUrl = navigationHistory[historyIndex];
+    const urlInput = document.getElementById("urlInput");
+    if (urlInput) {
+      urlInput.value = targetUrl;
+    }
+    await navigateTo(targetUrl);
+    updateNavigationButtons();
+  }
+}
 
-  console.error("[RBI v2.0] Authorization failure:", fullMessage);
+async function handleForward() {
+  if (historyIndex >= 0 && historyIndex < navigationHistory.length - 1) {
+    historyIndex += 1;
+    suppressHistoryUpdate = true;
+    const targetUrl = navigationHistory[historyIndex];
+    const urlInput = document.getElementById("urlInput");
+    if (urlInput) {
+      urlInput.value = targetUrl;
+    }
+    await navigateTo(targetUrl);
+    updateNavigationButtons();
+  }
+}
 
-  showNotification(
-    `${baseMessage} Please verify your API key, subscription status, or network access.
-${trimmedError ? "Server response: " + trimmedError : ""}`.trim(),
-    "error"
-  );
+function handleTermination() {
+  if (confirm("End this secure browsing session?")) {
+    showNotification("Session terminated", "success");
+    setTimeout(() => window.close(), 800);
+  }
+}
 
+function showNotification(message, type = "info") {
+  const existing = document.querySelectorAll(".notification");
+  existing.forEach((node) => node.remove());
+
+  const notification = document.createElement("div");
+  notification.className = "notification";
+  notification.textContent = message;
+
+  const colors = {
+    success: "#22c55e",
+    error: "#ef4444",
+    warning: "#facc15",
+    info: "#38bdf8",
+  };
+
+  notification.style.cssText = `
+    position: fixed;
+    top: 84px;
+    right: 24px;
+    background: ${colors[type] || colors.info};
+    color: #020617;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    z-index: 9999;
+    box-shadow: 0 18px 40px rgba(2, 6, 23, 0.3);
+    min-width: 220px;
+    text-align: left;
+    animation: nv-slide-in 0.25s ease-out;
+  `;
+
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.style.animation = "nv-slide-out 0.25s ease-in forwards";
+    setTimeout(() => notification.remove(), 260);
+  }, 3600);
+}
+
+function startUptimeCounter() {
+  const uptimeDisplay = document.getElementById("uptime");
+  if (!uptimeDisplay) {
+    return;
+  }
+
+  if (uptimeInterval) {
+    clearInterval(uptimeInterval);
+  }
+
+  uptimeInterval = setInterval(() => {
+    if (!sessionStartTime) {
+      return;
+    }
+
+    const elapsed = Date.now() - sessionStartTime;
+    const minutes = Math.floor(elapsed / 60000)
+      .toString()
+      .padStart(2, "0");
+    const seconds = Math.floor((elapsed % 60000) / 1000)
+      .toString()
+      .padStart(2, "0");
+
+    uptimeDisplay.textContent = `${minutes}:${seconds}`;
+  }, 1000);
+}
+
+function hideLoadingScreen() {
+  const loadingScreen = document.getElementById("loadingScreen");
   const browserFrame = document.getElementById("browserFrame");
 
-  if (browserFrame && !browserFrame.dataset.authErrorShown) {
-    browserFrame.dataset.authErrorShown = "true";
-    browserFrame.innerHTML = `
-      <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
-        <div style="text-align: center; color: white; max-width: 520px; padding: 36px; background: rgba(0,0,0,0.25); border-radius: 16px; box-shadow: 0 20px 45px rgba(0,0,0,0.35);">
-          <svg width="72" height="72" viewBox="0 0 24 24" fill="white" style="margin-bottom: 20px;">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-          </svg>
-          <h3 style="font-size: 24px; font-weight: 700; margin-bottom: 16px;">Browserless Authentication Required</h3>
-          <p style="font-size: 16px; line-height: 1.6; color: rgba(255,255,255,0.95); margin-bottom: 18px;">
-            We couldn't reach Browserless.io with the provided API key.
-          </p>
-          <p style="font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.8); margin-bottom: 22px;">
-            <strong>Status:</strong> ${status} ${statusText}<br/>
-            ${
-              trimmedError
-                ? `<strong>Details:</strong> ${trimmedError}<br/>`
-                : ""
-            }
-            Please confirm the API token is valid, has remaining credits, and the Browserless service is accessible from this network.
-          </p>
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <a href="https://docs.browserless.io/docs/api" target="_blank" rel="noreferrer" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 16px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-              📘 Browserless API Docs
-            </a>
-            <button onclick="navigateTo(currentUrl || 'https://www.google.com')" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.25); padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-              ↻ Retry after updating API key
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
+  if (loadingScreen) {
+    loadingScreen.style.display = "none";
   }
-}
-
-// Utility functions
-function extractDomain(url) {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
+  if (browserFrame) {
+    browserFrame.style.display = "block";
   }
 }
 
 function updateLocationDisplay(location) {
-  const locationDisplay = document.getElementById("locationDisplay");
-  const locationMap = {
+  const mapping = {
     singapore: "Singapore",
     usa: "United States",
     uk: "United Kingdom",
@@ -661,8 +1496,9 @@ function updateLocationDisplay(location) {
     japan: "Japan",
   };
 
+  const locationDisplay = document.getElementById("locationDisplay");
   if (locationDisplay) {
-    locationDisplay.textContent = locationMap[location] || location;
+    locationDisplay.textContent = mapping[location] || location;
   }
 }
 
@@ -670,123 +1506,354 @@ function updateSessionDisplay(sessionId) {
   const sessionDisplay = document.getElementById("sessionId");
   if (sessionDisplay) {
     sessionDisplay.textContent =
-      sessionId.length > 12 ? sessionId.substring(0, 12) + "..." : sessionId;
+      sessionId.length > 16 ? `${sessionId.slice(0, 16)}…` : sessionId;
   }
 }
 
-function hideLoadingScreen() {
-  const loadingScreen = document.getElementById("loadingScreen");
+function setBrowserFrame(content, afterRender) {
   const browserFrame = document.getElementById("browserFrame");
+  if (!browserFrame) {
+    return;
+  }
 
-  if (loadingScreen) loadingScreen.style.display = "none";
-  if (browserFrame) browserFrame.style.display = "block";
+  browserFrame.style.display = "block";
+  browserFrame.innerHTML = content;
 
-  console.log("[RBI v2.0] Loading screen hidden");
+  if (typeof afterRender === "function") {
+    afterRender(browserFrame);
+  }
 }
 
-function showNotification(message, type = "info") {
-  const existingNotifications = document.querySelectorAll(".notification");
-  existingNotifications.forEach((notif) => notif.remove());
+async function safeReadResponseText(response) {
+  try {
+    return await response.text();
+  } catch (error) {
+    console.warn("[NULL VOID RBI] Failed to read response text", error.message);
+    return "";
+  }
+}
 
-  const notification = document.createElement("div");
-  notification.className = "notification";
-  notification.textContent = message;
+function extractDomain(url) {
+  try {
+    return new URL(url).hostname;
+  } catch (error) {
+    return url;
+  }
+}
 
-  const colors = {
-    success: "#28a745",
-    error: "#dc3545",
-    warning: "#ffc107",
-    info: "#17a2b8",
-  };
+function buildEndpoint(base, path) {
+  const cleanBase = stripTrailingSlash(base || "");
+  if (!path) {
+    return cleanBase;
+  }
+  if (path.startsWith("http")) {
+    return path;
+  }
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${cleanBase}${normalizedPath}`;
+}
 
-  notification.style.cssText = `
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    background: ${colors[type] || colors.info};
-    color: white;
-    padding: 14px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 10000;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-    max-width: 400px;
-    animation: slideIn 0.3s ease-out;
+function stripTrailingSlash(value) {
+  return value ? value.replace(/\/+$/, "") : value;
+}
+
+function escapeHtml(value) {
+  return (value || "").replace(/[&<>"']/g, (char) => {
+    const map = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+    return map[char] || char;
+  });
+}
+
+function escapeAttribute(value) {
+  return (value || "").replace(/["<>`']/g, (char) => {
+    const map = {
+      '"': "&quot;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "`": "&#96;",
+      "'": "&#39;",
+    };
+    return map[char] || char;
+  });
+}
+
+function injectMinimalStyles() {
+  if (document.getElementById(MINIMAL_STYLE_ID)) {
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = MINIMAL_STYLE_ID;
+  style.textContent = `
+    .nv-shell {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: #020617;
+      color: #94a3b8;
+      text-align: center;
+      padding: 32px 24px;
+      letter-spacing: 0.08em;
+    }
+
+    .nv-shell[data-tone="warning"] { color: #facc15; }
+    .nv-shell[data-tone="error"] { color: #fca5a5; }
+
+    .nv-brand {
+      font-size: 48px;
+      font-weight: 700;
+      letter-spacing: 0.5em;
+      color: #f8fafc;
+      text-transform: uppercase;
+    }
+
+    .nv-subline {
+      font-size: 12px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: rgba(148, 163, 184, 0.8);
+    }
+
+    .nv-shell[data-tone="warning"] .nv-subline { color: #facc15; }
+    .nv-shell[data-tone="error"] .nv-subline { color: #fca5a5; }
+
+    .nv-spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(148, 163, 184, 0.2);
+      border-top-color: #f8fafc;
+      border-radius: 50%;
+      animation: nv-spin 0.9s linear infinite;
+    }
+
+    .nv-note {
+      max-width: 360px;
+      font-size: 13px;
+      line-height: 1.6;
+      letter-spacing: 0.04em;
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    .nv-shell[data-tone="warning"] .nv-note { color: rgba(250, 204, 21, 0.9); }
+    .nv-shell[data-tone="error"] .nv-note { color: rgba(252, 165, 165, 0.9); }
+
+    .nv-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .nv-button {
+      background: #0f172a;
+      color: #f8fafc;
+      border: 1px solid #1f2937;
+      padding: 10px 18px;
+      border-radius: 9999px;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .nv-button:hover {
+      background: #1e293b;
+    }
+
+    .nv-button--ghost {
+      background: transparent;
+      color: inherit;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .nv-stage {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: #020617;
+    }
+
+    .nv-stage__bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: #030a1a;
+      border-bottom: 1px solid #0f172a;
+      gap: 16px;
+    }
+
+    .nv-stage__bar--warning {
+      border-bottom: 1px solid rgba(250, 204, 21, 0.35);
+      color: #facc15;
+    }
+
+    .nv-stage__brand {
+      font-size: 14px;
+      letter-spacing: 0.4em;
+      color: #f8fafc;
+    }
+
+    .nv-stage__status {
+      flex: 1;
+      margin: 0 16px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-transform: uppercase;
+    }
+
+    .nv-stage__tag {
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      color: #94a3b8;
+      border: 1px solid #1f2937;
+      border-radius: 9999px;
+      padding: 4px 10px;
+      text-transform: uppercase;
+    }
+
+    .nv-stage__content {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: stretch;
+      background: #020617;
+    }
+
+    .nv-stage__content--iframe {
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+
+    .nv-stage__content--stream {
+      position: relative;
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+      overflow: hidden;
+    }
+
+    .nv-stage[data-mode="remote"] .nv-stage__content {
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nv-stage__screenshot {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #020617;
+    }
+
+    .nv-frame {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #020617;
+      display: block;
+    }
+
+    .nv-stage__content--iframe .nv-frame {
+      flex: 1;
+    }
+
+    .nv-stream__canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #020617;
+    }
+
+    .nv-stream__overlay {
+      position: absolute;
+      inset: 0;
+      cursor: crosshair;
+      outline: none;
+      background: transparent;
+      pointer-events: auto;
+    }
+
+    .nv-stream__status {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: rgba(2, 6, 23, 0.86);
+      color: #f8fafc;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-align: center;
+      transition: opacity 0.25s ease;
+      pointer-events: none;
+    }
+
+    .nv-stream__status.is-hidden {
+      opacity: 0;
+    }
+
+    .nv-stream__label {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    @keyframes nv-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes nv-slide-in {
+      from { opacity: 0; transform: translateX(120px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes nv-slide-out {
+      from { opacity: 1; transform: translateX(0); }
+      to { opacity: 0; transform: translateX(120px); }
+    }
   `;
 
-  document.body.appendChild(notification);
-
-  setTimeout(() => {
-    if (notification.parentNode) {
-      notification.style.animation = "slideOut 0.3s ease-in";
-      setTimeout(() => {
-        if (notification.parentNode) {
-          notification.parentNode.removeChild(notification);
-        }
-      }, 300);
-    }
-  }, 4000);
+  document.head.appendChild(style);
 }
 
-function startUptimeCounter() {
-  const uptimeDisplay = document.getElementById("uptime");
-
-  if (!uptimeDisplay) return;
-
-  uptimeInterval = setInterval(() => {
-    if (sessionStartTime) {
-      const uptime = Date.now() - sessionStartTime;
-      const minutes = Math.floor(uptime / 60000);
-      const seconds = Math.floor((uptime % 60000) / 1000);
-
-      uptimeDisplay.textContent = `${minutes
-        .toString()
-        .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-    }
-  }, 1000);
-}
-
-// Add CSS animations
-const style = document.createElement("style");
-style.textContent = `
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-  
-  @keyframes slideIn {
-    from {
-      transform: translateX(400px);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes slideOut {
-    from {
-      transform: translateX(0);
-      opacity: 1;
-    }
-    to {
-      transform: translateX(400px);
-      opacity: 0;
-    }
-  }
-`;
-document.head.appendChild(style);
-
-// Cleanup
 window.addEventListener("beforeunload", () => {
   if (uptimeInterval) {
     clearInterval(uptimeInterval);
   }
+  if (lastScreenshotObjectUrl) {
+    URL.revokeObjectURL(lastScreenshotObjectUrl);
+  }
+  teardownRemoteStream("Window unloading");
 });
 
-// Make navigateTo available globally for error retry buttons
 window.navigateTo = navigateTo;
+window.loadViaIframe = loadViaIframe;
 
-console.log("[RBI v2.0] Script loaded and ready");
+console.log("[NULL VOID RBI] Minimal script ready");

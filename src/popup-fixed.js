@@ -75,7 +75,59 @@ let smartPreventionState = {
   lastToggleTime: null,
   isToggling: false,
   persistenceTimeout: null,
+  hasInitialized: false,
 };
+
+function onSmartPreventionStorageChange(changes, namespace) {
+  if (namespace !== "local" || !changes.smartPreventionEnabled) {
+    return;
+  }
+
+  const newValue = changes.smartPreventionEnabled.newValue;
+  if (typeof newValue !== "boolean") {
+    return;
+  }
+
+  // Ignore updates triggered by the current toggle operation
+  if (
+    smartPreventionState.isToggling &&
+    newValue === smartPreventionState.enabled
+  ) {
+    return;
+  }
+
+  if (
+    newValue === smartPreventionState.enabled &&
+    smartPreventionState.hasInitialized
+  ) {
+    return;
+  }
+
+  console.log(
+    "[Smart Prevention] Storage change detected, syncing UI:",
+    newValue
+  );
+
+  smartPreventionState.enabled = newValue;
+  smartPreventionState.lastToggleTime = Date.now();
+
+  const toggle = document.getElementById("smartPrevention");
+  if (toggle) {
+    toggle.checked = newValue;
+  }
+  updateSmartPreventionStatus(newValue);
+}
+
+if (browserAPI?.storage?.onChanged) {
+  try {
+    browserAPI.storage.onChanged.addListener(onSmartPreventionStorageChange);
+  } catch (error) {
+    console.warn(
+      "[Smart Prevention] Failed to attach storage listener:",
+      error
+    );
+  }
+}
 
 // AI Configuration
 const AI_CONFIG = {
@@ -2351,6 +2403,7 @@ async function initializeSmartPrevention() {
     // Update internal state tracking
     smartPreventionState.enabled = currentState;
     smartPreventionState.lastToggleTime = storageTimestamp;
+    smartPreventionState.hasInitialized = true;
 
     // Set the toggle state
     toggle.checked = currentState;
@@ -2390,6 +2443,7 @@ async function initializeSmartPrevention() {
       toggle.checked = false;
       smartPreventionState.enabled = false;
       updateSmartPreventionStatus(false);
+      smartPreventionState.hasInitialized = true;
 
       // Ensure event listener is still attached even on error
       if (!toggle.hasAttribute("data-listener-attached")) {
@@ -2408,24 +2462,6 @@ function cleanupSmartPreventionState() {
   if (smartPreventionState.persistenceTimeout) {
     clearTimeout(smartPreventionState.persistenceTimeout);
     smartPreventionState.persistenceTimeout = null;
-  }
-
-  // Store final state to ensure persistence
-  if (browserAPI && browserAPI.storage && browserAPI.storage.local) {
-    const toggle = document.getElementById("smartPrevention");
-    if (toggle) {
-      browserAPI.storage.local
-        .set({
-          smartPreventionEnabled: smartPreventionState.enabled,
-          smartPreventionTimestamp: Date.now(),
-        })
-        .catch((error) => {
-          console.warn(
-            "[Smart Prevention] Failed to save state on cleanup:",
-            error
-          );
-        });
-    }
   }
 }
 

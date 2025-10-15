@@ -12,10 +12,10 @@
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          sans-serif;
-        background: linear-gradient(135deg, #4a5568 0%, #718096 100%);
-        color: #ffffff;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
         min-height: 100vh;
         display: flex;
         flex-direction: column;
@@ -23,17 +23,15 @@
       }
 
       .header {
-        background: rgba(0, 0, 0, 0.9);
-        backdrop-filter: blur(10px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 12px 20px;
+        background: #0f172a;
+        border-bottom: 1px solid #1f2937;
+        padding: 12px 18px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         position: sticky;
         top: 0;
         z-index: 100;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
       }
 
       .logo-section {
@@ -43,22 +41,22 @@
       }
 
       .logo {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         display: flex;
         align-items: center;
-        background: linear-gradient(45deg, #3b82f6, #8b5cf6);
-        border-radius: 8px;
         justify-content: center;
-        font-weight: bold;
-        color: white;
-        font-size: 14px;
+        border-radius: 6px;
+        font-weight: 600;
+        color: #0f172a;
+        font-size: 13px;
+        background: #38bdf8;
       }
 
       .brand-text {
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 600;
-        color: #ffffff;
+        color: #f8fafc;
       }
 
       .controls {
@@ -67,21 +65,20 @@
         gap: 10px;
       }
       .location-badge {
-        background: rgba(59, 130, 246, 0.2);
-        color: #60a5fa;
-        padding: 6px 12px;
-        border-radius: 20px;
+        background: #1f2937;
+        color: #93c5fd;
+        padding: 6px 10px;
+        border-radius: 9999px;
         font-size: 12px;
         font-weight: 500;
-        border: 1px solid rgba(59, 130, 246, 0.3);
         display: flex;
         align-items: center;
         gap: 6px;
       }
 
       .status-indicator {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
         border-radius: 50%;
         background: #22c55e;
         animation: pulse 2s infinite;
@@ -98,13 +95,13 @@
       }
 
       .btn {
-        background: #3b82f6;
-        color: white;
+        background: #2563eb;
+        color: #f8fafc;
         border: none;
         padding: 8px 16px;
-        border-radius: 6px;
+        border-radius: 8px;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 500;
         transition: all 0.2s;
         display: flex;
@@ -113,14 +110,12 @@
       }
 
       .btn:hover {
-        background: #2563eb;
-        transform: translateY(-1px);
+        background: #1d4ed8;
       }
 
       .btn:disabled {
-        background: #6b7280;
+        background: #1f2937;
         cursor: not-allowed;
-        transform: none;
       }
 
       .btn-danger {
@@ -132,20 +127,20 @@
       }
 
       .navigation-bar {
-        background: rgba(0, 0, 0, 0.8);
-        padding: 12px 20px;
+        background: #111827;
+        padding: 12px 18px;
         display: flex;
         align-items: center;
         gap: 10px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid #1f2937;
       }
       .nav-btn {
-        background: rgba(255, 255, 255, 0.1);
-        color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        width: 36px;
-        height: 36px;
-        border-radius: 6px;
+        background: #1f2937;
+        color: #cbd5f5;
+        border: none;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -155,45 +150,42 @@
       }
 
       .nav-btn:hover:not(:disabled) {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: rgba(255, 255, 255, 0.4);
+        background: #273043;
       }
 
       .nav-btn:disabled {
-        opacity: 0.3;
+        opacity: 0.35;
         cursor: not-allowed;
       }
 
       .url-bar {
         flex: 1;
-        background: rgba(0, 0, 0, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 8px;
+        background: #0b1120;
+        border: 1px solid #1f2937;
+        border-radius: 10px;
         padding: 10px 16px;
-        color: #ffffff;
+        color: #f1f5f9;
         font-size: 14px;
         outline: none;
-        transition: all 0.2s;
+        transition: border-color 0.2s ease;
       }
 
       .url-bar:focus {
-        border-color: #3b82f6;
-        background: rgba(0, 0, 0, 0.6);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        border-color: #2563eb;
       }
 
       .url-bar::placeholder {
-        color: rgba(255, 255, 255, 0.5);
+        color: #64748b;
       }
 
       .browser-container {
         flex: 1;
         position: relative;
-        background: #000000;
+        background: #020617;
         overflow: hidden;
         display: flex;
-        align-items: center;
-        justify-content: center;
+        align-items: stretch;
+        justify-content: stretch;
       }
 
       .browser-frame {
@@ -252,14 +244,14 @@
       }
 
       .status-bar {
-        background: rgba(0, 0, 0, 0.9);
-        padding: 8px 20px;
+        background: #0f172a;
+        padding: 10px 18px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         font-size: 12px;
-        color: rgba(255, 255, 255, 0.8);
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        color: #94a3b8;
+        border-top: 1px solid #1f2937;
       }
 
       .status-info {
@@ -267,32 +259,31 @@
         align-items: center;
         gap: 15px;
       }
-      .s tatus-item {
+      .status-item {
         display: flex;
         align-items: center;
         gap: 5px;
       }
 
       .security-badge {
-        background: rgba(34, 197, 94, 0.2);
+        background: rgba(34, 197, 94, 0.16);
         padding: 4px 8px;
-        border-radius: 12px;
+        border-radius: 9999px;
         font-size: 11px;
         font-weight: 500;
         display: flex;
         align-items: center;
         gap: 4px;
         color: #22c55e;
-        border: 1px solid rgba(34, 197, 94, 0.3);
+        border: 1px solid rgba(34, 197, 94, 0.28);
       }
 
       .isolation-info {
-        background: rgba(59, 130, 246, 0.1);
-        border: 1px solid rgba(59, 130, 246, 0.2);
-        border-radius: 6px;
-        padding: 8px 12px;
+        background: rgba(37, 99, 235, 0.14);
+        border-radius: 9999px;
+        padding: 6px 12px;
         font-size: 11px;
-        color: #60a5fa;
+        color: #93c5fd;
         margin-left: auto;
       }
 
@@ -412,9 +403,9 @@
       <!-- Loading Screen -->
       <div class="loading-screen" id="loadingScreen">
         <div class="loading-animation"></div>
-        <div class="loading-text">Initializing Browserless.io RBI</div>
+        <div class="loading-text">Starting isolation session…</div>
         <div class="loading-subtext">
-          Connecting to secure remote browser isolation service...
+          Connecting to Browserless for remote rendering.
         </div>
       </div>
 

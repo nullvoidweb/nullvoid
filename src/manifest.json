@@ -55,7 +55,8 @@
         "ai-chat-extension.js",
         "ai-chat-ui.js",
         "smart-prevention-system.js",
-        "icons/*"
+        "icons/*",
+        ".env"
       ],
       "matches": ["<all_urls>"]
     }

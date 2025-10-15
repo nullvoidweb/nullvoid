@@ -1,8 +1,67 @@
+try {
+  if (typeof importScripts === "function") {
+    importScripts("browserless-config.js");
+  }
+} catch (error) {
+  console.warn("[Background] Failed to preload Browserless config:", error);
+}
+
 // Use browser-specific API namespace
 const browserAPI = typeof browser !== "undefined" ? browser : chrome;
 
+const DEFAULT_BROWSERLESS_SETTINGS = {
+  apiKey: "",
+  baseUrl: "https://production-sfo.browserless.io",
+  wsUrl: "wss://production-sfo.browserless.io",
+  workspaceUrl: "https://chrome.browserless.io",
+};
+
+let browserlessConfigCache = null;
+let browserlessConfigPromise = null;
+
+async function ensureBrowserlessConfig() {
+  if (browserlessConfigCache) {
+    return browserlessConfigCache;
+  }
+
+  if (!browserlessConfigPromise) {
+    const sourcePromise =
+      typeof BROWSERLESS_CONFIG_PROMISE !== "undefined"
+        ? BROWSERLESS_CONFIG_PROMISE
+        : Promise.resolve(
+            typeof BROWSERLESS_CONFIG !== "undefined"
+              ? BROWSERLESS_CONFIG
+              : null
+          );
+
+    browserlessConfigPromise = sourcePromise
+      .catch((error) => {
+        console.warn(
+          "[Background] Browserless config unavailable, using defaults:",
+          error.message
+        );
+        return null;
+      })
+      .then((config) => {
+        browserlessConfigCache = {
+          ...DEFAULT_BROWSERLESS_SETTINGS,
+          ...(config || {}),
+        };
+        if (!browserlessConfigCache.apiKey) {
+          console.warn(
+            "[Background] Browserless API key missing. Please provide BROWSERLESS_API_KEY in .env."
+          );
+        }
+        return browserlessConfigCache;
+      });
+  }
+
+  return browserlessConfigPromise;
+}
+
 // --- Smart Prevention System Configuration ---
 let smartPreventionEnabled = false;
+let smartPreventionInitPromise = null;
 
 // Initialize Smart Prevention System state from storage on startup
 async function initializeSmartPreventionState() {
@@ -28,8 +87,24 @@ async function initializeSmartPreventionState() {
   }
 }
 
-// Initialize on startup
-initializeSmartPreventionState();
+// Initialize on startup and capture the promise so later requests can await completion
+smartPreventionInitPromise = initializeSmartPreventionState();
+
+async function ensureSmartPreventionInitialized() {
+  try {
+    if (smartPreventionInitPromise) {
+      await smartPreventionInitPromise;
+    } else {
+      smartPreventionInitPromise = initializeSmartPreventionState();
+      await smartPreventionInitPromise;
+    }
+  } catch (error) {
+    console.warn(
+      "[Background] Smart Prevention initialization encountered an issue:",
+      error
+    );
+  }
+}
 
 // Listen for storage changes - but prevent infinite loops
 browserAPI.storage.onChanged.addListener((changes, namespace) => {
@@ -92,7 +167,7 @@ async function handleRBISessionInit(region) {
       success: true,
       sessionId: sessionId,
       region: region,
-      endpoint: getRegionEndpoint(region),
+      endpoint: await getRegionEndpoint(region),
     };
   } catch (error) {
     console.error("[RBI Background] Session initialization failed:", error);
@@ -104,18 +179,14 @@ async function handleRBISessionInit(region) {
 }
 
 // Get region endpoint configuration
-function getRegionEndpoint(region) {
-  // Use Browserless.io configuration
-  const browserlessConfig = {
-    apiKey: "2SgiPLlAtLyabl75ea63edb2fb15fcf000d866d90aa96ab13",
-    baseUrl: "https://chrome.browserless.io",
-    wsUrl: "wss://chrome.browserless.io",
-  };
+async function getRegionEndpoint(region) {
+  const browserlessConfig = await ensureBrowserlessConfig();
 
   const endpoints = {
     singapore: {
       api: browserlessConfig.baseUrl,
       ws: browserlessConfig.wsUrl,
+      workspaceUrl: browserlessConfig.workspaceUrl,
       region: "ap-southeast-1",
       flag: "🇸🇬",
       location: "Singapore",
@@ -124,6 +195,7 @@ function getRegionEndpoint(region) {
     usa: {
       api: browserlessConfig.baseUrl,
       ws: browserlessConfig.wsUrl,
+      workspaceUrl: browserlessConfig.workspaceUrl,
       region: "us-east-1",
       flag: "🇺🇸",
       location: "United States",
@@ -132,6 +204,7 @@ function getRegionEndpoint(region) {
     uk: {
       api: browserlessConfig.baseUrl,
       ws: browserlessConfig.wsUrl,
+      workspaceUrl: browserlessConfig.workspaceUrl,
       region: "eu-west-2",
       flag: "🇬🇧",
       location: "United Kingdom",
@@ -140,6 +213,7 @@ function getRegionEndpoint(region) {
     canada: {
       api: browserlessConfig.baseUrl,
       ws: browserlessConfig.wsUrl,
+      workspaceUrl: browserlessConfig.workspaceUrl,
       region: "ca-central-1",
       flag: "🇨🇦",
       location: "Canada",
@@ -148,6 +222,7 @@ function getRegionEndpoint(region) {
     europe: {
       api: browserlessConfig.baseUrl,
       ws: browserlessConfig.wsUrl,
+      workspaceUrl: browserlessConfig.workspaceUrl,
       region: "eu-west-1",
       flag: "🇪🇺",
       location: "Europe",
@@ -156,6 +231,7 @@ function getRegionEndpoint(region) {
     japan: {
       api: browserlessConfig.baseUrl,
       ws: browserlessConfig.wsUrl,
+      workspaceUrl: browserlessConfig.workspaceUrl,
       region: "ap-northeast-1",
       flag: "🇯🇵",
       location: "Japan",
@@ -326,7 +402,7 @@ async function initializeSmartPrevention() {
   console.log("Smart Prevention System Status:", smartPreventionEnabled);
 
   // Set up web request blocking if enabled
-  if (smartIntegrationEnabled) {
+  if (smartPreventionEnabled) {
     setupWebRequestBlocking();
   }
 
@@ -432,7 +508,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         "[Background] Processing toggleSmartPrevention:",
         message.enabled
       );
-      handleSmartPreventionToggle(message.enabled)
+      ensureSmartPreventionInitialized()
+        .then(() => handleSmartPreventionToggle(message.enabled))
         .then(() => {
           console.log("[Background] Toggle completed successfully");
           sendResponse({ success: true });
@@ -444,15 +521,29 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true; // Keep message channel open for async response
 
     case "getSmartPreventionStatus":
-      console.log(
-        "[Background] Getting Smart Prevention status:",
-        smartPreventionEnabled
-      );
-      sendResponse({
-        enabled: smartPreventionEnabled,
-        success: true,
-      });
-      break;
+      ensureSmartPreventionInitialized()
+        .then(() => {
+          console.log(
+            "[Background] Getting Smart Prevention status:",
+            smartPreventionEnabled
+          );
+          sendResponse({
+            enabled: smartPreventionEnabled,
+            success: true,
+          });
+        })
+        .catch((error) => {
+          console.warn(
+            "[Background] Unable to provide Smart Prevention status:",
+            error
+          );
+          sendResponse({
+            enabled: smartPreventionEnabled,
+            success: false,
+            error: error.message,
+          });
+        });
+      return true;
 
     case "reportMaliciousSite":
       handleMaliciousSiteReport(message.data);
@@ -1273,18 +1364,18 @@ function isValidIP(ip) {
 }
 
 // --- Browserless.io Integration ---
-const BROWSERLESS_API_KEY = "2SgiPLlAtLyabl75ea63edb2fb15fcf000d866d90aa96ab13";
-const BROWSERLESS_BASE_URL = "https://chrome.browserless.io";
 
 // Handle Browserless.io RBI session initialization
 async function handleBrowserlessRBIInit(region) {
   try {
     console.log(`[Browserless RBI] Initializing session for region: ${region}`);
 
+    const browserlessConfig = await ensureBrowserlessConfig();
+    const apiKey = browserlessConfig.apiKey;
+    const baseUrl = browserlessConfig.baseUrl;
+
     // Test connection to Browserless.io
-    const response = await fetch(
-      `${BROWSERLESS_BASE_URL}/json/version?token=${BROWSERLESS_API_KEY}`
-    );
+    const response = await fetch(`${baseUrl}/json/version?token=${apiKey}`);
 
     if (!response.ok) {
       throw new Error(`Browserless.io connection failed: ${response.status}`);
@@ -1313,8 +1404,8 @@ async function handleBrowserlessRBIInit(region) {
       sessionId: sessionId,
       region: region,
       endpoint: {
-        api: BROWSERLESS_BASE_URL,
-        apiKey: BROWSERLESS_API_KEY,
+        api: baseUrl,
+        apiKey: apiKey,
         type: "browserless",
       },
     };
