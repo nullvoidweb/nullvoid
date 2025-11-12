@@ -58,10 +58,10 @@ _Remote Browser Isolation workflow_
 
 Browse untrusted websites safely by rendering them in isolated cloud environments. NULL VOID supports multiple geographic regions:
 
-- Singapore (`sg-rbi-api.nullvoid.com`)
-- United States (`us-rbi-api.nullvoid.com`)
-- United Kingdom (`uk-rbi-api.nullvoid.com`)
-- Canada (`ca-rbi-api.nullvoid.com`)
+- Singapore (`sg-rbi-api.nullvoids.live`)
+- United States (`us-rbi-api.nullvoids.live`)
+- United Kingdom (`uk-rbi-api.nullvoids.live`)
+- Canada (`ca-rbi-api.nullvoids.live`)
 
 **Benefits:**
 
@@ -402,9 +402,9 @@ If you discover a security vulnerability, please email security@anishalx.dev ins
 
 ### Get Help
 
-- Email: support@nullvoid.com
-- Issues: [GitHub Issues](https://github.com/anishalx/nullvoid/issues)
-- Discussions: [GitHub Discussions](https://github.com/anishalx/nullvoid/discussions)
+- Email: contact@anishalx.dev
+- Issues: [GitHub Issues](https://github.com/nullvoidweb/nullvoid/issues)
+- Discussions: [GitHub Discussions](https://github.com/nullvoidweb/nullvoid/discussions)
 
 ### FAQ
 
@@ -434,10 +434,10 @@ A: Sign up at [VirusTotal](https://www.virustotal.com/) for a free API key, then
 
 ## Stats
 
-![GitHub stars](https://img.shields.io/github/stars/anishalx/nullvoid?style=social)
-![GitHub forks](https://img.shields.io/github/forks/anishalx/nullvoid?style=social)
-![GitHub issues](https://img.shields.io/github/issues/anishalx/nullvoid)
-![GitHub license](https://img.shields.io/github/license/anishalx/nullvoid)
+![GitHub stars](https://img.shields.io/github/stars/nullvoidweb/nullvoid?style=social)
+![GitHub forks](https://img.shields.io/github/forks/nullvoidweb/nullvoid?style=social)
+![GitHub issues](https://img.shields.io/github/issues/nullvoidweb/nullvoid)
+![GitHub license](https://img.shields.io/github/license/nullvoidweb/nullvoid)
 
 ---
 
