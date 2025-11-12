@@ -2378,31 +2378,73 @@ async function initializeSmartPrevention() {
       response = null;
     }
 
-    // Determine the current state (prioritize storage with recent timestamp)
-    let currentState = false;
-    const storageTimestamp = storageResult.smartPreventionTimestamp || 0;
-    const now = Date.now();
-    const isRecentStorage = now - storageTimestamp < 30000; // Within 30 seconds
+    const storageState =
+      typeof storageResult.smartPreventionEnabled === "boolean"
+        ? storageResult.smartPreventionEnabled
+        : undefined;
+    const backgroundState =
+      response && typeof response.enabled === "boolean"
+        ? response.enabled
+        : undefined;
 
-    if (storageResult.smartPreventionEnabled !== undefined && isRecentStorage) {
-      currentState = storageResult.smartPreventionEnabled;
-      console.log(
-        "[Smart Prevention] Using recent storage state:",
-        currentState
-      );
-    } else if (storageResult.smartPreventionEnabled !== undefined) {
-      currentState = storageResult.smartPreventionEnabled;
-      console.log("[Smart Prevention] Using storage state:", currentState);
-    } else if (response && typeof response.enabled === "boolean") {
-      currentState = response.enabled;
-      console.log("[Smart Prevention] Using background state:", currentState);
-    } else {
-      console.log("[Smart Prevention] Using default state: false");
+    let currentState;
+
+    if (typeof storageState === "boolean") {
+      currentState = storageState;
+      console.log("[Smart Prevention] Using stored state:", currentState);
+    }
+
+    if (typeof backgroundState === "boolean") {
+      if (
+        typeof currentState === "boolean" &&
+        currentState !== backgroundState
+      ) {
+        console.warn(
+          "[Smart Prevention] Background state differs from storage (storage:",
+          currentState,
+          "background:",
+          backgroundState,
+          ") - preferring background response"
+        );
+      }
+
+      currentState = backgroundState;
+
+      // Keep storage in sync with background response to avoid future drift
+      if (storageState !== backgroundState) {
+        if (browserAPI.storage && browserAPI.storage.local) {
+          try {
+            await browserAPI.storage.local.set({
+              smartPreventionEnabled: backgroundState,
+              smartPreventionTimestamp: Date.now(),
+            });
+            console.log(
+              "[Smart Prevention] Synced storage to background state:",
+              backgroundState
+            );
+          } catch (syncError) {
+            console.warn(
+              "[Smart Prevention] Failed to sync storage with background state:",
+              syncError
+            );
+          }
+        } else {
+          console.warn(
+            "[Smart Prevention] Storage API unavailable, cannot sync background state"
+          );
+        }
+      }
+    }
+
+    if (typeof currentState !== "boolean") {
+      currentState = false;
+      console.log("[Smart Prevention] Falling back to default state: false");
     }
 
     // Update internal state tracking
     smartPreventionState.enabled = currentState;
-    smartPreventionState.lastToggleTime = storageTimestamp;
+    smartPreventionState.lastToggleTime =
+      storageResult.smartPreventionTimestamp || Date.now();
     smartPreventionState.hasInitialized = true;
 
     // Set the toggle state

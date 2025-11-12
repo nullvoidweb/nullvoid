@@ -120,88 +120,40 @@ class VirusTotalAPI {
     try {
       console.log("[VirusTotal] Scanning URL:", url);
 
-      // Check cache first
       const cacheKey = btoa(url);
       if (urlScanCache.has(cacheKey)) {
         console.log("[VirusTotal] Using cached result for:", url);
         return urlScanCache.get(cacheKey);
       }
 
-      // Encode URL for VirusTotal
-      const encodedUrl = btoa(url)
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=/g, "");
-
-      // First, try to get existing analysis
-      const reportResponse = await fetch(
-        `${VIRUSTOTAL_CONFIG.baseUrl}/urls/${encodedUrl}`,
-        {
-          headers: {
-            "x-apikey": VIRUSTOTAL_CONFIG.apiKey,
-          },
-        }
-      );
-
-      if (reportResponse.ok) {
-        const reportData = await reportResponse.json();
-        const result = this.parseUrlAnalysis(reportData.data);
-        urlScanCache.set(cacheKey, result);
-        return result;
+      const encodedUrl = this.encodeUrl(url);
+      const existingAnalysis = await this.getUrlAnalysis(encodedUrl);
+      if (existingAnalysis) {
+        const cachedResult = this.parseUrlAnalysis(existingAnalysis);
+        urlScanCache.set(cacheKey, cachedResult);
+        return cachedResult;
       }
 
-      // If no existing analysis, submit for scanning
-      const scanResponse = await fetch(`${VIRUSTOTAL_CONFIG.baseUrl}/urls`, {
-        method: "POST",
-        headers: {
-          "x-apikey": VIRUSTOTAL_CONFIG.apiKey,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: `url=${encodeURIComponent(url)}`,
-      });
-
-      if (scanResponse.ok) {
-        const scanData = await scanResponse.json();
-
-        // Wait a moment then try to get results
-        setTimeout(async () => {
-          try {
-            const analysisId = scanData.data.id;
-            const analysisResponse = await fetch(
-              `${VIRUSTOTAL_CONFIG.baseUrl}/analyses/${analysisId}`,
-              {
-                headers: {
-                  "x-apikey": VIRUSTOTAL_CONFIG.apiKey,
-                },
-              }
-            );
-
-            if (analysisResponse.ok) {
-              const analysisData = await analysisResponse.json();
-              if (analysisData.data.attributes.status === "completed") {
-                const result = this.parseUrlAnalysis(
-                  analysisData.data.attributes
-                );
-                urlScanCache.set(cacheKey, result);
-              }
-            }
-          } catch (error) {
-            console.warn("[VirusTotal] Error getting analysis results:", error);
-          }
-        }, 5000);
-
-        // Return pending status for immediate use
-        return {
-          isMalicious: false,
-          isPending: true,
-          confidence: 0,
-          detections: 0,
-          totalEngines: 0,
-          message: "Scan submitted to VirusTotal - results pending",
-        };
+      const submission = await this.submitUrlForScanning(url);
+      if (!submission?.data?.id) {
+        throw new Error("Scan submission failed");
       }
 
-      throw new Error(`Scan submission failed: ${scanResponse.status}`);
+      const finalAnalysis = await this.pollAnalysisResult(submission.data.id);
+      if (finalAnalysis) {
+        const parsedResult = this.parseUrlAnalysis(finalAnalysis);
+        urlScanCache.set(cacheKey, parsedResult);
+        return parsedResult;
+      }
+
+      return {
+        isMalicious: false,
+        isPending: true,
+        confidence: 0,
+        detections: 0,
+        totalEngines: 0,
+        message: "Scan submitted to VirusTotal - results pending",
+      };
     } catch (error) {
       console.error("[VirusTotal] URL scan error:", error);
       return {
@@ -216,7 +168,7 @@ class VirusTotalAPI {
   }
 
   static parseUrlAnalysis(data) {
-    if (!data || !data.attributes || !data.attributes.stats) {
+    if (!data || !data.attributes) {
       return {
         isMalicious: false,
         confidence: 0,
@@ -226,7 +178,22 @@ class VirusTotalAPI {
       };
     }
 
-    const stats = data.attributes.stats;
+    const attributes = data.attributes;
+    const stats =
+      attributes.last_analysis_stats ||
+      attributes.stats ||
+      attributes.total_votes;
+
+    if (!stats) {
+      return {
+        isMalicious: false,
+        confidence: 0,
+        detections: 0,
+        totalEngines: 0,
+        message: "No analysis data available",
+      };
+    }
+
     const malicious = stats.malicious || 0;
     const suspicious = stats.suspicious || 0;
     const harmless = stats.harmless || 0;
@@ -239,8 +206,8 @@ class VirusTotalAPI {
     return {
       isMalicious: malicious > 0 || suspicious > 2,
       isPending: false,
-      confidence: confidence,
-      detections: detections,
+      confidence,
+      detections,
       totalEngines: total,
       details: {
         malicious,
@@ -307,13 +274,115 @@ class VirusTotalAPI {
 
     return {
       isMalicious: malicious > 0 || reputation < -10,
-      reputation: reputation,
+      reputation,
       categories: Object.keys(categories),
-      stats: stats,
+      stats,
       message: `Reputation: ${reputation}, Categories: ${Object.keys(
         categories
       ).join(", ")}`,
     };
+  }
+
+  static encodeUrl(url) {
+    return btoa(url).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+  }
+
+  static async getUrlAnalysis(encodedUrl) {
+    try {
+      const response = await fetch(
+        `${VIRUSTOTAL_CONFIG.baseUrl}/urls/${encodedUrl}`,
+        {
+          headers: {
+            "x-apikey": VIRUSTOTAL_CONFIG.apiKey,
+          },
+        }
+      );
+
+      if (response.status === 404) {
+        return null;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Analysis lookup failed: ${response.status}`);
+      }
+
+      const reportData = await response.json();
+      return reportData.data;
+    } catch (error) {
+      console.warn("[VirusTotal] Error retrieving existing analysis:", error);
+      return null;
+    }
+  }
+
+  static async submitUrlForScanning(url) {
+    const response = await fetch(`${VIRUSTOTAL_CONFIG.baseUrl}/urls`, {
+      method: "POST",
+      headers: {
+        "x-apikey": VIRUSTOTAL_CONFIG.apiKey,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: `url=${encodeURIComponent(url)}`,
+    });
+
+    if (!response.ok) {
+      const message = `Scan submission failed: ${response.status}`;
+      console.error("[VirusTotal]", message);
+      throw new Error(message);
+    }
+
+    return response.json();
+  }
+
+  static async pollAnalysisResult(analysisId, attempts = 6, intervalMs = 3000) {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (attempt > 0) {
+        await this.delay(intervalMs);
+      }
+
+      try {
+        const response = await fetch(
+          `${VIRUSTOTAL_CONFIG.baseUrl}/analyses/${analysisId}`,
+          {
+            headers: {
+              "x-apikey": VIRUSTOTAL_CONFIG.apiKey,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          console.warn(
+            `[VirusTotal] Analysis polling failed (attempt ${attempt + 1}):`,
+            response.status
+          );
+          continue;
+        }
+
+        const analysisData = await response.json();
+        const status = analysisData?.data?.attributes?.status;
+
+        if (status === "completed") {
+          return analysisData.data;
+        }
+
+        if (status === "failed" || status === "error") {
+          console.warn(
+            `[VirusTotal] Analysis returned failure status: ${status}`
+          );
+          return null;
+        }
+      } catch (error) {
+        console.warn(
+          `[VirusTotal] Error polling analysis (attempt ${attempt + 1}):`,
+          error
+        );
+      }
+    }
+
+    return null;
+  }
+
+  static delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
@@ -330,22 +399,27 @@ async function checkUrlWithVirusTotal(url) {
       VirusTotalAPI.checkDomain(domain),
     ]);
 
+    const isPending = Boolean(urlResult.isPending);
     const isMalicious = urlResult.isMalicious || domainResult.isMalicious;
     const confidence = Math.max(
       urlResult.confidence || 0,
       domainResult.reputation ? Math.abs(domainResult.reputation) * 10 : 0
     );
 
+    const safe = !isMalicious && !isPending;
+    const recommendation = isMalicious
+      ? "BLOCK"
+      : isPending || confidence > 30
+      ? "WARN"
+      : "ALLOW";
+
     return {
-      safe: !isMalicious,
+      safe,
       confidence: confidence,
       urlAnalysis: urlResult,
       domainAnalysis: domainResult,
-      recommendation: isMalicious
-        ? "BLOCK"
-        : confidence > 30
-        ? "WARN"
-        : "ALLOW",
+      recommendation,
+      isPending,
     };
   } catch (error) {
     console.error("[VirusTotal] URL check error:", error);
@@ -386,7 +460,9 @@ function setupDownloadProtection() {
       try {
         const scanResult = await checkUrlWithVirusTotal(href);
 
-        if (!scanResult.safe) {
+        if (scanResult.urlAnalysis?.isPending) {
+          showPendingDownloadWarning(href, scanResult);
+        } else if (!scanResult.safe) {
           showMaliciousDownloadWarning(href, scanResult);
         } else if (scanResult.recommendation === "WARN") {
           showSuspiciousDownloadWarning(href, scanResult);
@@ -413,7 +489,9 @@ async function checkPageNavigation() {
   const currentUrl = window.location.href;
   const scanResult = await checkUrlWithVirusTotal(currentUrl);
 
-  if (!scanResult.safe) {
+  if (scanResult.urlAnalysis?.isPending) {
+    showSuspiciousPageWarning(currentUrl, scanResult);
+  } else if (!scanResult.safe) {
     showMaliciousPageWarning(currentUrl, scanResult);
   } else if (scanResult.recommendation === "WARN") {
     showSuspiciousPageWarning(currentUrl, scanResult);
@@ -690,6 +768,48 @@ function showSuspiciousDownloadWarning(downloadUrl, scanResult) {
     });
 }
 
+function showPendingDownloadWarning(downloadUrl, scanResult) {
+  hideDownloadScanningModal();
+
+  const warningId = "nullvoid-pending-download";
+  if (document.getElementById(warningId)) return;
+
+  const warning = document.createElement("div");
+  warning.id = warningId;
+  warning.innerHTML = `
+    <div class="nullvoid-warning-container">
+      <div class="nullvoid-warning-content">
+        <div class="nullvoid-warning-icon">⏳</div>
+        <h2>Scan In Progress</h2>
+        <p><strong>VirusTotal is still analyzing this download.</strong></p>
+        <div class="nullvoid-threat-details">
+          <p><strong>File:</strong> ${downloadUrl.split("/").pop()}</p>
+          <p><strong>Status:</strong> Pending verification</p>
+          <p><strong>Advice:</strong> Wait for the scan to finish before downloading.</p>
+        </div>
+        <div class="nullvoid-warning-buttons">
+          <button id="nullvoid-pending-cancel" class="nullvoid-btn-safe">Cancel Download</button>
+          <button id="nullvoid-pending-proceed" class="nullvoid-btn-risk">Download Anyway</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(warning);
+
+  document
+    .getElementById("nullvoid-pending-cancel")
+    .addEventListener("click", () => {
+      warning.remove();
+    });
+
+  document
+    .getElementById("nullvoid-pending-proceed")
+    .addEventListener("click", () => {
+      warning.remove();
+      window.open(downloadUrl, "_blank");
+    });
+}
+
 function showMaliciousPageWarning(pageUrl, scanResult) {
   const warningId = "nullvoid-malicious-page";
   if (document.getElementById(warningId)) return;
@@ -726,6 +846,67 @@ function showMaliciousPageWarning(pageUrl, scanResult) {
 
   document
     .getElementById("nullvoid-page-proceed")
+    .addEventListener("click", () => {
+      warning.remove();
+    });
+}
+
+function showSuspiciousPageWarning(pageUrl, scanResult) {
+  const warningId = "nullvoid-suspicious-page";
+  if (document.getElementById(warningId)) return;
+
+  const isPending = Boolean(scanResult?.urlAnalysis?.isPending);
+  const warning = document.createElement("div");
+  warning.id = warningId;
+  warning.innerHTML = `
+    <div class="nullvoid-warning-container">
+      <div class="nullvoid-warning-content">
+        <div class="nullvoid-warning-icon">${isPending ? "⏳" : "⚠️"}</div>
+        <h2>${
+          isPending
+            ? "Security Scan In Progress"
+            : "Suspicious Website Detected"
+        }</h2>
+        <p><strong>${
+          isPending
+            ? "VirusTotal is still analyzing this page."
+            : "VirusTotal flagged this website as potentially risky."
+        }</strong></p>
+        <div class="nullvoid-threat-details">
+          <p><strong>Domain:</strong> ${new URL(pageUrl).hostname}</p>
+          ${
+            isPending
+              ? "<p><strong>Status:</strong> Pending verification</p>"
+              : `<p><strong>Detections:</strong> ${
+                  scanResult.urlAnalysis?.detections || 0
+                }/${
+                  scanResult.urlAnalysis?.totalEngines || 0
+                } security engines</p>`
+          }
+          <p><strong>Recommendation:</strong> ${
+            isPending
+              ? "Wait for the scan to finish before proceeding."
+              : "Proceed only if you trust this site."
+          }</p>
+        </div>
+        <div class="nullvoid-warning-buttons">
+          <button id="nullvoid-suspicious-back" class="nullvoid-btn-safe">Go Back</button>
+          <button id="nullvoid-suspicious-proceed" class="nullvoid-btn-risk">Proceed Anyway</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(warning);
+
+  document
+    .getElementById("nullvoid-suspicious-back")
+    .addEventListener("click", () => {
+      window.history.back();
+      warning.remove();
+    });
+
+  document
+    .getElementById("nullvoid-suspicious-proceed")
     .addEventListener("click", () => {
       warning.remove();
     });
@@ -1221,54 +1402,63 @@ if (document.readyState === "loading") {
 }
 
 // Export for testing and debugging
-window.nullVoidSmartPrevention = {
-  enableProtection,
-  disableProtection,
-  checkCurrentSite,
-  blockAds,
-  restoreAds,
-  checkUrlWithVirusTotal,
-  VirusTotalAPI,
+if (typeof window !== "undefined") {
+  window.nullVoidSmartPrevention = {
+    enableProtection,
+    disableProtection,
+    checkCurrentSite,
+    blockAds,
+    restoreAds,
+    checkUrlWithVirusTotal,
+    VirusTotalAPI,
 
-  // Additional testing functions
-  getSystemStatus: () => ({
-    smartPreventionEnabled,
-    adBlockerActive,
-    maliciousDetectionActive,
-    virusTotalActive,
-    cacheSize: urlScanCache.size,
-    version: "1.0.0",
-  }),
+    // Additional testing functions
+    getSystemStatus: () => ({
+      smartPreventionEnabled,
+      adBlockerActive,
+      maliciousDetectionActive,
+      virusTotalActive,
+      cacheSize: urlScanCache.size,
+      version: "1.0.0",
+    }),
 
-  // Force enable all features for testing
-  forceEnable: () => {
-    smartPreventionEnabled = true;
-    virusTotalActive = true;
-    enableProtection();
-    console.log("[Smart Prevention System] Force enabled for testing");
-  },
+    // Force enable all features for testing
+    forceEnable: () => {
+      smartPreventionEnabled = true;
+      virusTotalActive = true;
+      enableProtection();
+      console.log("[Smart Prevention System] Force enabled for testing");
+    },
 
-  // Test functions
-  testAdBlocking: () => {
-    const testAds = document.querySelectorAll(
-      ".adsbygoogle, .ad, .advertisement"
-    );
-    console.log(`[Test] Found ${testAds.length} ad elements`);
-    blockAds();
-    const blockedAds = document.querySelectorAll("[data-nullvoid-blocked]");
-    console.log(`[Test] Blocked ${blockedAds.length} ad elements`);
-    return { total: testAds.length, blocked: blockedAds.length };
-  },
+    // Test functions
+    testAdBlocking: () => {
+      const testAds = document.querySelectorAll(
+        ".adsbygoogle, .ad, .advertisement"
+      );
+      console.log(`[Test] Found ${testAds.length} ad elements`);
+      blockAds();
+      const blockedAds = document.querySelectorAll("[data-nullvoid-blocked]");
+      console.log(`[Test] Blocked ${blockedAds.length} ad elements`);
+      return { total: testAds.length, blocked: blockedAds.length };
+    },
 
-  // Clear cache for testing
-  clearCache: () => {
-    urlScanCache.clear();
-    console.log("[Test] VirusTotal cache cleared");
-  },
+    // Clear cache for testing
+    clearCache: () => {
+      urlScanCache.clear();
+      console.log("[Test] VirusTotal cache cleared");
+    },
 
-  // Test malicious detection
-  testMaliciousDetection: () => {
-    checkCurrentSite();
-    console.log("[Test] Malicious detection test triggered");
-  },
-};
+    // Test malicious detection
+    testMaliciousDetection: () => {
+      checkCurrentSite();
+      console.log("[Test] Malicious detection test triggered");
+    },
+  };
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    VirusTotalAPI,
+    checkUrlWithVirusTotal,
+  };
+}
