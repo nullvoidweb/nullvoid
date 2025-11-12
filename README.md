@@ -1,6 +1,6 @@
 # NULL VOID Browser Extension
 
-![NULL VOID Banner](./docs/images/banner.png)
+![NULL VOID Banner](https://github.com/user-attachments/assets/72aa38c9-7034-4c62-a8fb-a0e8df5b39bd)
 _Enterprise-grade security and privacy for your browsing experience_
 
 ---
