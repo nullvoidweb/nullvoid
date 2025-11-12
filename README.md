@@ -1,7 +1,8 @@
 # NULL VOID Browser Extension
 
-![NULL VOID Banner](./docs/images/banner.png)
-_Enterprise-grade security and privacy for your browsing experience_
+<p align="center"><img src="https://github.com/user-attachments/assets/72aa38c9-7034-4c62-a8fb-a0e8df5b39bd" width="15%" height="5%"/></p>
+
+### Enterprise-grade security and privacy for your browsing experience
 
 ---
 
@@ -14,10 +15,8 @@ _Enterprise-grade security and privacy for your browsing experience_
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Architecture](#architecture)
-- [Usage Guide](#usage-guide)
 - [Smart Prevention System](#smart-prevention-system)
 - [Technologies Used](#technologies-used)
-- [Testing](#testing)
 - [Project Structure](#project-structure)
 - [Contributing](#contributing)
 - [License](#license)
@@ -28,7 +27,15 @@ _Enterprise-grade security and privacy for your browsing experience_
 
 **NULL VOID** is an enterprise-grade browser extension that provides comprehensive security and privacy protection through Remote Browser Isolation (RBI), smart threat prevention, disposable email services, and secure file viewing capabilities.
 
-![Extension Popup](./docs/images/popup-interface.png)
+<p align="center"><img src="https://github.com/user-attachments/assets/b6d4b06d-ab15-46d4-ac9c-840273b61f05" width="50%" height="20%"/></p> 
+
+<div style="display: flex; justify-content: center;">
+  <img src="https://github.com/user-attachments/assets/07146b64-27ba-4d0c-8f53-b716fd296b36" width="45%" style="margin-right: 20px;" />
+  <img src="https://github.com/user-attachments/assets/40e7fdd7-0f6b-4ae4-a6ac-b4842e048873" width="45%" />
+</div>
+
+
+
 _Main popup interface with all features_
 
 ### Why NULL VOID?
@@ -45,15 +52,16 @@ _Main popup interface with all features_
 
 ### 1. Remote Browser Isolation (RBI)
 
-![RBI Architecture](./docs/images/rbi-architecture.png)
+ <p align="center"><img src="https://github.com/user-attachments/assets/4b75f718-9f2c-4a1e-bbcb-1efb0e5ac99d" width="50%" height="20%"/></p> 
+
 _Remote Browser Isolation workflow_
 
 Browse untrusted websites safely by rendering them in isolated cloud environments. NULL VOID supports multiple geographic regions:
 
-- Singapore (`sg-rbi-api.nullvoid.com`)
-- United States (`us-rbi-api.nullvoid.com`)
-- United Kingdom (`uk-rbi-api.nullvoid.com`)
-- Canada (`ca-rbi-api.nullvoid.com`)
+- Singapore (`sg-rbi-api.nullvoids.live`)
+- United States (`us-rbi-api.nullvoids.live`)
+- United Kingdom (`uk-rbi-api.nullvoids.live`)
+- Canada (`ca-rbi-api.nullvoids.live`)
 
 **Benefits:**
 
@@ -64,7 +72,8 @@ Browse untrusted websites safely by rendering them in isolated cloud environment
 
 ### 2. Smart Prevention System
 
-![Smart Prevention Dashboard](./docs/images/smart-prevention.png)
+  <p align="center"><img src="https://github.com/user-attachments/assets/b94ce7bb-bd85-49dc-982d-25e62f59ed96" width="50%" height="20%"/></p> 
+  
 _Smart Prevention System in action_
 
 Our intelligent threat detection system includes:
@@ -90,12 +99,14 @@ Our intelligent threat detection system includes:
 - Detailed threat analysis reports
 - Automatic polling for pending analyses
 
-![VirusTotal Scan](./docs/images/virustotal-scan.png)
-_VirusTotal scanning interface_
+
 
 ### 3. Disposable Email Service
 
-![Disposable Email](./docs/images/disposable-email.png)
+<p align="center"><img src="https://github.com/user-attachments/assets/92800d01-c089-46db-8f96-665753634632" width="50%" height="20%"/></p> 
+
+<p align="center"><img src="https://github.com/user-attachments/assets/6414cfaa-1de9-4c2e-b15c-7babf11d8146" width="50%" height="20%"/></p> 
+  
 _Generate temporary email addresses_
 
 - Generate temporary email addresses instantly
@@ -106,7 +117,8 @@ _Generate temporary email addresses_
 
 ### 4. Secure File Viewer
 
-![Secure File Viewer](./docs/images/file-viewer.png)
+<p align="center"><img src="https://github.com/user-attachments/assets/963c3c07-ea07-49b0-9364-e46cac5f69fd" width="50%" height="20%"/></p> 
+  
 _View files securely without downloading_
 
 - Preview files without downloading
@@ -116,7 +128,8 @@ _View files securely without downloading_
 
 ### 5. AI Chat Assistant
 
-![AI Chat](./docs/images/ai-chat.png)
+  <p align="center"><img src="https://github.com/user-attachments/assets/b402cd5b-e179-4e4a-b52d-a8abe3276dd6" width="50%" height="20%"/></p> 
+  
 _Built-in AI assistant_
 
 - Integrated AI chat support
@@ -154,7 +167,7 @@ NULL VOID Extension
     └── AI Chat Interface
 ```
 
-![Architecture Diagram](./docs/images/architecture-diagram.png)
+
 _Detailed system architecture_
 
 ### Technology Stack
@@ -171,46 +184,6 @@ _Detailed system architecture_
 
 ---
 
-## Usage Guide
-
-### Getting Started
-
-![Getting Started](./docs/images/getting-started.png)
-
-1. **Open the Extension**: Click the NULL VOID icon in your browser toolbar
-2. **Enable Smart Prevention**: Toggle the Smart Prevention System for automatic protection
-3. **Browse Safely**: Visit any website with active protection
-
-### Using Remote Browser Isolation
-
-![RBI Usage](./docs/images/rbi-usage.png)
-
-1. Click "Open RBI Browser" in the popup
-2. Enter the URL you want to visit
-3. Select your preferred region
-4. The website will load in an isolated environment
-5. Interact normally - all actions are streamed securely
-
-### Generating Disposable Emails
-
-![Email Generation](./docs/images/email-generation.png)
-
-1. Click "Disposable Email" in the popup
-2. Click "Generate New Email"
-3. Copy the email address
-4. Use it for registrations or sign-ups
-5. Check inbox directly in the extension
-
-### Viewing Files Securely
-
-![File Viewing](./docs/images/file-viewing.png)
-
-1. Click "Secure File Viewer"
-2. Upload or drag-and-drop a file
-3. View the file in a sandboxed environment
-4. Close when done - file is not saved locally
-
----
 
 ## Smart Prevention System
 
@@ -218,7 +191,7 @@ _Detailed system architecture_
 
 The Smart Prevention System operates as a content script that runs on every webpage you visit. It performs three layers of protection:
 
-![Smart Prevention Layers](./docs/images/prevention-layers.png)
+
 
 #### Layer 1: Ad Blocking
 
@@ -244,7 +217,6 @@ The Smart Prevention System operates as a content script that runs on every webp
 6. Blocks downloads from malicious sources
 ```
 
-![VirusTotal Flow](./docs/images/virustotal-flow.png)
 
 ### Configuration
 
@@ -259,7 +231,6 @@ You can customize Smart Prevention behavior:
 
 ### Warning Dialogs
 
-![Warning Dialog](./docs/images/warning-dialog.png)
 _Example warning for suspicious content_
 
 When threats are detected, NULL VOID displays informative warnings:
@@ -303,47 +274,6 @@ When threats are detected, NULL VOID displays informative warnings:
    - Cloud-based isolation
    - [Service Documentation](https://www.browserless.io/docs/)
 
-### Development Tools
-
-- **Node.js**: Testing environment
-- **Git**: Version control
-- **VS Code**: Primary IDE
-
----
-
-## Testing
-
-### Running Tests
-
-![Test Results](./docs/images/test-results.png)
-
-The project includes automated tests for critical components:
-
-```powershell
-# Run VirusTotal integration tests
-node tests\virus-total-api.test.js
-```
-
-### Test Coverage
-
-- VirusTotal API integration
-- URL scanning workflow
-- Pending analysis handling
-- Cache management
-- Threat detection logic
-
-### Manual Testing Checklist
-
-- [ ] Extension loads without errors
-- [ ] Smart Prevention toggle persists state
-- [ ] VirusTotal scans complete successfully
-- [ ] Warning dialogs display correctly
-- [ ] RBI browser connects to remote instances
-- [ ] Disposable email generation works
-- [ ] Secure file viewer opens files
-- [ ] AI chat interface responds
-
----
 
 ## Project Structure
 
@@ -456,7 +386,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Reporting Vulnerabilities
 
-If you discover a security vulnerability, please email security@nullvoid.com instead of using the issue tracker.
+If you discover a security vulnerability, please email security@anishalx.dev instead of using the issue tracker.
 
 ### Security Features
 
@@ -472,9 +402,9 @@ If you discover a security vulnerability, please email security@nullvoid.com ins
 
 ### Get Help
 
-- Email: support@nullvoid.com
-- Issues: [GitHub Issues](https://github.com/anishalx/nullvoid/issues)
-- Discussions: [GitHub Discussions](https://github.com/anishalx/nullvoid/discussions)
+- Email: contact@anishalx.dev
+- Issues: [GitHub Issues](https://github.com/nullvoidweb/nullvoid/issues)
+- Discussions: [GitHub Discussions](https://github.com/nullvoidweb/nullvoid/discussions)
 
 ### FAQ
 
@@ -501,27 +431,13 @@ A: Sign up at [VirusTotal](https://www.virustotal.com/) for a free API key, then
 
 ---
 
-## Roadmap
-
-### Upcoming Features
-
-- [ ] Firefox browser support
-- [ ] Custom rule editor for ad blocking
-- [ ] Enhanced AI chat capabilities
-- [ ] Multi-language support
-- [ ] Cloud backup for settings
-- [ ] Team/Enterprise features
-- [ ] Advanced threat reporting
-- [ ] Performance optimizations
-
----
 
 ## Stats
 
-![GitHub stars](https://img.shields.io/github/stars/anishalx/nullvoid?style=social)
-![GitHub forks](https://img.shields.io/github/forks/anishalx/nullvoid?style=social)
-![GitHub issues](https://img.shields.io/github/issues/anishalx/nullvoid)
-![GitHub license](https://img.shields.io/github/license/anishalx/nullvoid)
+![GitHub stars](https://img.shields.io/github/stars/nullvoidweb/nullvoid?style=social)
+![GitHub forks](https://img.shields.io/github/forks/nullvoidweb/nullvoid?style=social)
+![GitHub issues](https://img.shields.io/github/issues/nullvoidweb/nullvoid)
+![GitHub license](https://img.shields.io/github/license/nullvoidweb/nullvoid)
 
 ---
 
