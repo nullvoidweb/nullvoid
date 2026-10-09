@@ -1,450 +1,247 @@
-# NULL VOID Browser Extension
+# NULL VOID
 
-<p align="center"><img src="https://github.com/user-attachments/assets/72aa38c9-7034-4c62-a8fb-a0e8df5b39bd" width="15%" height="5%"/></p>
+<p align="center"><img src="https://github.com/user-attachments/assets/72aa38c9-7034-4c62-a8fb-a0e8df5b39bd" width="15%" alt="NULL VOID logo"/></p>
 
-### Enterprise-grade security and privacy for your browsing experience
+<p align="center"><strong>Security and privacy tools for your browser:</strong> threat blocking, remote browser isolation, disposable e-mail, on-device file analysis and an AI security assistant.</p>
 
----
+<p align="center">
+  <img alt="Manifest V3" src="https://img.shields.io/badge/Manifest-V3-2f6df6">
+  <img alt="Chrome / Edge / Brave" src="https://img.shields.io/badge/Chromium-120%2B-2f6df6">
+  <img alt="Firefox" src="https://img.shields.io/badge/Firefox-140%2B-ff7139">
+  <img alt="License" src="https://img.shields.io/github/license/nullvoidweb/nullvoid">
+</p>
 
-> **DEVELOPMENT STATUS**: This extension is currently in active development. Features may change, and some functionality might be unstable. We welcome contributions from the community! If you'd like to help improve NULL VOID, please check out our [Contributing](#contributing) section below.
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Architecture](#architecture)
-- [Smart Prevention System](#smart-prevention-system)
-- [Technologies Used](#technologies-used)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
+<p align="center"><img src="docs/images/interstitial.png" width="80%" alt="NULL VOID stopping a look-alike PayPal phishing site"/></p>
 
 ---
 
-## Overview
+## Contents
 
-**NULL VOID** is an enterprise-grade browser extension that provides comprehensive security and privacy protection through Remote Browser Isolation (RBI), smart threat prevention, disposable email services, and secure file viewing capabilities.
-
-<p align="center"><img src="https://github.com/user-attachments/assets/b6d4b06d-ab15-46d4-ac9c-840273b61f05" width="50%" height="20%"/></p> 
-
-<div style="display: flex; justify-content: center;">
-  <img src="https://github.com/user-attachments/assets/07146b64-27ba-4d0c-8f53-b716fd296b36" width="45%" style="margin-right: 20px;" />
-  <img src="https://github.com/user-attachments/assets/40e7fdd7-0f6b-4ae4-a6ac-b4842e048873" width="45%" />
-</div>
-
-
-
-_Main popup interface with all features_
-
-### Why NULL VOID?
-
-- **Zero Trust Browsing**: Isolate potentially dangerous websites in remote browser environments
-- **Real-time Threat Detection**: Powered by VirusTotal API integration
-- **Privacy First**: Generate disposable emails on-the-fly
-- **Secure File Viewing**: View files without downloading them to your local machine
-- **AI Assistant**: Built-in AI chat for assistance and support
+- [Features](#features)
+- [Install](#install)
+- [Optional setup](#optional-setup)
+- [How it works](#how-it-works)
+- [Security model](#security-model)
+- [Development](#development)
+- [Project structure](#project-structure)
+- [Privacy](#privacy)
+- [Contributing](#contributing) · [License](#license)
 
 ---
 
-## Key Features
+## Features
 
-### 1. Remote Browser Isolation (RBI)
+### Smart Protection
 
- <p align="center"><img src="https://github.com/user-attachments/assets/4b75f718-9f2c-4a1e-bbcb-1efb0e5ac99d" width="50%" height="20%"/></p> 
+Runs on every page, using the browser's built-in filtering engine (`declarativeNetRequest`), so blocking adds no page-load overhead.
 
-_Remote Browser Isolation workflow_
+| Layer | What it does |
+| --- | --- |
+| **Ad & tracker blocking** | ~40,000 third-party ad, tracking and analytics hosts (StevenBlack/hosts). The toolbar badge shows how many requests were blocked on the current page. |
+| **Malware & phishing blocklist** | ~377,000 known-bad hosts (abuse.ch URLhaus + Phishing.Database). Navigations land on a warning page; payload hosts are also blocked for scripts, images and downloads. |
+| **Look-alike detection** | On-device scoring of every address: IDN homographs (`аррӏе.com`), digit swaps (`paypa1.com`), typo- and combo-squatting (`paypal-secure-login.xyz`), brands hidden in subdomains, `user@host` tricks, raw IPs, abused TLDs and free hosting. **Balanced** and **Strict** modes. |
+| **Credential-phishing checks** | When a page shows a password field, NULL VOID checks whether the form posts to another site, whether the page claims a brand it doesn't belong to, and whether the connection is unencrypted. If so, it shows a warning bar inside the page. |
+| **Download guard** | Pauses or blocks executables, scripts, macro documents, disk images, deceptive names (`invoice.pdf.exe`, right-to-left override tricks) and files from risky sources. You review them in a dedicated window. |
+| **Threat intelligence** *(optional)* | Google Safe Browsing v5 (privacy-preserving hash-prefix lookups), VirusTotal and abuse.ch, all using your own free keys. Lookups run when you click **Scan**, check a link or analyse a file, or on every navigation if you enable that. |
+| **Controls** | Trusted sites, personal blocklist, optional HTTPS upgrade, a "proceed anyway" exception that lasts the session, and an on-device activity log. |
 
-Browse untrusted websites safely by rendering them in isolated cloud environments. NULL VOID supports multiple geographic regions:
+### Disposable Browser (Remote Browser Isolation)
 
-- Singapore (`sg-rbi-api.nullvoids.live`)
-- United States (`us-rbi-api.nullvoids.live`)
-- United Kingdom (`uk-rbi-api.nullvoids.live`)
-- Canada (`ca-rbi-api.nullvoids.live`)
+<img src="docs/images/disposable-browser.png" width="60%" align="right" alt="Disposable Browser streaming a remote page">
 
-**Benefits:**
+Opens risky links in a **remote Chromium** and streams only video frames to you. No remote HTML, JavaScript or downloads ever run on your device.
 
-- Protects your device from malware and exploits
-- Isolates tracking cookies and scripts
-- Prevents drive-by downloads
-- Real-time streaming via WebSocket
+- Works with [Browserless](https://www.browserless.io/) (US West, London and Amsterdam regions; free tier available) or **any self-hosted CDP endpoint**, such as `ghcr.io/browserless/chromium` in Docker.
+- Full interaction: mouse, wheel, keyboard, clipboard paste/copy, JavaScript dialogs, back/forward/reload and a URL bar with risk badges.
+- Pop-ups fold back into the isolated tab, downloads are denied remotely, and the timezone and locale match the region.
+- Adjustable stream quality, live fps and bandwidth, idle and maximum-length timeouts. The stream pauses while the tab is hidden.
+- **Local fallback:** a private (incognito) window, or a temporary window whose cookies and storage are wiped on close.
 
-### 2. Smart Prevention System
+<br clear="right"/>
 
-  <p align="center"><img src="https://github.com/user-attachments/assets/b94ce7bb-bd85-49dc-982d-25e62f59ed96" width="50%" height="20%"/></p> 
-  
-_Smart Prevention System in action_
+### Disposable Email
 
-Our intelligent threat detection system includes:
+Throwaway inboxes powered by [mail.tm](https://mail.tm), with up to 10 addresses at once.
 
-#### **Ad Blocking**
+- **Live inbox** over Mercure server-sent events, plus background polling with desktop notifications.
+- **One-time codes are extracted automatically** and shown in the popup and the notification. Verification links get a one-click button.
+- **Safe rendering:** sanitised with DOMPurify inside a script-less sandboxed frame with a strict CSP. Remote images and tracking pixels are blocked by default, and every link goes through the NULL VOID link checker.
+- **Sender verification:** SPF / DKIM / DMARC results and spoofing tells such as a mismatched Reply-To.
+- Attachments open straight in the Secure File Viewer. One click inserts your disposable address into the page.
 
-- Blocks intrusive advertisements
-- Removes tracking pixels
-- Filters sponsored content
-- Improves page load times
+### Secure File Viewer
 
-#### **Malicious Website Detection**
+<img src="docs/images/file-viewer.png" width="60%" align="right" alt="Secure File Viewer flagging a disguised executable">
 
-- Pattern-based threat detection
-- Known malicious domain blocking
-- Phishing site identification
-- Scam website prevention
+Static analysis on your device. Files are never executed, uploaded or written to disk.
 
-#### **VirusTotal Integration**
+- **Real type from magic bytes**, flagging mismatched extensions, double extensions and bidi-override names.
+- PE/ELF/Mach-O headers, packer sections, W+X sections, overlays and entropy maps.
+- PDF keyword census in the style of `pdfid` (`/JavaScript`, `/OpenAction`, `/Launch`…), Office macros (`vbaProject.bin`), OLE packages, Equation Editor and RTF exploit artefacts.
+- ZIP directory inspection without extraction: Zip-Slip, nested executables, encrypted entries, decompression bombs.
+- HTML-smuggling, credential-form and obfuscated-script detection.
+- IOC extraction (URLs, IPs, domains, e-mails), SHA-256/SHA-1/MD5, and optional hash reputation on VirusTotal and MalwareBazaar (only the hash is sent).
+- **Safe previews:** images re-rendered through a canvas (with a metadata-free "clean copy"), PDFs via PDF.js with scripting disabled, text from DOCX/PPTX/XLSX/ODF, CSV tables, sanitised HTML, media, hex and strings.
 
-- Real-time URL scanning
-- Download verification before execution
-- Detailed threat analysis reports
-- Automatic polling for pending analyses
+<br clear="right"/>
 
+### AI Security Assistant
 
+<img src="docs/images/ai-assistant.png" width="60%" align="right" alt="AI assistant explaining a phishing page">
 
-### 3. Disposable Email Service
+A side-panel assistant that uses **your own key**: Anthropic Claude (default `claude-opus-5-5`), any OpenAI-compatible endpoint (OpenAI, OpenRouter, Groq, or **local models via Ollama/LM Studio**), or Google Gemini.
 
-<p align="center"><img src="https://github.com/user-attachments/assets/92800d01-c089-46db-8f96-665753634632" width="50%" height="20%"/></p> 
+- One-click **Analyze this page**, **Is this e-mail phishing?**, **Explain this file report**, and **Ask about selection** from the context menu.
+- Streaming Markdown answers (escaped, then sanitised), reasoning summaries and local chat history.
+- Prompt-injection hardening: page, e-mail and file content goes into delimited `<untrusted_content>` blocks that are treated as evidence, never as instructions.
 
-<p align="center"><img src="https://github.com/user-attachments/assets/6414cfaa-1de9-4c2e-b15c-7babf11d8146" width="50%" height="20%"/></p> 
-  
-_Generate temporary email addresses_
-
-- Generate temporary email addresses instantly
-- Powered by mail.tm API
-- Perfect for sign-ups and registrations
-- Auto-generated secure passwords
-- No personal information required
-
-### 4. Secure File Viewer
-
-<p align="center"><img src="https://github.com/user-attachments/assets/963c3c07-ea07-49b0-9364-e46cac5f69fd" width="50%" height="20%"/></p> 
-  
-_View files securely without downloading_
-
-- Preview files without downloading
-- Supports multiple file formats
-- Sandboxed viewing environment
-- Prevents malicious file execution
-
-### 5. AI Chat Assistant
-
-  <p align="center"><img src="https://github.com/user-attachments/assets/b402cd5b-e179-4e4a-b52d-a8abe3276dd6" width="50%" height="20%"/></p> 
-  
-_Built-in AI assistant_
-
-- Integrated AI chat support
-- Context-aware assistance
-- Security recommendations
-- Privacy-focused conversations
+<br clear="right"/>
 
 ---
 
-## Architecture
+## Install
 
-### Extension Components
+### From source (Chrome, Edge, Brave, Opera, Vivaldi)
 
-```
-NULL VOID Extension
-│
-├── Background Service Worker
-│   ├── Event Listeners
-│   ├── State Management
-│   └── API Communication
-│
-├── Content Scripts
-│   ├── Smart Prevention System
-│   ├── Page Analysis
-│   └── DOM Manipulation
-│
-├── Popup Interface
-│   ├── Feature Controls
-│   ├── Status Display
-│   └── Settings Panel
-│
-└── Web Accessible Resources
-    ├── RBI Browser
-    ├── File Viewer
-    └── AI Chat Interface
+1. Download or clone this repository.
+2. Open `chrome://extensions` and enable **Developer mode**.
+3. Click **Load unpacked** and select the **`src`** folder.
+
+### Firefox (140+)
+
+```bash
+npm install
+npm run build:firefox
 ```
 
-
-_Detailed system architecture_
-
-### Technology Stack
-
-| Component                   | Technology                      |
-| --------------------------- | ------------------------------- |
-| **Extension Framework**     | Chrome Extension Manifest V3    |
-| **Frontend**                | HTML5, CSS3, Vanilla JavaScript |
-| **API Integration**         | VirusTotal API v3, Mail.tm API  |
-| **Remote Isolation**        | Browserless.io, Custom RBI APIs |
-| **Real-time Communication** | WebSocket (wss://)              |
-| **State Management**        | Chrome Storage API              |
-| **Testing**                 | Node.js, Custom Test Framework  |
+Then open `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…** → `dist/firefox/manifest.json`.
+In Firefox, host permissions are opt-in. If the popup asks, click **Grant access** so NULL VOID can protect websites.
 
 ---
 
+## Optional setup
 
-## Smart Prevention System
+Everything except remote isolation, the AI assistant and threat-intel lookups works without configuration. Keys are stored **encrypted on your device** (see [Security model](#security-model)).
 
-### How It Works
+| Feature | Where to get a key | Settings section |
+| --- | --- | --- |
+| Remote isolation | [browserless.io](https://www.browserless.io/) token, or your own CDP endpoint | Disposable Browser |
+| AI assistant | [Anthropic](https://console.anthropic.com/settings/keys), any OpenAI-compatible provider, or [Gemini](https://aistudio.google.com/apikey) | AI Assistant |
+| Google Safe Browsing | [Google Cloud console](https://developers.google.com/safe-browsing/v4/get-started) | Threat Intelligence |
+| VirusTotal | [virustotal.com](https://www.virustotal.com/gui/my-apikey) | Threat Intelligence |
+| URLhaus / MalwareBazaar | [auth.abuse.ch](https://auth.abuse.ch/) | Threat Intelligence |
 
-The Smart Prevention System operates as a content script that runs on every webpage you visit. It performs three layers of protection:
+**Self-hosting the remote browser:**
 
-
-
-#### Layer 1: Ad Blocking
-
-- Identifies and removes ad elements using CSS selectors
-- Blocks common ad network requests
-- Improves page performance and privacy
-
-#### Layer 2: Pattern-Based Detection
-
-- Analyzes URLs and page content for suspicious patterns
-- Matches against known malicious domain database
-- Blocks access before page loads completely
-
-#### Layer 3: VirusTotal Verification
-
-```javascript
-// Automatic URL scanning workflow
-1. User navigates to new URL
-2. System checks cache for previous scans
-3. If not cached, submits URL to VirusTotal
-4. Polls for analysis results (max 30 seconds)
-5. Displays warning if threats detected
-6. Blocks downloads from malicious sources
+```bash
+docker run -p 3000:3000 -e TOKEN=change-me ghcr.io/browserless/chromium
+# Settings → Disposable Browser → Custom endpoint: ws://localhost:3000?token=change-me
 ```
 
+A plain Chrome started with `--remote-debugging-port` also works if you add `--remote-allow-origins=chrome-extension://<your extension id>`. Settings shows the exact origin.
 
-### Configuration
-
-You can customize Smart Prevention behavior:
-
-```javascript
-// Toggle individual components
-- Ad Blocking: ON/OFF
-- Malicious Detection: ON/OFF
-- VirusTotal Scanning: ON/OFF
-```
-
-### Warning Dialogs
-
-_Example warning for suspicious content_
-
-When threats are detected, NULL VOID displays informative warnings:
-
-- **Pending Analysis**: Yellow warning while VirusTotal analyzes the URL
-- **Suspicious Content**: Orange warning for potential threats
-- **Malicious Detected**: Red warning with detailed threat information
-- **Safe Content**: Green indicator for verified safe URLs
+**Keyboard shortcuts:** `Alt+Shift+N` opens the popup and `Alt+Shift+B` opens the Disposable Browser. You can change them at `chrome://extensions/shortcuts`.
 
 ---
 
-## Technologies Used
-
-### Core Technologies
-
-- **JavaScript ES6+**: Modern JavaScript features and async/await
-- **Chrome Extension APIs**:
-  - `chrome.storage` - State persistence
-  - `chrome.runtime` - Background communication
-  - `chrome.scripting` - Dynamic script injection
-  - `chrome.tabs` - Tab management
-  - `chrome.declarativeNetRequest` - Network filtering
-
-### External APIs
-
-1. **VirusTotal API v3**
-
-   - URL/File scanning
-   - Threat intelligence
-   - Real-time analysis
-   - [API Documentation](https://developers.virustotal.com/reference)
-
-2. **Mail.tm API**
-
-   - Disposable email generation
-   - Inbox management
-   - [API Documentation](https://docs.mail.tm/)
-
-3. **Browserless.io**
-   - Remote browser rendering
-   - Cloud-based isolation
-   - [Service Documentation](https://www.browserless.io/docs/)
-
-
-## Project Structure
+## How it works
 
 ```
-NullVoid/
-│
-├── README.md                          # This file
-├── src/                               # Extension source code
-│   ├── manifest.json                  # Extension manifest
-│   ├── background.js                  # Background service worker
-│   ├── popup.html                     # Popup UI
-│   ├── popup.css                      # Popup styles
-│   ├── popup-fixed.js                 # Popup logic
-│   ├── smart-prevention-system.js     # Core security module
-│   ├── auth-service.js               # Authentication handling
-│   ├── disposable-email.js           # Email service
-│   ├── file-viewer-secure.html       # File viewer UI
-│   ├── file-viewer-secure.js         # File viewer logic
-│   ├── rbi-browser.html              # RBI interface
-│   ├── rbi-browser-browserless.js    # RBI implementation
-│   ├── ai-chat-full.html             # AI chat UI
-│   ├── ai-chat-full.js               # AI chat logic
-│   ├── ai-chat-ui.js                 # AI chat components
-│   ├── ai-chat-extension.js          # AI chat integration
-│   ├── debug-toggle.js               # Debug utilities
-│   ├── browserless-config.js         # Browserless configuration
-│   │
-│   ├── icons/                        # Extension icons
-│   │   ├── icon16.png
-│   │   ├── icon48.png
-│   │   └── icon128.png
-│   │
-│   ├── manifests/                    # Browser-specific manifests
-│   │   ├── chrome.json
-│   │   └── firefox.json
-│   │
-│   └── rules/                        # Blocking rules
-│       ├── ad-blocking-rules.json
-│       └── malicious-blocking-rules.json
-│
-├── tests/                            # Test suite
-│   └── virus-total-api.test.js      # VirusTotal tests
-│
-└── docs/                             # Documentation & images
-    └── images/                       # Screenshots & diagrams
-        ├── banner.png
-        ├── popup-interface.png
-        ├── rbi-architecture.png
-        ├── smart-prevention.png
-        ├── virustotal-scan.png
-        ├── disposable-email.png
-        ├── file-viewer.png
-        ├── ai-chat.png
-        ├── architecture-diagram.png
-        ├── load-extension.png
-        ├── extension-loaded.png
-        ├── getting-started.png
-        ├── rbi-usage.png
-        ├── email-generation.png
-        ├── file-viewing.png
-        ├── prevention-layers.png
-        ├── virustotal-flow.png
-        ├── warning-dialog.png
-        └── test-results.png
+┌────────────────────────── Service worker (background/) ───────────────────────────┐
+│ router.js      typed message router; content scripts may only call allow-listed     │
+│ protection.js  DNR rulesets, trusted/blocked sites, session exceptions, badge       │
+│ navigation.js  webNavigation guard → URL heuristics → interstitial redirect         │
+│ intel.js       Safe Browsing v5 / VirusTotal / abuse.ch with session cache           │
+│ downloads.js   download guard (pause / block / review)                               │
+│ email.js       chrome.alarms inbox polling, OTP-aware notifications                  │
+│ menus.js       context menus · rbi.js local ephemeral windows · auth.js · page.js    │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+        ▲ runtime messages                       ▲ static rulesets (rules/*.json)
+┌───────┴──────────── Extension pages ──────────────┐   ┌──── content/protect.js ────┐
+│ popup · options · blocked (interstitial/link check│   │ cosmetic ad-slot hiding     │
+│ /download review) · inbox · viewer · rbi ·        │   │ credential-phishing checks  │
+│ assistant (side panel) · auth/callback            │   │ closed Shadow-DOM warning   │
+└───────────────────────────────────────────────────┘   └─────────────────────────────┘
+                     │ shared, pure ES modules (lib/)
+  url-analysis · domain · file-analysis · mailtm · otp · sse · cdp-client · rbi-session
+  threat-intel · email-auth · markdown · sanitize · vault · settings · ai/providers
+```
+
+- **No build step for development.** `src/` is a working MV3 extension of plain ES modules. Third-party libraries are vendored in `src/vendor` (MV3 forbids remote code).
+- **Blocklists** are generated by `npm run rules` from permissively licensed feeds and split into files under 3 MB (the addons.mozilla.org parse limit).
+- **Firefox builds** are produced from the same source. `scripts/build.mjs` swaps the service worker for background scripts and `side_panel` for `sidebar_action`, and adds Gecko settings, including the data-collection consent declaration.
+
+---
+
+## Security model
+
+- **No secrets in code.** API keys, tokens and mailbox passwords live in an AES-GCM-encrypted vault in the extension's own IndexedDB. Content scripts run in the web page's origin and cannot read it. Keys are never synced.
+- **Strict CSP** on all extension pages (`script-src 'self'`, no `unsafe-eval`, `object-src 'none'`, `base-uri 'none'`, `form-action 'none'`).
+- **Untrusted content never executes.** E-mail and HTML previews render in `sandbox`ed, script-less frames with their own CSP. PDFs render through PDF.js 6 with `isEvalSupported: false` (the CVE-2024-4367 mitigation). Images are re-encoded through a canvas. AI output is escaped before it is sanitised.
+- **Least-privilege messaging.** The background router rejects messages from other extensions, and web-page content scripts can only call the two handlers they need.
+- The warning page refuses to render inside frames, which prevents clickjacking of "Proceed anyway". Its sign-in callback is web-accessible only to the NULL VOID domains.
+
+Found a vulnerability? See [SECURITY.md](SECURITY.md).
+
+---
+
+## Development
+
+Requires Node.js 20+.
+
+```bash
+npm install                # dev tooling (ESLint, esbuild, Playwright, web-ext, vendored libs)
+npm run lint               # ESLint (flat config)
+npm test                   # 61 unit tests (node:test)
+npm run test:integration   # remote-browser engine vs. a real headless Chromium over CDP
+npm run test:e2e           # 16 end-to-end tests: loads dist/chrome into Chromium via Playwright
+npm run build              # dist/chrome + dist/firefox + zips
+npm run lint:firefox       # Mozilla's web-ext lint on the Firefox build
+npm run rules              # refresh the threat blocklists
+npm run vendor             # re-copy DOMPurify, PDF.js, fflate, Anthropic SDK into src/vendor
+```
+
+The end-to-end suite runs fully offline. `--host-resolver-rules` maps fake phishing and malware hostnames to a local server, a second headless Chromium stands in for Browserless, and mail.tm is mocked. It covers the interstitial and *Proceed*, blocklist redirects, third-party ad blocking, the in-page phishing warning, trusted sites, settings persistence, file analysis and PDF rendering, the download guard, the assistant, the remote browser, and rendering a hostile e-mail.
+
+---
+
+## Project structure
+
+```
+src/
+  manifest.json            MV3 manifest (Chromium); Firefox variant generated at build time
+  background/              service worker modules (see "How it works")
+  content/protect.js       page guard content script
+  popup/ options/ blocked/ inbox/ viewer/ rbi/ assistant/ auth/   extension pages
+  lib/                     shared logic (pure modules are unit-tested in Node)
+  ui/                      design tokens (light/dark), icon sprite
+  rules/                   generated declarativeNetRequest rulesets + SOURCES.json
+  vendor/                  DOMPurify, PDF.js, fflate, Anthropic SDK (+ licenses)
+  _locales/en/             store name/description
+scripts/                   build, vendor, blocklist generator
+tests/unit|integration|e2e
+docs/images/               screenshots
 ```
 
 ---
+
+## Privacy
+
+NULL VOID has no servers, collects no telemetry and contains no analytics. Everything stays on your device unless you use a feature that needs a third party, and each of those is listed in [PRIVACY.md](PRIVACY.md).
 
 ## Contributing
 
-**NULL VOID is under active development and we need your help!** Whether you're a developer, designer, security researcher, or just an enthusiast, there are many ways you can contribute to make this extension better.
+Bug reports, false-positive reports and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-We welcome all contributions to NULL VOID! Here's how you can help:
+## Acknowledgements
 
-### Ways to Contribute
-
-1. **Report Bugs**: Open an issue with detailed reproduction steps
-2. **Suggest Features**: Share your ideas for new functionality
-3. **Submit Pull Requests**: Fix bugs or implement new features
-4. **Improve Documentation**: Help make our docs better
-5. **Security Research**: Report vulnerabilities responsibly
-
-### Development Workflow
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Test thoroughly
-5. Commit with clear messages (`git commit -m 'Add amazing feature'`)
-6. Push to your fork (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-### Code Style Guidelines
-
-- Use meaningful variable names
-- Comment complex logic
-- Follow existing code structure
-- Test your changes
-- Update documentation as needed
-
----
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## Security
-
-### Reporting Vulnerabilities
-
-If you discover a security vulnerability, please email security@anishalx.dev instead of using the issue tracker.
-
-### Security Features
-
-- All API keys are configurable
-- HTTPS-only connections
-- No data collection or tracking
-- Local storage only
-- Open source for transparency
-
----
+[abuse.ch URLhaus](https://urlhaus.abuse.ch/) (CC0) · [Phishing.Database](https://github.com/mitchellkrogza/Phishing.Database) (MIT) · [StevenBlack/hosts](https://github.com/StevenBlack/hosts) (MIT) · [mail.tm](https://mail.tm) · [Browserless](https://www.browserless.io/) · [DOMPurify](https://github.com/cure53/DOMPurify) · [PDF.js](https://github.com/mozilla/pdf.js) · [fflate](https://github.com/101arrowz/fflate) · [Anthropic SDK](https://github.com/anthropics/anthropic-sdk-typescript)
 
 ## Support
 
-### Get Help
-
-- Email: contact@anishalx.dev
 - Issues: [GitHub Issues](https://github.com/nullvoidweb/nullvoid/issues)
-- Discussions: [GitHub Discussions](https://github.com/nullvoidweb/nullvoid/discussions)
+- Contact: contact@anishalx.dev
 
-### FAQ
+## License
 
-**Q: Is NULL VOID free to use?**  
-A: Yes, NULL VOID is completely free and open source.
-
-**Q: Does NULL VOID collect my data?**  
-A: No, we don't collect any user data. All processing happens locally or through your direct API calls.
-
-**Q: Can I use NULL VOID in Firefox?**  
-A: Not yet, but Firefox support is planned for future releases.
-
-**Q: How do I get a VirusTotal API key?**  
-A: Sign up at [VirusTotal](https://www.virustotal.com/) for a free API key, then configure it in the extension settings.
-
----
-
-## Acknowledgments
-
-- **VirusTotal** for their comprehensive threat intelligence API
-- **Mail.tm** for disposable email services
-- **Browserless.io** for remote browser isolation technology
-- The open-source community for inspiration and support
-
----
-
-
-## Stats
-
-![GitHub stars](https://img.shields.io/github/stars/nullvoidweb/nullvoid?style=social)
-![GitHub forks](https://img.shields.io/github/forks/nullvoidweb/nullvoid?style=social)
-![GitHub issues](https://img.shields.io/github/issues/nullvoidweb/nullvoid)
-![GitHub license](https://img.shields.io/github/license/nullvoidweb/nullvoid)
-
----
-
-<div align="center">
-
-**Made with love by the NULL VOID Team**
-
-[Back to Top](#null-void-browser-extension)
-
-</div>
+MIT. See [LICENSE](LICENSE). Bundled third-party components keep their own licenses (`src/vendor/licenses`).

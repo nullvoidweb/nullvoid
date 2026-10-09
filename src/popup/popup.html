@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NULL VOID</title>
+  <link rel="stylesheet" href="../ui/theme.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <img src="../icons/icon48.png" alt="" width="26" height="26">
+      <div>
+        <div class="brand-name">NULL VOID</div>
+        <div class="status" id="protectionStatus"><span class="dot ok"></span><span>Protected</span></div>
+      </div>
+    </div>
+    <div class="row">
+      <label class="switch" title="Smart Protection on/off">
+        <input type="checkbox" id="masterToggle" aria-label="Smart Protection">
+        <span></span>
+      </label>
+      <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme"><i data-icon="moon"></i></button>
+      <button class="icon-btn" id="accountBtn" title="Account" aria-label="Account"><i data-icon="user"></i></button>
+      <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings"><i data-icon="settings"></i></button>
+    </div>
+  </header>
+
+  <div class="perm-banner" id="permBanner" hidden>
+    <i data-icon="info" class="icon-sm"></i>
+    <span class="grow">NULL VOID needs access to websites to protect them.</span>
+    <button class="btn btn-sm btn-primary" id="grantBtn">Grant access</button>
+  </div>
+
+  <main>
+    <!-- Current site -->
+    <section class="card site" id="siteCard">
+      <div class="row-between">
+        <div class="site-host">
+          <i data-icon="globe" class="icon-sm muted"></i>
+          <span class="truncate" id="siteHost">—</span>
+        </div>
+        <span id="siteBadge"></span>
+      </div>
+      <div class="meter" aria-hidden="true"><div class="meter-fill" id="riskMeter"></div></div>
+      <ul class="signals" id="siteSignals"></ul>
+      <div class="site-stats" id="siteStats"></div>
+      <div class="site-actions">
+        <label class="row small trust">
+          <span class="switch"><input type="checkbox" id="trustToggle"><span></span></span>
+          Trust this site
+        </label>
+        <div class="row">
+          <button class="btn btn-sm" id="scanBtn" title="Check with threat-intel services"><i data-icon="shield-check" class="icon-sm"></i>Scan</button>
+          <button class="btn btn-sm" id="askAiSiteBtn" title="Ask the AI assistant about this page"><i data-icon="sparkles" class="icon-sm"></i>Ask AI</button>
+        </div>
+      </div>
+      <div class="intel" id="intelResults" hidden></div>
+    </section>
+
+    <!-- Tools -->
+    <section class="tools">
+      <article class="card tool">
+        <header class="tool-head"><i data-icon="monitor"></i><h2>Disposable Browser</h2></header>
+        <p class="muted small" id="rbiHint">Open risky links in an isolated remote browser.</p>
+        <div class="row">
+          <select id="rbiRegion" aria-label="Region"></select>
+          <button class="btn btn-primary" id="rbiLaunch"><i data-icon="zap" class="icon-sm"></i>Launch</button>
+        </div>
+      </article>
+
+      <article class="card tool">
+        <header class="tool-head">
+          <i data-icon="mail"></i><h2>Disposable Email</h2>
+          <span class="badge badge-low" id="unreadBadge" hidden></span>
+        </header>
+        <div class="email-box">
+          <input type="text" id="emailAddr" readonly value="" placeholder="No inbox yet" aria-label="Disposable address">
+          <button class="icon-btn" id="emailCopy" title="Copy address" aria-label="Copy address"><i data-icon="copy"></i></button>
+        </div>
+        <div class="otp" id="latestCode" hidden>
+          <span class="muted small">Latest code</span>
+          <button class="otp-code mono" id="latestCodeBtn" title="Copy code"></button>
+          <span class="tiny muted truncate" id="latestFrom"></span>
+        </div>
+        <div class="row tool-actions">
+          <button class="btn btn-sm" id="emailFill" title="Insert into the focused field on this page">Fill</button>
+          <button class="btn btn-sm" id="emailInbox"><i data-icon="mail" class="icon-sm"></i>Inbox</button>
+          <button class="btn btn-sm" id="emailNew" title="Create a new address"><i data-icon="plus" class="icon-sm"></i>New</button>
+        </div>
+      </article>
+
+      <div class="tool-row">
+        <button class="card tool-mini" id="viewerBtn">
+          <i data-icon="file-search" class="icon-lg"></i>
+          <span><strong>Secure File Viewer</strong><span class="muted tiny">Analyze files without opening them</span></span>
+        </button>
+        <button class="card tool-mini" id="assistantBtn">
+          <i data-icon="sparkles" class="icon-lg"></i>
+          <span><strong>AI Assistant</strong><span class="muted tiny">Ask about threats &amp; privacy</span></span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <button class="link-btn" id="activityBtn"><i data-icon="activity" class="icon-sm"></i><span id="statsLine">Activity</span></button>
+    <span class="muted tiny" id="version"></span>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

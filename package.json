@@ -1,0 +1,36 @@
+{
+  "name": "nullvoid",
+  "version": "2.0.0",
+  "private": true,
+  "description": "NULL VOID — privacy & security browser extension: threat blocking, remote browser isolation, disposable email, secure file analysis and an AI security assistant.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "rules": "node scripts/update-blocklists.mjs",
+    "build": "node scripts/build.mjs",
+    "build:chrome": "node scripts/build.mjs chrome",
+    "build:firefox": "node scripts/build.mjs firefox",
+    "lint": "eslint .",
+    "lint:firefox": "npm run build:firefox && web-ext lint --source-dir dist/firefox",
+    "test": "node --test \"tests/unit/**/*.test.js\"",
+    "test:integration": "node --test \"tests/integration/**/*.test.js\"",
+    "test:e2e": "npm run build:chrome && node --test --test-concurrency=1 \"tests/e2e/**/*.test.js\"",
+    "check": "npm run lint && npm test && npm run test:integration && npm run test:e2e && npm run build"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.132.0",
+    "@eslint/js": "^10.0.1",
+    "dompurify": "^3.4.16",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.12.0",
+    "fflate": "^0.8.3",
+    "globals": "^17.13.0",
+    "pdfjs-dist": "^6.4.299",
+    "playwright": "~1.58.0",
+    "web-ext": "^10.7.0"
+  }
+}
