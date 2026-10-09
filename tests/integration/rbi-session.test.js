@@ -30,11 +30,16 @@ before(async () => {
   profile = mkdtempSync(path.join(tmpdir(), "nv-cdp-"));
   proc = spawn(chromium.executablePath(), [
     "--headless=new", "--remote-debugging-port=0", `--user-data-dir=${profile}`,
-    "--no-first-run", "--no-default-browser-check", "--disable-gpu", "about:blank",
+    "--no-first-run", "--no-default-browser-check", "--disable-gpu",
+    // Ubuntu CI runners restrict the user namespaces Chromium's sandbox needs
+    // (Playwright passes the same flag for the browsers it launches).
+    ...(process.platform === "linux" ? ["--no-sandbox"] : []),
+    "about:blank",
   ], { stdio: ["ignore", "ignore", "pipe"] });
   wsUrl = await new Promise((resolve, reject) => {
     let buf = "";
-    const timer = setTimeout(() => reject(new Error("Chromium did not start")), 30000);
+    const timer = setTimeout(() => reject(new Error(`Chromium did not start. stderr:\n${buf.slice(-2000)}`)), 30000);
+    proc.on("exit", (code) => reject(new Error(`Chromium exited with code ${code}. stderr:\n${buf.slice(-2000)}`)));
     proc.stderr.on("data", (d) => {
       buf += d;
       const m = buf.match(/DevTools listening on (ws:\/\/\S+)/);

@@ -330,11 +330,15 @@ test("AI assistant explains how to configure a missing key", async () => {
 test("disposable browser streams a remote page over CDP and forwards input", async () => {
   remoteProfile = mkdtempSync(path.join(tmpdir(), "nv-remote-"));
   remote = spawn(chromium.executablePath(), [
-    "--headless=new", "--remote-debugging-port=0", "--remote-allow-origins=*", `--user-data-dir=${remoteProfile}`, "--no-first-run", "about:blank",
+    "--headless=new", "--remote-debugging-port=0", "--remote-allow-origins=*", `--user-data-dir=${remoteProfile}`, "--no-first-run",
+    // Ubuntu CI runners restrict the user namespaces Chromium's sandbox needs.
+    ...(process.platform === "linux" ? ["--no-sandbox"] : []),
+    "about:blank",
   ], { stdio: ["ignore", "ignore", "pipe"] });
   const wsUrl = await new Promise((resolve, reject) => {
     let buf = "";
-    const t = setTimeout(() => reject(new Error("remote chromium did not start")), 30000);
+    const t = setTimeout(() => reject(new Error(`Remote Chromium did not start. stderr:\n${buf.slice(-2000)}`)), 30000);
+    remote.on("exit", (code) => reject(new Error(`Remote Chromium exited with code ${code}. stderr:\n${buf.slice(-2000)}`)));
     remote.stderr.on("data", (d) => {
       buf += d;
       const m = buf.match(/DevTools listening on (ws:\/\/\S+)/);
