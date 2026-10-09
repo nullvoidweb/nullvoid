@@ -98,9 +98,9 @@
     style.textContent = `
         :host { all: initial; }
         .bar { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff;
-          background: ${danger ? "linear-gradient(90deg,#b4232c,#d9363e)" : "linear-gradient(90deg,#9a5b00,#c47a07)"};
+          background: ${danger ? "linear-gradient(90deg,#b4232c,#d9363e)" : "linear-gradient(90deg,#8a4b00,#a35f00)"};
           padding: 12px 16px; display: flex; gap: 14px; align-items: flex-start; box-shadow: 0 4px 18px rgba(0,0,0,.35); }
-        .icon { font-size: 22px; line-height: 1; }
+        .icon svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
         .body { flex: 1; min-width: 0; }
         strong { font-size: 15px; display: block; margin-bottom: 2px; }
         ul { margin: 4px 0 0; padding-left: 18px; }
@@ -109,6 +109,7 @@
         button { font: inherit; font-weight: 600; border-radius: 8px; padding: 7px 12px; cursor: pointer; border: 1px solid rgba(255,255,255,.6); }
         .leave { background: #fff; color: #8f1d24; border-color: #fff; }
         .dismiss { background: transparent; color: #fff; }
+        button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
         @media (max-width: 640px) { .bar { flex-direction: column; } }`;
     const bar = el("div", "bar");
     bar.setAttribute("role", "alert");
@@ -124,7 +125,19 @@
     const dismiss = el("button", "dismiss", "Dismiss");
     const actions = el("div", "actions");
     actions.append(leave, dismiss);
-    bar.append(el("div", "icon", "⚠"), body, actions);
+    // Warning-triangle icon as inline SVG (emoji glyphs render inconsistently).
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    for (const d of ["m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3", "M12 9v4", "M12 17h.01"]) {
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("d", d);
+      svg.appendChild(path);
+    }
+    const iconBox = el("div", "icon");
+    iconBox.appendChild(svg);
+    bar.append(iconBox, body, actions);
     root.append(style, bar);
     leave.addEventListener("click", () => {
       if (history.length > 1) history.back();

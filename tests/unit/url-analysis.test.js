@@ -18,7 +18,7 @@ test("ordinary sites are not flagged (false-positive regressions)", () => {
   for (const u of [
     "https://purchase.com/", "https://steak.com/", "https://www.bbc.co.uk/news", "https://en.wikipedia.org/wiki/Phishing",
     "https://www.metallica.com/", "https://zoomcar.com/", "https://examples.com/", "https://www.nytimes.com/",
-    "https://stackoverflow.com/questions", "https://docs.python.org/3/", "http://localhost:8080/login",
+    "https://stackoverflow.com/questions", "https://docs.python.org/3/", "http://localhost:8080/login", "https://my-apple-tree.org/",
   ]) {
     assert.ok(score(u) < 40, `${u} scored ${score(u)}: ${ids(u)}`);
   }
@@ -46,6 +46,14 @@ test("combo-squatting with credential words", () => {
   const r = analyzeUrl("https://paypal-secure-login.xyz/verify");
   assert.equal(r.level, "dangerous");
   assert.ok(r.signals.some((s) => s.id === "combosquat"));
+});
+
+test("combo-squatting with a homoglyph-swapped brand", () => {
+  for (const u of ["https://paypa1-login.xyz/verify", "https://app1e-support.com/", "https://rnicrosoft-account.com/"]) {
+    const r = analyzeUrl(u);
+    assert.ok(r.signals.some((s) => s.id === "combosquat"), `${u}: ${r.signals.map((s) => s.id)}`);
+    assert.ok(r.score >= 45, `${u} scored ${r.score}`);
+  }
 });
 
 test("brand only in subdomain of an unrelated domain", () => {

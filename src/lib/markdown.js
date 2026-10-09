@@ -61,7 +61,8 @@ export function renderMarkdown(src) {
     const h = line.match(/^(#{1,4})\s+(.*)$/);
     if (h) {
       flushPara();
-      const level = Math.min(6, h[1].length + 2);
+      // Replies sit under the page h1, so "#" and "##" map to h2, "###" to h3, etc.
+      const level = Math.max(2, Math.min(6, h[1].length));
       out.push(`<h${level}>${inline(h[2])}</h${level}>`);
       i++;
       continue;

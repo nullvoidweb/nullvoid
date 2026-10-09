@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
+  <a class="skip-link" href="#content" id="skipLink">Skip to content</a>
   <div class="layout">
     <aside class="side">
       <div class="brand">
@@ -35,7 +36,7 @@
       </div>
     </aside>
 
-    <main class="content">
+    <main class="content" id="content" tabindex="-1">
       <!-- Welcome -->
       <section id="welcome" class="section">
         <header class="section-head">
@@ -43,15 +44,15 @@
           <p class="muted">Privacy and security tools in your browser. Everything below works out of the box. API keys are optional and unlock extra features.</p>
         </header>
         <div class="feature-grid">
-          <article class="card feature"><i data-icon="shield-check" class="icon-lg"></i><h3>Smart Protection</h3><p class="muted small">Blocks ad &amp; tracker networks and known malware hosts, flags look-alike and phishing sites, and pauses dangerous downloads.</p><span class="badge badge-ok">Active</span></article>
-          <article class="card feature"><i data-icon="monitor" class="icon-lg"></i><h3>Disposable Browser</h3><p class="muted small">Open risky links in a remote browser. Only pixels reach your device. A local private-window mode works without setup.</p><a href="#rbi" class="small">Set up remote isolation →</a></article>
-          <article class="card feature"><i data-icon="mail" class="icon-lg"></i><h3>Disposable Email</h3><p class="muted small">Throwaway inboxes with live updates, one-click verification codes, and tracking pixels blocked by default.</p><span class="badge badge-ok">Ready</span></article>
-          <article class="card feature"><i data-icon="file-search" class="icon-lg"></i><h3>Secure File Viewer</h3><p class="muted small">Static analysis on your device: true file type, macros, embedded scripts, packers, IOCs, plus safe previews.</p><span class="badge badge-ok">Ready</span></article>
-          <article class="card feature"><i data-icon="sparkles" class="icon-lg"></i><h3>AI Assistant</h3><p class="muted small">Ask whether a page, e-mail or file is a scam. Uses your own Claude, OpenAI-compatible or Gemini key.</p><a href="#ai" class="small">Add an API key →</a></article>
-          <article class="card feature"><i data-icon="key" class="icon-lg"></i><h3>Threat Intelligence</h3><p class="muted small">Optional Google Safe Browsing, VirusTotal and abuse.ch lookups with your own free keys.</p><a href="#intel" class="small">Configure →</a></article>
+          <article class="card feature" data-feature-card="protection"><i data-icon="shield-check" class="icon-lg"></i><h2>Smart Protection</h2><p class="muted small">Blocks ad &amp; tracker networks and known malware hosts, flags look-alike and phishing sites, and pauses dangerous downloads.</p><div class="feature-status" data-feature="protection"><span class="badge badge-ok">Active</span></div></article>
+          <article class="card feature" data-feature-card="rbi"><i data-icon="monitor" class="icon-lg"></i><h2>Disposable Browser</h2><p class="muted small">Open risky links in a remote browser. Only pixels reach your device. A local private-window mode works without setup.</p><div class="feature-status" data-feature="rbi"><a href="#rbi" class="small">Set up remote isolation →</a></div></article>
+          <article class="card feature" data-feature-card="email"><i data-icon="mail" class="icon-lg"></i><h2>Disposable Email</h2><p class="muted small">Throwaway inboxes with live updates, one-click verification codes, and tracking pixels blocked by default.</p><div class="feature-status" data-feature="email"><span class="badge badge-ok">Ready</span></div></article>
+          <article class="card feature" data-feature-card="viewer"><i data-icon="file-search" class="icon-lg"></i><h2>Secure File Viewer</h2><p class="muted small">Static analysis on your device: true file type, macros, embedded scripts, packers, IOCs, plus safe previews.</p><div class="feature-status" data-feature="viewer"><span class="badge badge-ok">Ready</span></div></article>
+          <article class="card feature" data-feature-card="ai"><i data-icon="sparkles" class="icon-lg"></i><h2>AI Assistant</h2><p class="muted small">Ask whether a page, e-mail or file is a scam. Uses your own Claude, OpenAI-compatible or Gemini key.</p><div class="feature-status" data-feature="ai"><a href="#ai" class="small">Add an API key →</a></div></article>
+          <article class="card feature" data-feature-card="intel"><i data-icon="key" class="icon-lg"></i><h2>Threat Intelligence</h2><p class="muted small">Optional Google Safe Browsing, VirusTotal and abuse.ch lookups with your own free keys.</p><div class="feature-status" data-feature="intel"><a href="#intel" class="small">Configure →</a></div></article>
         </div>
         <div class="card card-pad shortcuts">
-          <h3>Keyboard shortcuts</h3>
+          <h2>Keyboard shortcuts</h2>
           <div class="kv-list" id="shortcuts"></div>
           <p class="tiny muted">Change them at your browser's extension shortcuts page.</p>
         </div>
@@ -74,13 +75,13 @@
         </div>
         <div class="two-col">
           <div class="card card-pad stack">
-            <h3>Trusted sites</h3>
+            <h2>Trusted sites</h2>
             <p class="hint">Protection is fully disabled on these domains.</p>
             <form class="input-group" id="trustedForm"><input type="text" placeholder="example.com" id="trustedInput" aria-label="Domain to trust"><button class="btn">Add</button></form>
             <div class="chips" id="trustedList"></div>
           </div>
           <div class="card card-pad stack">
-            <h3>Blocked sites</h3>
+            <h2>Blocked sites</h2>
             <p class="hint">Always block these domains, including subdomains.</p>
             <form class="input-group" id="blockedForm"><input type="text" placeholder="annoying.example" id="blockedInput" aria-label="Domain to block"><button class="btn">Add</button></form>
             <div class="chips" id="blockedList"></div>
@@ -119,7 +120,7 @@
             <select data-setting="rbi.provider" class="w-auto"><option value="browserless">Browserless (cloud)</option><option value="custom">Custom endpoint</option></select></div>
           <div class="setting stack-sm" data-show="rbi.provider=browserless">
             <div class="row-between"><div><label>Browserless API token</label></div>
-              <select data-setting="rbi.region" class="w-auto"><option value="sfo">US West (San Francisco)</option><option value="lon">UK (London)</option><option value="ams">EU (Amsterdam)</option></select></div>
+              <select data-setting="rbi.region" class="w-auto" aria-label="Browserless region"><option value="sfo">US West (San Francisco)</option><option value="lon">UK (London)</option><option value="ams">EU (Amsterdam)</option></select></div>
             <div class="secret" data-secret="rbiToken"></div>
           </div>
           <div class="setting stack-sm" data-show="rbi.provider=custom">
@@ -147,7 +148,7 @@
           <div class="setting"><div><label>Load remote images by default</label><p class="hint">Off blocks tracking pixels. You can still load images per message.</p></div><label class="switch"><input type="checkbox" data-setting="email.loadRemoteContent"><span></span></label></div>
         </div>
         <div class="card card-pad stack">
-          <div class="row-between"><h3>Your inboxes</h3><button class="btn btn-sm" id="newInbox"><i data-icon="plus" class="icon-sm"></i>New inbox</button></div>
+          <div class="row-between"><h2>Your inboxes</h2><button class="btn btn-sm" id="newInbox"><i data-icon="plus" class="icon-sm"></i>New inbox</button></div>
           <div class="list" id="inboxList"></div>
         </div>
       </section>
@@ -206,7 +207,7 @@
           <div class="setting"><div><label>Delete all NULL VOID data</label><p class="hint">Removes settings, keys, inboxes (also deleted at mail.tm), logs and rules.</p></div><button class="btn btn-danger" id="wipeData"><i data-icon="trash" class="icon-sm"></i>Delete everything</button></div>
         </div>
         <div class="card card-pad stack small">
-          <h3>Where data goes</h3>
+          <h2>Where data goes</h2>
           <ul class="plain">
             <li><strong>mail.tm</strong>: only when you create or read disposable inboxes.</li>
             <li><strong>Browserless / your endpoint</strong>: the pages you open in the Disposable Browser.</li>

@@ -39,7 +39,7 @@ test("markdown renderer escapes HTML and only links http(s)", () => {
 
 test("markdown lists, headings and tables", () => {
   const html = renderMarkdown("## Verdict\n- one\n- two\n\n1. a\n2. b\n\n| a | b |\n|---|---|\n| 1 | 2 |");
-  assert.ok(html.includes("<h4>Verdict</h4>"));
+  assert.ok(html.includes("<h2>Verdict</h2>"));
   assert.ok(html.includes("<ul><li>one</li><li>two</li></ul>"));
   assert.ok(html.includes("<ol>"));
   assert.ok(html.includes("<table>"));

@@ -55,14 +55,14 @@ async function init() {
 
 async function renderBoxes() {
   const meta = await getMeta();
-  $("#boxList").replaceChildren(...meta.boxes.map((b) => h("div", {
-    class: `box${currentBox?.id === b.id ? " active" : ""}`,
-    onclick: () => selectBox(b.id),
-    title: b.address,
-  },
-  h("span", { class: "addr" }, b.address),
-  h("span", { class: "sub" }, `${b.unread ? `${b.unread} unread · ` : ""}${timeAgo(b.createdAt)}`),
-  h("button", {
+  $("#boxList").replaceChildren(...meta.boxes.map((b) => {
+    const at = b.address.lastIndexOf("@");
+    const active = currentBox?.id === b.id;
+    return h("div", { class: `box${active ? " active" : ""}`, role: "listitem" },
+      h("button", { class: "box-main", type: "button", title: b.address, "aria-current": active ? "true" : null, onclick: () => selectBox(b.id) },
+        h("span", { class: "addr" }, h("span", { class: "local" }, b.address.slice(0, at)), h("span", { class: "domain" }, b.address.slice(at))),
+        h("span", { class: "sub" }, b.unread ? h("strong", {}, `${b.unread} unread`) : null, b.unread ? " · " : "", `created ${timeAgo(b.createdAt)}`)),
+      h("button", {
     class: "icon-btn del", title: "Delete address", "aria-label": `Delete ${b.address}`,
     onclick: async (e) => {
       e.stopPropagation();
@@ -76,7 +76,8 @@ async function renderBoxes() {
       }
       renderBoxes();
     },
-  }, icon("trash", "icon icon-sm")))));
+  }, icon("trash", "icon icon-sm")));
+  }));
 }
 
 async function newBox() {
@@ -145,13 +146,20 @@ function renderList() {
   }
   list.replaceChildren(...messages.map((m) => {
     const codes = extractCodes(m.intro || "", m.subject || "");
-    return h("div", { class: `msg${m.seen ? " seen" : ""}${current?.id === m.id ? " active" : ""}`, onclick: () => openMessage(m.id), dataset: { id: m.id } },
-      h("span", { class: "unread" }),
-      h("span", { class: "from" }, m.from?.name || m.from?.address || "Unknown sender"),
-      h("span", { class: "time" }, m.hasAttachments ? "📎 " : "", timeAgo(m.createdAt)),
-      h("span", { class: "subject" }, m.subject || "(no subject)"),
-      h("span", { class: "intro" }, m.intro || ""),
-      codes[0] ? h("span", { class: "badge badge-low code-chip mono" }, `code ${codes[0]}`) : null);
+    const active = current?.id === m.id;
+    return h("div", { role: "listitem" }, h("button", {
+      type: "button",
+      class: `msg${m.seen ? " seen" : ""}${active ? " active" : ""}`,
+      "aria-current": active ? "true" : null,
+      onclick: () => openMessage(m.id),
+      dataset: { id: m.id },
+    },
+    h("span", { class: "unread", "aria-hidden": "true" }),
+    h("span", { class: "from" }, m.seen ? null : h("span", { class: "sr-only" }, "Unread: "), m.from?.name || m.from?.address || "Unknown sender"),
+    h("span", { class: "time" }, m.hasAttachments ? icon("paperclip", "icon icon-sm") : null, m.hasAttachments ? h("span", { class: "sr-only" }, "Has attachment, ") : null, timeAgo(m.createdAt)),
+    h("span", { class: "subject" }, m.subject || "(no subject)"),
+    h("span", { class: "intro" }, m.intro || ""),
+    codes[0] ? h("span", { class: "badge badge-low code-chip mono" }, `code ${codes[0]}`) : null));
   }));
 }
 
@@ -182,6 +190,8 @@ function startLive() {
 // --- Reader --------------------------------------------------------------------------------
 
 async function openMessage(id) {
+  // The list re-renders below; keyboard users continue at the message heading.
+  const fromKeyboard = document.activeElement?.matches?.(".msg") && document.activeElement.matches(":focus-visible");
   try {
     current = await client.getMessage(currentBox, id);
   } catch (err) {
@@ -205,6 +215,7 @@ async function openMessage(id) {
     if (m) m.seen = true;
   }
   renderList();
+  if (fromKeyboard) $("#msgSubject").focus();
 }
 
 function renderQuick() {
@@ -297,7 +308,7 @@ async function renderAuth() {
       return h("span", { class: `badge ${cls}`, title: `${label}: ${v || "not reported"}` }, `${label} ${v || "n/a"}`);
     };
     box.replaceChildren(badge("SPF", auth.spf), badge("DKIM", auth.dkim), badge("DMARC", auth.dmarc),
-      ...auth.warnings.map((w) => h("span", { class: "badge badge-suspicious", title: w }, "⚠ ", w)));
+      ...auth.warnings.map((w) => h("span", { class: "badge badge-suspicious auth-warn", title: w }, icon("alert-triangle", "icon icon-sm"), w)));
   } catch {
     box.replaceChildren(h("span", { class: "tiny muted" }, "Authentication results unavailable."));
   }

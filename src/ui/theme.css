@@ -1,4 +1,7 @@
-/* NULL VOID design system — shared by every extension page. */
+/* NULL VOID design system — shared by every extension page.
+ * Every text/background pair below meets WCAG AA (4.5:1); the axe-core
+ * accessibility test in tests/e2e/a11y.test.js guards this. Use the *-fill
+ * tokens for solid buttons (white text) and the plain tokens for text/links. */
 :root {
   color-scheme: light dark;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -7,6 +10,25 @@
   --radius: 10px;
   --radius-lg: 14px;
   --ease: cubic-bezier(.2, .7, .2, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+
+  /* 4px spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Type scale */
+  --text-xs: 11.5px;
+  --text-sm: 12.5px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 21px;
+  --text-2xl: 26px;
 
   /* Light theme */
   --bg: #f4f6fb;
@@ -17,21 +39,25 @@
   --border-strong: #c7cedd;
   --text: #141824;
   --text-2: #3d4558;
-  --muted: #667089;
-  --accent: #0c6be0;
-  --accent-hover: #0a5ac0;
+  --muted: #5a6378;
+  --accent: #0a5ccc;
+  --accent-hover: #084fb0;
   --accent-soft: #e3efff;
+  --accent-fill: #0a5ccc;
+  --accent-fill-hover: #084fb0;
   --on-accent: #ffffff;
-  --ok: #138a4a;
+  --ok: #0b7540;
   --ok-soft: #e1f6ea;
-  --warn: #a35d00;
+  --warn: #94540a;
   --warn-soft: #fff1d9;
-  --danger: #c4262e;
+  --danger: #b8222a;
   --danger-soft: #fde6e7;
+  --danger-fill: #b8222a;
+  --danger-fill-hover: #9d1c23;
   --info: #3b5bdb;
   --shadow: 0 1px 2px rgba(20, 24, 36, .06), 0 4px 16px rgba(20, 24, 36, .06);
   --shadow-lg: 0 12px 40px rgba(20, 24, 36, .16);
-  --focus: 0 0 0 3px rgba(12, 107, 224, .35);
+  --focus: 0 0 0 3px rgba(10, 92, 204, .4);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -44,21 +70,25 @@
     --border-strong: #343c50;
     --text: #e8ebf2;
     --text-2: #c3c9d6;
-    --muted: #8d97ab;
-    --accent: #3d95ff;
-    --accent-hover: #63aaff;
+    --muted: #96a0b4;
+    --accent: #5aa5ff;
+    --accent-hover: #7ab7ff;
     --accent-soft: #14284a;
+    --accent-fill: #1d64d8;
+    --accent-fill-hover: #1a5bc6;
     --on-accent: #ffffff;
     --ok: #3ccf7f;
     --ok-soft: #10301f;
     --warn: #f2b23a;
     --warn-soft: #362810;
-    --danger: #ff5c63;
+    --danger: #ff6b71;
     --danger-soft: #3b1518;
+    --danger-fill: #c42830;
+    --danger-fill-hover: #ad222a;
     --info: #8aa4ff;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25);
     --shadow-lg: 0 16px 48px rgba(0, 0, 0, .5);
-    --focus: 0 0 0 3px rgba(61, 149, 255, .45);
+    --focus: 0 0 0 3px rgba(90, 165, 255, .5);
   }
 }
 
@@ -71,21 +101,25 @@
   --border-strong: #343c50;
   --text: #e8ebf2;
   --text-2: #c3c9d6;
-  --muted: #8d97ab;
-  --accent: #3d95ff;
-  --accent-hover: #63aaff;
+  --muted: #96a0b4;
+  --accent: #5aa5ff;
+  --accent-hover: #7ab7ff;
   --accent-soft: #14284a;
+  --accent-fill: #1d64d8;
+  --accent-fill-hover: #1a5bc6;
   --on-accent: #ffffff;
   --ok: #3ccf7f;
   --ok-soft: #10301f;
   --warn: #f2b23a;
   --warn-soft: #362810;
-  --danger: #ff5c63;
+  --danger: #ff6b71;
   --danger-soft: #3b1518;
+  --danger-fill: #c42830;
+  --danger-fill-hover: #ad222a;
   --info: #8aa4ff;
   --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25);
   --shadow-lg: 0 16px 48px rgba(0, 0, 0, .5);
-  --focus: 0 0 0 3px rgba(61, 149, 255, .45);
+  --focus: 0 0 0 3px rgba(90, 165, 255, .5);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -96,8 +130,18 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
 }
-a { color: var(--accent); text-decoration: none; }
+a { color: var(--accent); text-decoration: none; text-underline-offset: 2px; }
 a:hover { text-decoration: underline; }
+/* Links inside running text are underlined so they don't rely on colour alone (WCAG 1.4.1). */
+p a, li a, .hint a, .lead a, .muted a, dd a, .prose a { text-decoration: underline; text-decoration-thickness: 1px; }
+a:focus-visible, [tabindex]:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+button { font-family: inherit; }
+
+/* Screen-reader-only text and a skip link for keyboard users. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.skip-link { position: absolute; left: 12px; top: -48px; z-index: 10000; padding: 8px 14px; border-radius: var(--radius-sm); background: var(--accent-fill); color: var(--on-accent); font-weight: 600; transition: top var(--dur) var(--ease); }
+.skip-link:focus { top: 12px; text-decoration: none; }
+.cap { text-transform: capitalize; }
 code, pre, .mono { font-family: var(--mono); font-size: .92em; }
 h1, h2, h3, h4 { margin: 0; line-height: 1.25; font-weight: 650; letter-spacing: -.01em; }
 p { margin: 0; }
@@ -126,10 +170,10 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
 .btn:active { transform: translateY(1px); }
 .btn:focus-visible, .icon-btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .switch input:focus-visible + span { outline: none; box-shadow: var(--focus); }
 .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
-.btn-danger:hover { filter: brightness(1.08); background: var(--danger); }
+.btn-primary { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
+.btn-primary:hover { background: var(--accent-fill-hover); border-color: var(--accent-fill-hover); }
+.btn-danger { background: var(--danger-fill); border-color: var(--danger-fill); color: #fff; }
+.btn-danger:hover { background: var(--danger-fill-hover); border-color: var(--danger-fill-hover); }
 .btn-ghost { background: transparent; border-color: transparent; }
 .btn-ghost:hover { background: var(--surface-2); border-color: transparent; }
 .btn-sm { padding: 6px 10px; font-size: 12px; }
@@ -163,7 +207,7 @@ label { font-weight: 550; }
 .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
 .switch span { position: absolute; inset: 0; background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: 22px; transition: background .2s var(--ease); pointer-events: none; }
 .switch span::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s var(--ease); }
-.switch input:checked + span { background: var(--accent); border-color: var(--accent); }
+.switch input:checked + span { background: var(--accent-fill); border-color: var(--accent-fill); }
 .switch input:checked + span::after { transform: translateX(16px); }
 .switch input:disabled + span { opacity: .5; }
 
@@ -202,10 +246,17 @@ label { font-weight: 550; }
 /* Toasts */
 .toasts { position: fixed; z-index: 9999; right: 16px; bottom: 16px; display: grid; gap: 8px; max-width: min(420px, calc(100vw - 32px)); }
 .toast { display: flex; align-items: flex-start; gap: 10px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 10px 14px; box-shadow: var(--shadow-lg); font-size: 13px; animation: toast-in .22s var(--ease); }
+.toast { cursor: pointer; }
+.toast .toast-icon { margin-top: 2px; color: var(--accent); }
 .toast.success { border-left-color: var(--ok); }
+.toast.success .toast-icon { color: var(--ok); }
 .toast.error { border-left-color: var(--danger); }
+.toast.error .toast-icon { color: var(--danger); }
 .toast.warn { border-left-color: var(--warn); }
+.toast.warn .toast-icon { color: var(--warn); }
+.toast.leaving { animation: toast-out .14s ease-in forwards; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(4px); } }
 
 /* Dialog */
 dialog { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); color: var(--text); box-shadow: var(--shadow-lg); padding: 20px; max-width: min(520px, calc(100vw - 32px)); }

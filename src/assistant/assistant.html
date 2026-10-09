@@ -12,17 +12,17 @@
     <div class="row grow">
       <img src="../icons/icon48.png" alt="" width="22" height="22" class="logo">
       <div class="grow">
-        <div class="title">AI Security Assistant</div>
+        <h1 class="title">AI Security Assistant</h1>
         <button class="model-chip tiny" id="modelChip" title="Change provider or model">—</button>
       </div>
     </div>
     <div class="row">
-      <button class="icon-btn" id="historyBtn" title="Chat history" aria-label="Chat history"><i data-icon="clock"></i></button>
+      <button class="icon-btn" id="historyBtn" title="Chat history" aria-label="Chat history" aria-expanded="false" aria-controls="history"><i data-icon="clock"></i></button>
       <button class="icon-btn" id="newChat" title="New chat" aria-label="New chat"><i data-icon="plus"></i></button>
     </div>
   </header>
 
-  <div class="history card" id="history" hidden></div>
+  <div class="history card" id="history" role="list" aria-label="Saved chats" hidden></div>
 
   <main class="chat" id="chat">
     <section class="welcome" id="welcome">

@@ -208,16 +208,21 @@ async function handlePending(pending) {
 
 async function toggleHistory() {
   const panel = $("#history");
+  const trigger = $("#historyBtn");
   if (!panel.hidden) {
     panel.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
     return;
   }
   const chats = await loadChats();
   panel.replaceChildren(
-    ...(chats.length ? chats.map((c) => h("div", { class: `item${c.id === chat.id ? " active" : ""}`, onclick: () => { chat = c; renderAll(); panel.hidden = true; } },
-      h("div", { class: "grow" }, h("div", { class: "truncate small" }, c.title), h("div", { class: "tiny muted" }, `${timeAgo(c.updated)} · ${c.messages.length} messages`)),
+    ...(chats.length ? chats.map((c) => h("div", { class: `item${c.id === chat.id ? " active" : ""}`, role: "listitem" },
       h("button", {
-        class: "icon-btn", title: "Delete chat", "aria-label": "Delete chat",
+        type: "button", class: "item-main", "aria-current": c.id === chat.id ? "true" : null,
+        onclick: () => { chat = c; renderAll(); panel.hidden = true; $("#historyBtn").setAttribute("aria-expanded", "false"); $("#input").focus(); },
+      }, h("span", { class: "truncate small" }, c.title), h("span", { class: "tiny muted" }, `${timeAgo(c.updated)} · ${c.messages.length} messages`)),
+      h("button", {
+        class: "icon-btn", title: "Delete chat", "aria-label": `Delete chat “${c.title}”`,
         onclick: async (e) => {
           e.stopPropagation();
           const rest = (await loadChats()).filter((x) => x.id !== c.id);
@@ -239,6 +244,8 @@ async function toggleHistory() {
     }, "Clear history") : null,
   );
   panel.hidden = false;
+  trigger.setAttribute("aria-expanded", "true");
+  panel.querySelector("button")?.focus();
 }
 
 // --- Init ------------------------------------------------------------------------------------
@@ -282,6 +289,12 @@ async function init() {
     input.focus();
   });
   $("#historyBtn").addEventListener("click", toggleHistory);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !$("#history").hidden) {
+      toggleHistory();
+      $("#historyBtn").focus();
+    }
+  });
   $("#modelChip").addEventListener("click", () => api.tabs.create({ url: `${extensionUrl("options/options.html")}#ai` }));
   for (const btn of $$(".suggest")) {
     btn.addEventListener("click", () => {

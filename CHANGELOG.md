@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased: frontend & accessibility pass
+
+- **WCAG 2.1 AA across every page, in both themes.** An axe-core audit had found about 60 violations; there are now zero, and `tests/e2e/a11y.test.js` keeps it that way.
+  - Every settings toggle and dropdown has an accessible name and description (about 25 were unlabelled).
+  - Colour tokens were retuned so all text pairs reach 4.5:1, with separate button-fill tokens so white-on-blue buttons pass in dark mode.
+  - Links inside text are underlined. Heading levels are sequential, with an `h1` on every page. The inbox has proper landmark regions.
+- **Keyboard support:**
+  - Inbox mailboxes and messages, and AI chat history, are now real buttons, so they work from the keyboard.
+  - The account menu supports arrow keys and Escape and reports its expanded state.
+  - The settings page has a skip link.
+  - Focus moves to an opened message.
+- **Popup redesign:**
+  - Fits Chrome's 600px popup limit, which a test now enforces.
+  - The site verdict leads, with a coloured shield, a summary line and an accessible risk meter, plus a loading skeleton.
+  - Compact tool rows; e-mail actions are labelled icon buttons.
+  - Trusting a suspicious or dangerous site now asks for confirmation.
+- Toasts carry an icon per type, errors are announced immediately, toasts dismiss on click, and the exit animation is faster than the entrance.
+- Emoji used as icons (📎, ⚠) are replaced with SVG icons, including in the in-page phishing banner. The banner's colours now meet contrast and its buttons show a focus ring.
+- Welcome cards show live status ("Remote isolation ready", "Needs an API key", "2 inboxes") instead of static text.
+- Inbox shows full addresses on two lines instead of truncating them.
+- **Detection fix found during the UI review:** combo-squats that swap a digit into the brand (`paypa1-login.xyz`, `app1e-support.com`) are now caught, and a brand next to ordinary words (`my-apple-tree.org`) is only a weak signal.
+
 ## 2.0.0: complete rewrite
 
 ### Security fixes (from 1.x)
@@ -29,4 +51,4 @@
 - **AI Assistant:** side panel; Claude, OpenAI-compatible (incl. Ollama) or Gemini; page, e-mail, file and selection analysis; prompt-injection hardening.
 - Options page with onboarding, activity log, export/import and full data wipe. Light and dark themes.
 - Firefox build (140+) with sidebar and data-collection consent.
-- Tooling: ESLint, 61 unit tests, CDP integration tests, a 16-scenario Playwright E2E suite, a build/zip script, a blocklist generator, a vendoring script and CI.
+- Tooling: ESLint, unit tests, CDP integration tests, a Playwright E2E suite, a build/zip script, a blocklist generator, a vendoring script and CI.

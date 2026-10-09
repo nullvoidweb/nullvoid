@@ -4,7 +4,7 @@ import DOMPurify from "../vendor/purify.es.mjs";
 import { extensionUrl } from "./browser.js";
 
 const RICH_CONFIG = {
-  ALLOWED_TAGS: ["p", "br", "strong", "em", "del", "code", "pre", "a", "ul", "ol", "li", "blockquote", "h3", "h4", "h5", "h6", "hr", "table", "thead", "tbody", "tr", "th", "td"],
+  ALLOWED_TAGS: ["p", "br", "strong", "em", "del", "code", "pre", "a", "ul", "ol", "li", "blockquote", "h2", "h3", "h4", "h5", "h6", "hr", "table", "thead", "tbody", "tr", "th", "td"],
   ALLOWED_ATTR: ["href", "target", "rel", "data-lang"],
   ALLOWED_URI_REGEXP: /^https?:/i,
 };

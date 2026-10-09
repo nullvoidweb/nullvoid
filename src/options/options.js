@@ -32,6 +32,7 @@ function showSection() {
     else a.removeAttribute("aria-current");
   }
   if (target === "activity") renderActivity();
+  if (target === "welcome") renderFeatureStatus().catch(() => {});
   if (target === "email") renderInboxes();
   if (target === "protection") renderRulesetInfo();
   window.scrollTo(0, 0);
@@ -100,11 +101,14 @@ function bindSettings() {
 async function buildSecrets() {
   for (const box of $$(".secret[data-secret]")) {
     const name = box.dataset.secret;
-    const input = h("input", { type: "password", autocomplete: "off", spellcheck: "false", placeholder: "Paste key…", "aria-label": `${name}` });
+    const settingLabel = box.closest(".setting")?.querySelector("label:not(.switch)")?.textContent.trim() || name;
+    const fieldName = /key|token/i.test(settingLabel) ? settingLabel : `${settingLabel} API key`;
+    const input = h("input", { type: "password", autocomplete: "off", spellcheck: "false", placeholder: "Paste key…", "aria-label": fieldName });
     const state = h("span", { class: "state muted" });
-    const show = h("button", { class: "icon-btn", type: "button", title: "Show / hide", "aria-label": "Show or hide key" }, icon("eye"));
-    const saveBtn = h("button", { class: "btn btn-sm btn-primary", type: "button" }, "Save");
-    const clearBtn = h("button", { class: "btn btn-sm btn-ghost", type: "button" }, "Remove");
+    const show = h("button", { class: "icon-btn", type: "button", title: "Show / hide", "aria-label": `Show or hide ${fieldName}`, "aria-pressed": "false" }, icon("eye"));
+    const saveBtn = h("button", { class: "btn btn-sm btn-primary", type: "button", "aria-label": `Save ${fieldName}` }, "Save");
+    const clearBtn = h("button", { class: "btn btn-sm btn-ghost", type: "button", "aria-label": `Remove ${fieldName}` }, "Remove");
+    state.setAttribute("aria-live", "polite");
     const parts = [input, show, saveBtn, clearBtn];
     if (box.dataset.test) {
       parts.push(h("button", {
@@ -136,6 +140,7 @@ async function buildSecrets() {
       } else {
         input.type = "password";
       }
+      show.setAttribute("aria-pressed", String(input.type === "text"));
     });
     saveBtn.addEventListener("click", async () => {
       const v = input.value.trim();
@@ -153,6 +158,57 @@ async function buildSecrets() {
     });
     await refresh();
   }
+}
+
+// --- Accessibility wiring -------------------------------------------------------------------
+
+/**
+ * Give every control an accessible name and description from the visible
+ * label/hint in its `.setting` row (the markup uses plain <label> text for
+ * layout reasons, so the association is made here, for all rows at once).
+ */
+function labelControls() {
+  let n = 0;
+  const uid = (el, prefix) => el.id || (el.id = `${prefix}-${++n}`);
+  for (const setting of $$(".setting")) {
+    const labels = $$("label", setting).filter((l) => !l.matches(".switch, .field, .btn") && !l.querySelector("input, select, textarea"));
+    const hint = setting.querySelector(".hint");
+    const controls = $$("input:not([type=hidden]):not([type=file]), select, textarea", setting)
+      .filter((c) => !c.closest("label.field") && !c.hasAttribute("aria-label") && !c.hasAttribute("aria-labelledby"));
+    for (const c of controls) {
+      // The label that precedes the control in document order (stacked rows),
+      // falling back to the row's main label (side-by-side rows).
+      let label = null;
+      for (const l of labels) if (l.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING) label = l;
+      label = label || labels[0];
+      if (!label) continue;
+      c.setAttribute("aria-labelledby", uid(label, "lbl"));
+      if (hint && !c.hasAttribute("aria-describedby")) c.setAttribute("aria-describedby", uid(hint, "hint"));
+    }
+  }
+}
+
+/** Welcome cards reflect what is actually configured. */
+async function renderFeatureStatus() {
+  const secrets = await getSecrets(["rbiToken", "anthropicKey", "openaiKey", "geminiKey", "safeBrowsingKey", "virusTotalKey", "abuseChKey"]);
+  const badge = (cls, text) => h("span", { class: `badge ${cls}` }, text);
+  const link = (href, text) => h("a", { href, class: "small" }, text);
+  const set = (key, ...nodes) => $(`.feature-status[data-feature="${key}"]`)?.replaceChildren(...nodes);
+  const p = settings.protection;
+  set("protection", p.enabled ? badge("badge-ok", "Active") : badge("badge-warn", "Paused"), link("#protection", "Adjust →"));
+  const rbiReady = settings.rbi.provider === "custom" ? Boolean(settings.rbi.customEndpoint) : Boolean(secrets.rbiToken);
+  set("rbi", rbiReady ? badge("badge-ok", "Remote isolation ready") : badge("badge-info", "Local mode only"), link("#rbi", rbiReady ? "Settings →" : "Set up remote isolation →"));
+  let boxes = 0;
+  try {
+    boxes = (await call("email:state")).boxes.length;
+  } catch { /* worker asleep */ }
+  set("email", badge("badge-ok", boxes ? `${boxes} inbox${boxes === 1 ? "" : "es"}` : "Ready"));
+  set("viewer", badge("badge-ok", "Ready"));
+  const ai = settings.ai.provider;
+  const aiReady = ai === "anthropic" ? secrets.anthropicKey : ai === "gemini" ? secrets.geminiKey : Boolean(settings.ai.openaiModel);
+  set("ai", aiReady ? badge("badge-ok", "Ready") : badge("badge-info", "Needs an API key"), link("#ai", aiReady ? "Settings →" : "Add an API key →"));
+  const intel = [settings.intel.safeBrowsing && secrets.safeBrowsingKey, settings.intel.virusTotal && secrets.virusTotalKey, settings.intel.urlhaus && secrets.abuseChKey].filter(Boolean).length;
+  set("intel", intel ? badge("badge-ok", `${intel} service${intel === 1 ? "" : "s"} on`) : badge("badge-info", "Optional"), link("#intel", "Configure →"));
 }
 
 // --- Domain lists ------------------------------------------------------------------------
@@ -318,7 +374,7 @@ function renderEvents() {
   $("#eventList").replaceChildren(...(rows.length ? rows.map((e) => h("div", { class: "event" },
     h("div", { class: "when", title: new Date(e.ts).toLocaleString() }, timeAgo(e.ts)),
     h("div", { class: "what" }, h("div", {}, e.title), e.url ? h("div", { class: "url" }, e.url) : null, e.detail ? h("div", { class: "detail" }, e.detail) : null),
-    h("span", { class: `badge badge-${e.severity}` }, e.severity))) : [h("div", { class: "empty" }, icon("activity"), "No events yet.")]));
+    h("span", { class: `badge badge-${e.severity} cap` }, e.severity))) : [h("div", { class: "empty" }, icon("activity"), "No events yet.")]));
 }
 
 function download(name, data) {
@@ -339,6 +395,11 @@ async function init() {
   refreshBindings();
   bindSettings();
   await buildSecrets();
+  labelControls();
+  $("#skipLink").addEventListener("click", (e) => {
+    e.preventDefault(); // the hash drives section routing, so move focus instead
+    $("#content").focus();
+  });
   renderDomainLists();
   bindDomainForms();
 
@@ -346,6 +407,7 @@ async function init() {
     settings = next;
     refreshBindings();
     renderDomainLists();
+    if (!$("#welcome").hidden) renderFeatureStatus().catch(() => {});
   });
 
   $("#rbiTest").addEventListener("click", testRbi);

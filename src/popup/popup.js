@@ -71,14 +71,39 @@ async function checkPermissions() {
 
 // --- Current site -----------------------------------------------------------------
 
+const LEVEL_SUMMARY = {
+  safe: "No risk signals in this address",
+  low: "Minor risk signals, likely fine",
+  suspicious: "Be careful on this site",
+  dangerous: "Likely phishing or malicious",
+};
+
+function setVerdict(level, score) {
+  $("#siteIcon").dataset.level = level;
+  $("#siteIcon").replaceChildren(icon(level === "suspicious" || level === "dangerous" ? "shield-alert" : "shield-check"));
+  $("#siteBadge").replaceChildren(levelBadge(level, score ? `· ${score}` : ""));
+  const meter = $("#riskMeter");
+  meter.style.width = `${Math.max(4, score)}%`;
+  meter.style.background = METER_COLOR[level];
+  $("#riskMeterWrap").setAttribute("aria-valuenow", String(score));
+  $("#riskMeterWrap").setAttribute("aria-valuetext", `${score} out of 100, ${level}`);
+}
+
+function doneLoading() {
+  $("#siteCard").classList.remove("loading");
+  $("#siteCard").removeAttribute("aria-busy");
+}
+
 async function renderSite() {
   const card = $("#siteCard");
   if (!tab || !isWebUrl(tab.url) || isRestrictedUrl(tab.url)) {
     $("#siteHost").textContent = tab?.url ? "Browser page" : "No active page";
+    $("#siteSummary").textContent = "NULL VOID protects regular websites (http/https).";
+    $("#siteIcon").replaceChildren(icon("globe"));
     $("#siteBadge").replaceChildren(h("span", { class: "badge badge-info" }, "Not applicable"));
-    $("#siteSignals").replaceChildren(h("li", {}, "NULL VOID protects regular websites (http/https)."));
-    card.querySelector(".site-actions").hidden = true;
-    $("#siteStats").hidden = true;
+    card.querySelector(".meter").hidden = true;
+    card.querySelector(".site-foot").hidden = true;
+    doneLoading();
     return;
   }
   const url = new URL(tab.url);
@@ -91,36 +116,39 @@ async function renderSite() {
   } catch { /* worker asleep */ }
   const analysis = info?.url === tab.url && info.analysis ? info.analysis : analyzeUrl(tab.url);
   const verdictLevel = info?.verdict?.level || analysis.level;
-  $("#siteBadge").replaceChildren(levelBadge(verdictLevel, analysis.score ? `· ${analysis.score}` : ""));
-  const meter = $("#riskMeter");
-  meter.style.width = `${Math.max(4, analysis.score)}%`;
-  meter.style.background = METER_COLOR[verdictLevel];
+  setVerdict(verdictLevel, analysis.score);
+  $("#siteSummary").textContent = analysis.brand?.legit ? `Official ${analysis.brand.key} domain` : LEVEL_SUMMARY[verdictLevel];
 
-  const list = $("#siteSignals");
-  const signals = analysis.signals.filter((s) => s.weight > 0).slice(0, 3);
-  list.replaceChildren(...(signals.length
-    ? signals.map((s) => h("li", {}, s.message))
-    : [h("li", {}, analysis.brand?.legit ? `Official ${analysis.brand.key} domain.` : "No risky patterns in this address.")]));
+  const signals = analysis.signals.filter((s) => s.weight >= 10).slice(0, 2);
+  $("#siteSignals").replaceChildren(...signals.map((s) => h("li", {}, icon("alert-triangle", "icon icon-sm"), h("span", {}, s.message))));
   if (info?.intel?.length) renderIntel(info.intel);
 
   const domain = registrableDomain(url.hostname);
   const trusted = settings.protection.trustedSites.some((d) => url.hostname === d || url.hostname.endsWith(`.${d}`));
-  $("#trustToggle").checked = trusted;
-  $("#trustToggle").onchange = async (e) => {
-    await call("protection:setTrusted", { host: url.hostname, trusted: e.target.checked });
-    toast(e.target.checked ? `${domain} is trusted — protection off on this site` : `Protection re-enabled on ${domain}`, "success");
+  const trustToggle = $("#trustToggle");
+  trustToggle.checked = trusted;
+  trustToggle.onchange = async (e) => {
+    const on = e.target.checked;
+    if (on && (verdictLevel === "suspicious" || verdictLevel === "dangerous") &&
+        !confirm(`${domain} looks ${verdictLevel}. Trusting it turns off every NULL VOID protection on this site. Continue?`)) {
+      e.target.checked = false;
+      return;
+    }
+    await call("protection:setTrusted", { host: url.hostname, trusted: on });
+    toast(on ? `${domain} is trusted. Protection is off on this site.` : `Protection re-enabled on ${domain}`, on ? "warn" : "success");
     api.tabs.reload(tab.id);
   };
 
+  doneLoading();
   try {
     const status = await call("protection:status", { tabId: tab.id });
     const m = status.matched || {};
-    $("#siteStats").replaceChildren(
-      h("span", {}, h("strong", {}, String(m.ads ?? 0)), " ads & trackers blocked"),
-      h("span", {}, h("strong", {}, String((m.malware ?? 0) + (m.custom ?? 0))), " threats"),
-    );
+    const threats = (m.malware ?? 0) + (m.custom ?? 0);
+    const parts = [h("strong", {}, String(m.ads ?? 0)), ` ad & tracker request${m.ads === 1 ? "" : "s"} blocked on this page`];
+    if (threats) parts.push(" · ", h("strong", {}, String(threats)), ` threat${threats === 1 ? "" : "s"}`);
+    $("#siteStats").replaceChildren(...parts);
   } catch {
-    $("#siteStats").hidden = true;
+    $("#siteStats").replaceChildren();
   }
 
   $("#scanBtn").onclick = scanSite;
@@ -153,7 +181,8 @@ async function scanSite() {
         " for Google Safe Browsing, VirusTotal or URLhaus."));
     } else {
       renderIntel(res.intel);
-      $("#siteBadge").replaceChildren(levelBadge(res.verdict.level));
+      setVerdict(res.verdict.level, res.analysis.score);
+      $("#siteSummary").textContent = res.verdict.reason;
     }
   } catch (err) {
     toast(err.message, "error");
@@ -179,9 +208,16 @@ async function renderRbi() {
   opts.push(h("option", { value: "local", title: "Opens a private window on this device (no remote isolation)" }, "Local private window"));
   select.replaceChildren(...opts);
   select.value = r.mode === "local" || !cloudReady ? "local" : (r.provider === "custom" ? "custom" : r.region);
-  $("#rbiHint").textContent = cloudReady
-    ? "Pages render in a remote browser — only pixels reach your device."
-    : "Remote isolation needs a Browserless token or your own endpoint (Settings). Local private mode works now.";
+  const pill = $("#rbiStatus");
+  if (cloudReady) {
+    pill.className = "badge badge-ok";
+    pill.textContent = "Isolated";
+    pill.title = "Pages render in a remote browser; only pixels reach your device.";
+  } else {
+    pill.className = "badge badge-info";
+    pill.textContent = "Local only";
+    pill.title = "Add a Browserless token or your own endpoint in Settings for remote isolation.";
+  }
 }
 
 async function launchRbi() {
@@ -316,11 +352,13 @@ function bindTools() {
 async function renderStats() {
   try {
     const s = await call("stats:get");
-    const threats = (s.heuristicBlocks || 0) + (s.listBlocks || 0) + (s.intelBlocks || 0) + (s.customBlocks || 0);
-    const parts = [`${threats} threat${threats === 1 ? "" : "s"} blocked`];
-    if (s.downloadsFlagged) parts.push(`${s.downloadsFlagged} risky downloads`);
-    if (s.pageWarnings) parts.push(`${s.pageWarnings} phishing warnings`);
-    $("#statsLine").textContent = parts.join(" · ");
+    const threats = (s.heuristicBlocks || 0) + (s.listBlocks || 0) + (s.intelBlocks || 0) + (s.customBlocks || 0) + (s.pageWarnings || 0) + (s.downloadsFlagged || 0);
+    $("#statsLine").textContent = `${threats.toLocaleString()} threat${threats === 1 ? "" : "s"} stopped · Activity`;
+    $("#activityBtn").title = [
+      `${(s.heuristicBlocks || 0) + (s.listBlocks || 0) + (s.intelBlocks || 0) + (s.customBlocks || 0)} dangerous sites blocked`,
+      `${s.pageWarnings || 0} phishing warnings`,
+      `${s.downloadsFlagged || 0} risky downloads`,
+    ].join("\n");
   } catch { /* ignore */ }
 }
 
@@ -328,7 +366,11 @@ async function renderStats() {
 
 async function toggleAccountMenu() {
   const existing = document.querySelector(".menu");
-  if (existing) return existing.remove();
+  if (existing) {
+    existing.remove();
+    $("#accountBtn").setAttribute("aria-expanded", "false");
+    return;
+  }
   let state = { signedIn: false };
   try {
     state = await call("auth:state");
@@ -353,13 +395,32 @@ async function toggleAccountMenu() {
       }, icon("external", "icon icon-sm"), "Sign in to NULL VOID"),
     );
   }
-  document.body.appendChild(menu);
-  setTimeout(() => document.addEventListener("click", function close(e) {
-    if (!menu.contains(e.target)) {
-      menu.remove();
-      document.removeEventListener("click", close);
+  const trigger = $("#accountBtn");
+  const items = [...menu.querySelectorAll("button")];
+  items.forEach((b) => b.setAttribute("role", "menuitem"));
+  const close = (restoreFocus = true) => {
+    menu.remove();
+    trigger.setAttribute("aria-expanded", "false");
+    document.removeEventListener("click", onDocClick);
+    if (restoreFocus) trigger.focus();
+  };
+  const onDocClick = (e) => {
+    if (!menu.contains(e.target) && e.target !== trigger && !trigger.contains(e.target)) close(false);
+  };
+  menu.addEventListener("keydown", (e) => {
+    const i = items.indexOf(document.activeElement);
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
     }
-  }), 0);
+  });
+  document.body.appendChild(menu);
+  trigger.setAttribute("aria-expanded", "true");
+  items[0]?.focus();
+  setTimeout(() => document.addEventListener("click", onDocClick), 0);
 }
 
 init().catch((err) => {

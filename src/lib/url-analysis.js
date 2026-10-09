@@ -145,25 +145,34 @@ function tokenize(text) {
 // Words attackers glue onto a brand ("paypal-secure", "applesupport").
 const COMBO_WORDS = new Set([
   ...CREDENTIAL_WORDS, "help", "service", "services", "online", "id", "app", "pay", "center",
-  "centre", "team", "desk", "care", "official", "online", "web", "my", "get", "free", "gift",
+  "centre", "team", "desk", "care", "official", "online", "web", "my", "get", "free", "gift", "bank", "alerts",
   "reward", "rewards", "prize", "bonus", "alert", "alerts", "notice", "mail", "drive", "docs",
   "cloud", "connect", "access", "portal", "check", "safe", "now", "us", "usa", "uk", "online",
 ]);
+const COMBO_SKELETONS = new Set([...COMBO_WORDS].map((w) => skeleton(w)));
 
 /**
- * Whether `label` combines `brand` with filler words. Requires the brand to be
- * a whole token (split on separators/digits) or a prefix/suffix whose remainder
- * is a known filler word, so "purchase" never matches "chase".
+ * How strongly `label` combines `brand` with other words:
+ *   2 = only with phishing filler ("paypal-secure", "applesupport", "paypa1-login")
+ *   1 = as a whole token next to ordinary words ("my-apple-tree")
+ *   0 = no combination (substrings like "purchase" never match "chase")
+ * Checks the literal label and its look-alike skeleton, so digit and
+ * homoglyph swaps inside a combo are caught too.
  */
-function isComboSquat(label, brand) {
-  const parts = label.split(/[-_0-9]+/).filter(Boolean);
-  if (parts.length > 1 && parts.includes(brand)) return true;
-  for (const part of parts) {
-    if (part === brand) continue;
-    if (part.startsWith(brand) && COMBO_WORDS.has(part.slice(brand.length))) return true;
-    if (part.endsWith(brand) && COMBO_WORDS.has(part.slice(0, -brand.length))) return true;
-  }
-  return false;
+function comboSquatStrength(label, brand) {
+  let strength = 0;
+  const check = (parts, b, fillers) => {
+    if (parts.length > 1 && parts.includes(b)) {
+      strength = Math.max(strength, parts.every((p) => p === b || fillers.has(p)) ? 2 : 1);
+    }
+    for (const part of parts) {
+      if (part === b) continue;
+      if ((part.startsWith(b) && fillers.has(part.slice(b.length))) || (part.endsWith(b) && fillers.has(part.slice(0, -b.length)))) strength = 2;
+    }
+  };
+  check(label.split(/[-_0-9]+/).filter(Boolean), brand, COMBO_WORDS);
+  check(label.split(/[-_.]+/).filter(Boolean).map(skeleton), skeleton(brand), COMBO_SKELETONS);
+  return strength;
 }
 
 /**
@@ -252,8 +261,9 @@ export function analyzeUrl(rawUrl, opts = {}) {
       brandHit = { brand, legit: false };
       break;
     }
-    if (brand.key.length >= 4 && isComboSquat(foldHomoglyphs(uLabel), brand.key)) {
-      add("combosquat", 45, `The domain "${reg}" embeds the brand "${brand.key}" (combo-squatting).`);
+    const combo = brand.key.length >= 4 ? comboSquatStrength(foldHomoglyphs(uLabel), brand.key) : 0;
+    if (combo) {
+      add("combosquat", combo === 2 ? 45 : 25, `The domain "${reg}" embeds the brand "${brand.key}" (combo-squatting).`);
       brandHit = { brand, legit: false };
       break;
     }

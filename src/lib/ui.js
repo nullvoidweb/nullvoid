@@ -48,18 +48,28 @@ export function hydrateIcons(root = document) {
 }
 
 let toastBox;
-export function toast(message, type = "info", ms = 3500) {
+const TOAST_ICON = { success: "check", error: "shield-alert", warn: "info", info: "info" };
+
+/**
+ * Transient notification. Errors are announced assertively and stay longer;
+ * every type carries an icon so meaning never depends on colour alone.
+ */
+export function toast(message, type = "info", ms) {
   if (!toastBox) {
-    toastBox = h("div", { class: "toasts", role: "status", "aria-live": "polite" });
+    toastBox = h("div", { class: "toasts" });
     document.body.appendChild(toastBox);
   }
-  const t = h("div", { class: `toast ${type}` }, h("span", { class: "grow" }, message));
+  const duration = ms ?? (type === "error" ? 6000 : 3500);
+  const t = h("div", { class: `toast ${type}`, role: type === "error" ? "alert" : "status", title: "Click to dismiss" },
+    icon(TOAST_ICON[type] || "info", "icon icon-sm toast-icon"), h("span", { class: "grow" }, message));
+  const dismiss = () => {
+    if (!t.isConnected || t.classList.contains("leaving")) return;
+    t.classList.add("leaving");
+    setTimeout(() => t.remove(), 140);
+  };
+  t.addEventListener("click", dismiss);
   toastBox.appendChild(t);
-  setTimeout(() => {
-    t.style.transition = "opacity .2s";
-    t.style.opacity = "0";
-    setTimeout(() => t.remove(), 220);
-  }, ms);
+  setTimeout(dismiss, duration);
 }
 
 export async function copyText(text, label = "Copied") {
