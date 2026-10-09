@@ -1,0 +1,26 @@
+{
+  "extName": {
+    "message": "NULL VOID: Security & Privacy Suite",
+    "description": "Extension name"
+  },
+  "extShortName": {
+    "message": "NULL VOID",
+    "description": "Short extension name"
+  },
+  "extDescription": {
+    "message": "Blocks malware, phishing & trackers. Isolated remote browser, disposable e-mail, safe file analysis and an AI security assistant.",
+    "description": "Extension description (max 132 characters)"
+  },
+  "cmdOpenBrowser": {
+    "message": "Open the Disposable Browser",
+    "description": "Keyboard command"
+  },
+  "cmdOpenInbox": {
+    "message": "Open the disposable inbox",
+    "description": "Keyboard command"
+  },
+  "cmdOpenViewer": {
+    "message": "Open the Secure File Viewer",
+    "description": "Keyboard command"
+  }
+}

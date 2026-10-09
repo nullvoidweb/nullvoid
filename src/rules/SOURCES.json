@@ -1,0 +1,44 @@
+{
+  "generated": "2026-10-09T03:53:37.126Z",
+  "rulesets": {
+    "ads": {
+      "domains": 40153,
+      "rules": 9,
+      "files": [
+        "ads.json"
+      ],
+      "sources": [
+        {
+          "name": "StevenBlack/hosts (unified)",
+          "url": "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+          "license": "MIT",
+          "entries": 72526
+        }
+      ]
+    },
+    "malware": {
+      "domains": 377150,
+      "rules": 77,
+      "files": [
+        "malware-1.json",
+        "malware-2.json",
+        "malware-3.json",
+        "malware-4.json"
+      ],
+      "sources": [
+        {
+          "name": "abuse.ch URLhaus host file",
+          "url": "https://urlhaus.abuse.ch/downloads/hostfile/",
+          "license": "CC0",
+          "entries": 396
+        },
+        {
+          "name": "Phishing.Database (active domains)",
+          "url": "https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/master/phishing-domains-ACTIVE.txt",
+          "license": "MIT",
+          "entries": 391563
+        }
+      ]
+    }
+  }
+}

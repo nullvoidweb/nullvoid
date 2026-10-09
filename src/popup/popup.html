@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NULL VOID</title>
+  <link rel="stylesheet" href="../ui/theme.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <img src="../icons/icon48.png" alt="" width="26" height="26">
+      <div>
+        <h1 class="brand-name">NULL VOID</h1>
+        <div class="status" id="protectionStatus" aria-live="polite"><span class="dot ok"></span><span>Protected</span></div>
+      </div>
+    </div>
+    <div class="row top-actions">
+      <label class="switch" title="Smart Protection on/off">
+        <input type="checkbox" id="masterToggle" aria-label="Smart Protection">
+        <span></span>
+      </label>
+      <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle light or dark theme"><i data-icon="moon"></i></button>
+      <button class="icon-btn" id="accountBtn" title="Account" aria-label="Account" aria-haspopup="menu" aria-expanded="false"><i data-icon="user"></i></button>
+      <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings"><i data-icon="settings"></i></button>
+    </div>
+  </header>
+
+  <div class="perm-banner" id="permBanner" role="alert" hidden>
+    <i data-icon="info" class="icon-sm"></i>
+    <span class="grow">NULL VOID needs access to websites to protect them.</span>
+    <button class="btn btn-sm btn-primary" id="grantBtn">Grant access</button>
+  </div>
+
+  <main>
+    <!-- Current site -->
+    <section class="card site loading" id="siteCard" aria-labelledby="siteHost" aria-busy="true">
+      <div class="site-row">
+        <span class="site-icon" id="siteIcon" aria-hidden="true"><i data-icon="shield"></i></span>
+        <div class="grow site-text">
+          <h2 class="site-host truncate" id="siteHost"><span class="skeleton sk-line"></span></h2>
+          <p class="tiny muted truncate" id="siteSummary"><span class="skeleton sk-line short"></span></p>
+        </div>
+        <span id="siteBadge"></span>
+      </div>
+      <div class="meter" id="riskMeterWrap" role="meter" aria-label="Risk score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="meter-fill" id="riskMeter"></div></div>
+      <ul class="signals" id="siteSignals"></ul>
+      <div class="site-foot">
+        <label class="trust" title="Turn protection off for this site">
+          <span class="switch switch-sm"><input type="checkbox" id="trustToggle"><span></span></span>
+          Trust site
+        </label>
+        <div class="row site-actions">
+          <button class="btn btn-sm" id="scanBtn" title="Check with your threat-intel services"><i data-icon="shield-check" class="icon-sm"></i>Scan</button>
+          <button class="btn btn-sm" id="askAiSiteBtn" title="Ask the AI assistant about this page"><i data-icon="sparkles" class="icon-sm"></i>Ask AI</button>
+        </div>
+      </div>
+      <div class="site-stats tiny muted" id="siteStats"></div>
+      <div class="intel" id="intelResults" aria-live="polite" hidden></div>
+    </section>
+
+    <!-- Disposable browser -->
+    <section class="card tool" aria-labelledby="rbiTitle">
+      <div class="tool-head">
+        <i data-icon="monitor"></i>
+        <h2 id="rbiTitle">Disposable Browser</h2>
+        <span class="badge" id="rbiStatus"></span>
+      </div>
+      <div class="row">
+        <label class="sr-only" for="rbiRegion">Where to open the disposable browser</label>
+        <select id="rbiRegion"></select>
+        <button class="btn btn-primary" id="rbiLaunch"><i data-icon="zap" class="icon-sm"></i>Launch</button>
+      </div>
+    </section>
+
+    <!-- Disposable email -->
+    <section class="card tool" aria-labelledby="emailTitle">
+      <div class="tool-head">
+        <i data-icon="mail"></i>
+        <h2 id="emailTitle">Disposable Email</h2>
+        <span class="badge badge-low" id="unreadBadge" hidden></span>
+        <button class="link-btn inbox-link" id="emailInbox">Inbox<i data-icon="chevron-right" class="icon-sm"></i></button>
+      </div>
+      <div class="email-box">
+        <label class="sr-only" for="emailAddr">Your disposable e-mail address</label>
+        <input type="text" id="emailAddr" readonly value="" placeholder="No inbox yet">
+        <button class="icon-btn" id="emailCopy" title="Copy address" aria-label="Copy address"><i data-icon="copy"></i></button>
+        <button class="icon-btn" id="emailFill" title="Insert into the focused field on this page" aria-label="Insert address into the page"><i data-icon="text-cursor"></i></button>
+        <button class="icon-btn" id="emailNew" title="Create a new address" aria-label="Create a new address"><i data-icon="plus"></i></button>
+      </div>
+      <div class="otp" id="latestCode" hidden>
+        <span class="tiny muted">Latest code</span>
+        <button class="otp-code mono" id="latestCodeBtn" title="Copy code"></button>
+        <span class="tiny muted truncate" id="latestFrom"></span>
+      </div>
+    </section>
+
+    <nav class="quick" aria-label="More tools">
+      <button class="card tool-mini" id="viewerBtn">
+        <i data-icon="file-search" class="icon-lg"></i>
+        <span><strong>File Viewer</strong><span class="muted tiny">Analyze files safely</span></span>
+      </button>
+      <button class="card tool-mini" id="assistantBtn">
+        <i data-icon="sparkles" class="icon-lg"></i>
+        <span><strong>AI Assistant</strong><span class="muted tiny">Ask about threats</span></span>
+      </button>
+    </nav>
+  </main>
+
+  <footer class="foot">
+    <button class="link-btn" id="activityBtn"><i data-icon="activity" class="icon-sm"></i><span id="statsLine">Activity</span></button>
+    <span class="muted tiny" id="version"></span>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

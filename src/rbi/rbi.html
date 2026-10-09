@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NULL VOID — Disposable Browser</title>
+  <link rel="stylesheet" href="../ui/theme.css">
+  <link rel="stylesheet" href="rbi.css">
+</head>
+<body>
+  <header class="chrome">
+    <div class="row nav-group">
+      <img src="../icons/icon48.png" alt="" width="22" height="22" class="logo">
+      <button class="icon-btn" id="back" title="Back (Alt+←)" aria-label="Back" disabled><i data-icon="arrow-left"></i></button>
+      <button class="icon-btn" id="forward" title="Forward (Alt+→)" aria-label="Forward" disabled><i data-icon="arrow-right"></i></button>
+      <button class="icon-btn" id="reload" title="Reload (F5)" aria-label="Reload"><i data-icon="refresh"></i></button>
+    </div>
+    <form class="urlbar" id="urlForm">
+      <span class="url-icon" id="urlIcon"><i data-icon="lock" class="icon-sm"></i></span>
+      <input type="text" id="url" spellcheck="false" autocomplete="off" placeholder="Search or enter address" aria-label="Address">
+      <span id="urlRisk"></span>
+    </form>
+    <div class="row session-group">
+      <span class="pill" id="regionPill"><span class="dot" id="connDot"></span><span id="regionLabel">Connecting</span></span>
+      <span class="pill mono" id="timer" title="Session time remaining"><i data-icon="clock" class="icon-sm"></i><span>--:--</span></span>
+      <span class="pill mono stats" id="stats" title="Frames per second · bandwidth">0 fps · 0 KB/s</span>
+      <select id="quality" aria-label="Stream quality" title="Stream quality">
+        <option value="40">Data saver</option><option value="60">Balanced</option><option value="75">High</option><option value="90">Max</option>
+      </select>
+      <button class="icon-btn" id="fullscreen" title="Fullscreen" aria-label="Fullscreen"><i data-icon="maximize"></i></button>
+      <button class="btn btn-danger btn-sm" id="end"><i data-icon="x" class="icon-sm"></i>End session</button>
+    </div>
+    <div class="progress" id="progress"></div>
+  </header>
+
+  <main class="stage" id="stage">
+    <canvas id="screen" tabindex="0" aria-label="Remote browser view"></canvas>
+
+    <div class="overlay" id="overlay">
+      <div class="overlay-card card" id="overlayCard"></div>
+    </div>
+  </main>
+
+  <dialog id="jsDialog">
+    <h3 id="jsDialogTitle">This page says</h3>
+    <p id="jsDialogMsg" class="dialog-msg"></p>
+    <input type="text" id="jsDialogInput" hidden>
+    <div class="row" style="justify-content:flex-end; margin-top:16px">
+      <button class="btn" id="jsCancel">Cancel</button>
+      <button class="btn btn-primary" id="jsOk">OK</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="rbi.js"></script>
+</body>
+</html>

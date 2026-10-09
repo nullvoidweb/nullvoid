@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NULL VOID — Settings</title>
+  <link rel="stylesheet" href="../ui/theme.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <a class="skip-link" href="#content" id="skipLink">Skip to content</a>
+  <div class="layout">
+    <aside class="side">
+      <div class="brand">
+        <img src="../icons/icon48.png" alt="" width="30" height="30">
+        <div><div class="brand-name">NULL VOID</div><div class="tiny muted" id="version"></div></div>
+      </div>
+      <nav class="nav" id="nav">
+        <a href="#welcome" data-section="welcome"><i data-icon="sparkles"></i>Get started</a>
+        <a href="#protection" data-section="protection"><i data-icon="shield"></i>Smart Protection</a>
+        <a href="#intel" data-section="intel"><i data-icon="key"></i>Threat Intelligence</a>
+        <a href="#rbi" data-section="rbi"><i data-icon="monitor"></i>Disposable Browser</a>
+        <a href="#email" data-section="email"><i data-icon="mail"></i>Disposable Email</a>
+        <a href="#ai" data-section="ai"><i data-icon="sparkles"></i>AI Assistant</a>
+        <a href="#activity" data-section="activity"><i data-icon="activity"></i>Activity</a>
+        <a href="#data" data-section="data"><i data-icon="lock"></i>Privacy &amp; Data</a>
+      </nav>
+      <div class="side-foot">
+        <label class="field small">Theme
+          <select data-setting="ui.theme">
+            <option value="system">Match system</option>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </label>
+      </div>
+    </aside>
+
+    <main class="content" id="content" tabindex="-1">
+      <!-- Welcome -->
+      <section id="welcome" class="section">
+        <header class="section-head">
+          <h1>Welcome to NULL VOID</h1>
+          <p class="muted">Privacy and security tools in your browser. Everything below works out of the box. API keys are optional and unlock extra features.</p>
+        </header>
+        <div class="feature-grid">
+          <article class="card feature" data-feature-card="protection"><i data-icon="shield-check" class="icon-lg"></i><h2>Smart Protection</h2><p class="muted small">Blocks ad &amp; tracker networks and known malware hosts, flags look-alike and phishing sites, and pauses dangerous downloads.</p><div class="feature-status" data-feature="protection"><span class="badge badge-ok">Active</span></div></article>
+          <article class="card feature" data-feature-card="rbi"><i data-icon="monitor" class="icon-lg"></i><h2>Disposable Browser</h2><p class="muted small">Open risky links in a remote browser. Only pixels reach your device. A local private-window mode works without setup.</p><div class="feature-status" data-feature="rbi"><a href="#rbi" class="small">Set up remote isolation →</a></div></article>
+          <article class="card feature" data-feature-card="email"><i data-icon="mail" class="icon-lg"></i><h2>Disposable Email</h2><p class="muted small">Throwaway inboxes with live updates, one-click verification codes, and tracking pixels blocked by default.</p><div class="feature-status" data-feature="email"><span class="badge badge-ok">Ready</span></div></article>
+          <article class="card feature" data-feature-card="viewer"><i data-icon="file-search" class="icon-lg"></i><h2>Secure File Viewer</h2><p class="muted small">Static analysis on your device: true file type, macros, embedded scripts, packers, IOCs, plus safe previews.</p><div class="feature-status" data-feature="viewer"><span class="badge badge-ok">Ready</span></div></article>
+          <article class="card feature" data-feature-card="ai"><i data-icon="sparkles" class="icon-lg"></i><h2>AI Assistant</h2><p class="muted small">Ask whether a page, e-mail or file is a scam. Uses your own Claude, OpenAI-compatible or Gemini key.</p><div class="feature-status" data-feature="ai"><a href="#ai" class="small">Add an API key →</a></div></article>
+          <article class="card feature" data-feature-card="intel"><i data-icon="key" class="icon-lg"></i><h2>Threat Intelligence</h2><p class="muted small">Optional Google Safe Browsing, VirusTotal and abuse.ch lookups with your own free keys.</p><div class="feature-status" data-feature="intel"><a href="#intel" class="small">Configure →</a></div></article>
+        </div>
+        <div class="card card-pad shortcuts">
+          <h2>Keyboard shortcuts</h2>
+          <div class="kv-list" id="shortcuts"></div>
+          <p class="tiny muted">Change them at your browser's extension shortcuts page.</p>
+        </div>
+      </section>
+
+      <!-- Protection -->
+      <section id="protection" class="section" hidden>
+        <header class="section-head"><h1>Smart Protection</h1><p class="muted">Network blocking runs in the browser's built-in filtering engine (declarativeNetRequest), so pages load faster rather than slower.</p></header>
+        <div class="card group">
+          <div class="setting"><div><label>Smart Protection</label><p class="hint">Master switch for every protection feature.</p></div><label class="switch"><input type="checkbox" data-setting="protection.enabled"><span></span></label></div>
+          <div class="setting"><div><label>Block ads &amp; trackers</label><p class="hint">Third-party ad, tracking and analytics hosts.</p></div><label class="switch"><input type="checkbox" data-setting="protection.ads"><span></span></label></div>
+          <div class="setting"><div><label>Block malware &amp; phishing hosts</label><p class="hint">Known-bad domains from public threat feeds (URLhaus and others). Navigations show a warning page.</p></div><label class="switch"><input type="checkbox" data-setting="protection.malware"><span></span></label></div>
+          <div class="setting"><div><label>Look-alike &amp; phishing detection</label><p class="hint">On-device analysis of every address: homograph domains, typosquats, brand impersonation, abused hosting.</p></div>
+            <select data-setting="protection.heuristics" class="w-auto"><option value="off">Off</option><option value="balanced">Balanced</option><option value="strict">Strict</option></select></div>
+          <div class="setting"><div><label>Credential-phishing page checks</label><p class="hint">Warn when a page asks for a password in a suspicious context (fake brand, off-site form, no HTTPS).</p></div><label class="switch"><input type="checkbox" data-setting="protection.contentScan"><span></span></label></div>
+          <div class="setting"><div><label>Hide empty ad slots</label><p class="hint">Cosmetic clean-up of containers left behind by blocked ads.</p></div><label class="switch"><input type="checkbox" data-setting="protection.cosmetic"><span></span></label></div>
+          <div class="setting"><div><label>HTTPS upgrade</label><p class="hint">Rewrite http:// navigations to https://. Sites without HTTPS will fail to load.</p></div><label class="switch"><input type="checkbox" data-setting="protection.httpsUpgrade"><span></span></label></div>
+          <div class="setting"><div><label>Dangerous download guard</label><p class="hint">Executables, scripts, deceptive double extensions and files from risky sources.</p></div>
+            <select data-setting="protection.downloads" class="w-auto"><option value="off">Off</option><option value="warn">Pause &amp; ask</option><option value="block">Block</option></select></div>
+        </div>
+        <div class="two-col">
+          <div class="card card-pad stack">
+            <h2>Trusted sites</h2>
+            <p class="hint">Protection is fully disabled on these domains.</p>
+            <form class="input-group" id="trustedForm"><input type="text" placeholder="example.com" id="trustedInput" aria-label="Domain to trust"><button class="btn">Add</button></form>
+            <div class="chips" id="trustedList"></div>
+          </div>
+          <div class="card card-pad stack">
+            <h2>Blocked sites</h2>
+            <p class="hint">Always block these domains, including subdomains.</p>
+            <form class="input-group" id="blockedForm"><input type="text" placeholder="annoying.example" id="blockedInput" aria-label="Domain to block"><button class="btn">Add</button></form>
+            <div class="chips" id="blockedList"></div>
+          </div>
+        </div>
+        <p class="tiny muted" id="rulesetInfo"></p>
+      </section>
+
+      <!-- Threat intel -->
+      <section id="intel" class="section" hidden>
+        <header class="section-head"><h1>Threat Intelligence</h1><p class="muted">Optional reputation services that use your own free API keys. Keys are stored encrypted on this device only.</p></header>
+        <div class="card group">
+          <div class="setting stack-sm">
+            <div class="row-between"><div><label>Google Safe Browsing (v5)</label><p class="hint">Privacy-preserving: only 4-byte hash prefixes of the URL are sent. <a href="https://developers.google.com/safe-browsing/v4/get-started" target="_blank" rel="noopener">Get a key</a></p></div><label class="switch"><input type="checkbox" data-setting="intel.safeBrowsing" data-consent="browsingActivity"><span></span></label></div>
+            <div class="secret" data-secret="safeBrowsingKey" data-test="safeBrowsing"></div>
+          </div>
+          <div class="setting stack-sm">
+            <div class="row-between"><div><label>VirusTotal</label><p class="hint">URL and file-hash reputation from 70+ engines. Sends the full URL / file hash. <a href="https://www.virustotal.com/gui/my-apikey" target="_blank" rel="noopener">Get a key</a></p></div><label class="switch"><input type="checkbox" data-setting="intel.virusTotal" data-consent="browsingActivity"><span></span></label></div>
+            <div class="secret" data-secret="virusTotalKey" data-test="virusTotal"></div>
+          </div>
+          <div class="setting stack-sm">
+            <div class="row-between"><div><label>abuse.ch (URLhaus &amp; MalwareBazaar)</label><p class="hint">Malware-distribution hosts and known malware samples. <a href="https://auth.abuse.ch/" target="_blank" rel="noopener">Get an Auth-Key</a></p></div><label class="switch"><input type="checkbox" data-setting="intel.urlhaus" data-consent="browsingActivity"><span></span></label></div>
+            <div class="secret" data-secret="abuseChKey" data-test="urlhaus"></div>
+          </div>
+          <div class="setting"><div><label>Check every page automatically</label><p class="hint">Look up each site you visit with the services above. Otherwise lookups only happen when you click Scan, check a link, or analyse a file.</p></div><label class="switch"><input type="checkbox" data-setting="intel.checkOnNavigate" data-consent="browsingActivity"><span></span></label></div>
+        </div>
+      </section>
+
+      <!-- RBI -->
+      <section id="rbi" class="section" hidden>
+        <header class="section-head"><h1>Disposable Browser</h1><p class="muted">Remote Browser Isolation: websites run in a cloud Chromium and you see a live video of them. Their code never runs on your device.</p></header>
+        <div class="card group">
+          <div class="setting"><div><label>Default mode</label><p class="hint">Local mode opens a private window instead (no remote isolation).</p></div>
+            <select data-setting="rbi.mode" class="w-auto"><option value="cloud">Remote isolation</option><option value="local">Local private window</option></select></div>
+          <div class="setting"><div><label>Remote browser provider</label><p class="hint"><a href="https://www.browserless.io/" target="_blank" rel="noopener">Browserless</a> has a free tier. Or point to your own CDP endpoint (e.g. the <code>ghcr.io/browserless/chromium</code> Docker image).</p></div>
+            <select data-setting="rbi.provider" class="w-auto"><option value="browserless">Browserless (cloud)</option><option value="custom">Custom endpoint</option></select></div>
+          <div class="setting stack-sm" data-show="rbi.provider=browserless">
+            <div class="row-between"><div><label>Browserless API token</label></div>
+              <select data-setting="rbi.region" class="w-auto" aria-label="Browserless region"><option value="sfo">US West (San Francisco)</option><option value="lon">UK (London)</option><option value="ams">EU (Amsterdam)</option></select></div>
+            <div class="secret" data-secret="rbiToken"></div>
+          </div>
+          <div class="setting stack-sm" data-show="rbi.provider=custom">
+            <label>Custom endpoint</label>
+            <input type="url" data-setting="rbi.customEndpoint" placeholder="wss://my-pool.example/chromium?token=…  or  http://localhost:9222">
+            <p class="hint">A browser-level CDP WebSocket URL, or an http(s) DevTools address that exposes <code>/json/version</code>. A plain Chrome started with <code>--remote-debugging-port</code> must also allow this extension's origin: add <code>--remote-allow-origins=<span id="extOrigin">chrome-extension://…</span></code>.</p>
+          </div>
+          <div class="setting"><div><label>Stream quality</label><p class="hint">Higher quality uses more bandwidth.</p></div><div class="row"><input type="range" min="30" max="95" step="5" data-setting="rbi.quality" class="range"><output class="mono small" data-output="rbi.quality"></output></div></div>
+          <div class="setting"><div><label>Maximum session length</label><p class="hint">Minutes before the remote browser is destroyed.</p></div><input type="number" min="1" max="240" data-setting="rbi.maxSessionMinutes" class="w-num"></div>
+          <div class="setting"><div><label>End idle sessions after</label><p class="hint">Minutes without input.</p></div><input type="number" min="1" max="120" data-setting="rbi.idleMinutes" class="w-num"></div>
+          <div class="setting"><div><label>Block downloads in the remote browser</label></div><label class="switch"><input type="checkbox" data-setting="rbi.blockDownloads"><span></span></label></div>
+          <div class="setting"><div><label>Block ads remotely</label><p class="hint">Browserless only.</p></div><label class="switch"><input type="checkbox" data-setting="rbi.blockAds"><span></span></label></div>
+          <div class="setting"><div><label>Stealth mode</label><p class="hint">Browserless stealth route reduces bot-detection fingerprints.</p></div><label class="switch"><input type="checkbox" data-setting="rbi.stealth"><span></span></label></div>
+          <div class="setting stack-sm"><label>Start page</label><input type="url" data-setting="rbi.startUrl"></div>
+        </div>
+        <div class="row"><button class="btn btn-primary" id="rbiTest"><i data-icon="zap" class="icon-sm"></i>Test connection</button><span class="small muted" id="rbiTestResult"></span></div>
+      </section>
+
+      <!-- Email -->
+      <section id="email" class="section" hidden>
+        <header class="section-head"><h1>Disposable Email</h1><p class="muted">Temporary inboxes powered by <a href="https://mail.tm" target="_blank" rel="noopener">mail.tm</a>. Mailbox passwords are generated randomly and stored encrypted.</p></header>
+        <div class="card group">
+          <div class="setting"><div><label>Desktop notifications</label><p class="hint">Includes the one-time code when one is detected.</p></div><label class="switch"><input type="checkbox" data-setting="email.notifications"><span></span></label></div>
+          <div class="setting"><div><label>Check for mail every</label></div><select data-setting="email.pollSeconds" data-type="number" class="w-auto"><option value="30">30 seconds</option><option value="60">1 minute</option><option value="120">2 minutes</option><option value="300">5 minutes</option></select></div>
+          <div class="setting"><div><label>Load remote images by default</label><p class="hint">Off blocks tracking pixels. You can still load images per message.</p></div><label class="switch"><input type="checkbox" data-setting="email.loadRemoteContent"><span></span></label></div>
+        </div>
+        <div class="card card-pad stack">
+          <div class="row-between"><h2>Your inboxes</h2><button class="btn btn-sm" id="newInbox"><i data-icon="plus" class="icon-sm"></i>New inbox</button></div>
+          <div class="list" id="inboxList"></div>
+        </div>
+      </section>
+
+      <!-- AI -->
+      <section id="ai" class="section" hidden>
+        <header class="section-head"><h1>AI Assistant</h1><p class="muted">Bring your own key. Requests go directly from your browser to the provider you choose. Nothing passes through NULL VOID servers.</p></header>
+        <div class="card group">
+          <div class="setting"><div><label>Provider</label></div>
+            <select data-setting="ai.provider" class="w-auto"><option value="anthropic">Anthropic Claude</option><option value="openai">OpenAI-compatible (OpenAI, OpenRouter, Groq, Ollama, LM Studio…)</option><option value="gemini">Google Gemini</option></select></div>
+          <div class="setting stack-sm" data-show="ai.provider=anthropic">
+            <div class="row-between"><label>Anthropic API key</label><a class="small" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Get a key</a></div>
+            <div class="secret" data-secret="anthropicKey"></div>
+            <div class="two-col tight">
+              <label class="field">Model<select data-setting="ai.anthropicModel" id="anthropicModel"></select></label>
+              <label class="field">Effort<select data-setting="ai.effort"><option value="low">Low (fast)</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option></select></label>
+            </div>
+          </div>
+          <div class="setting stack-sm" data-show="ai.provider=openai">
+            <label>Base URL</label><input type="url" data-setting="ai.openaiBaseUrl" placeholder="https://api.openai.com/v1">
+            <p class="hint">For a local model with Ollama use <code>http://localhost:11434/v1</code> (no key needed).</p>
+            <label>API key</label><div class="secret" data-secret="openaiKey"></div>
+            <label>Model</label><div class="input-group"><input type="text" data-setting="ai.openaiModel" list="openaiModels" placeholder="model id"><button class="btn" data-load-models="openai">Load models</button></div>
+            <datalist id="openaiModels"></datalist>
+          </div>
+          <div class="setting stack-sm" data-show="ai.provider=gemini">
+            <div class="row-between"><label>Gemini API key</label><a class="small" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get a key</a></div>
+            <div class="secret" data-secret="geminiKey"></div>
+            <label>Model</label><div class="input-group"><input type="text" data-setting="ai.geminiModel" list="geminiModels" placeholder="model id"><button class="btn" data-load-models="gemini">Load models</button></div>
+            <datalist id="geminiModels"></datalist>
+          </div>
+          <div class="setting"><div><label>Include page content in "Analyze page"</label><p class="hint">Sends the visible text of the page you ask about to your AI provider.</p></div><label class="switch"><input type="checkbox" data-setting="ai.sendPageContext" data-consent="websiteContent"><span></span></label></div>
+        </div>
+        <div class="row"><button class="btn btn-primary" id="aiTest"><i data-icon="send" class="icon-sm"></i>Send a test message</button><span class="small muted" id="aiTestResult"></span></div>
+      </section>
+
+      <!-- Activity -->
+      <section id="activity" class="section" hidden>
+        <header class="section-head"><h1>Activity</h1><p class="muted">Security events recorded on this device. Nothing is uploaded.</p></header>
+        <div class="stat-grid" id="statGrid"></div>
+        <div class="card">
+          <div class="row-between card-pad toolbar">
+            <input type="search" id="eventFilter" placeholder="Filter events…" aria-label="Filter events">
+            <div class="row"><button class="btn btn-sm" id="exportEvents"><i data-icon="download" class="icon-sm"></i>Export</button><button class="btn btn-sm" id="clearEvents"><i data-icon="trash" class="icon-sm"></i>Clear</button></div>
+          </div>
+          <div class="events" id="eventList"></div>
+        </div>
+      </section>
+
+      <!-- Data -->
+      <section id="data" class="section" hidden>
+        <header class="section-head"><h1>Privacy &amp; Data</h1><p class="muted">NULL VOID has no servers and collects no telemetry. Data stays in your browser unless you enable a third-party service.</p></header>
+        <div class="card group">
+          <div class="setting"><div><label>Export settings</label><p class="hint">A JSON file without API keys or mailbox credentials.</p></div><button class="btn" id="exportSettings"><i data-icon="download" class="icon-sm"></i>Export</button></div>
+          <div class="setting"><div><label>Import settings</label><p class="hint">Restore from an exported file.</p></div><label class="btn"><i data-icon="upload" class="icon-sm"></i>Import<input type="file" accept="application/json" id="importSettings" hidden></label></div>
+          <div class="setting"><div><label>Delete all NULL VOID data</label><p class="hint">Removes settings, keys, inboxes (also deleted at mail.tm), logs and rules.</p></div><button class="btn btn-danger" id="wipeData"><i data-icon="trash" class="icon-sm"></i>Delete everything</button></div>
+        </div>
+        <div class="card card-pad stack small">
+          <h2>Where data goes</h2>
+          <ul class="plain">
+            <li><strong>mail.tm</strong>: only when you create or read disposable inboxes.</li>
+            <li><strong>Browserless / your endpoint</strong>: the pages you open in the Disposable Browser.</li>
+            <li><strong>Your AI provider</strong>: the messages you send, plus page, e-mail or file context when you ask for an analysis.</li>
+            <li><strong>Safe Browsing / VirusTotal / abuse.ch</strong>: only if enabled. Safe Browsing receives hash prefixes, not URLs.</li>
+          </ul>
+          <p class="muted">Open-source components: DOMPurify, PDF.js, fflate, Anthropic SDK. See <code>vendor/licenses</code>. Disposable e-mail by <a href="https://mail.tm" target="_blank" rel="noopener">mail.tm</a>.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

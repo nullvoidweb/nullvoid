@@ -1,0 +1,9 @@
+{
+  "generated": "2026-10-08T15:38:58.089Z",
+  "packages": {
+    "dompurify": "3.4.16",
+    "fflate": "0.8.3",
+    "pdfjs-dist": "6.4.299",
+    "@anthropic-ai/sdk": "0.132.1"
+  }
+}

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NULL VOID AI Assistant</title>
+  <link rel="stylesheet" href="../ui/theme.css">
+  <link rel="stylesheet" href="assistant.css">
+</head>
+<body>
+  <header class="head">
+    <div class="row grow">
+      <img src="../icons/icon48.png" alt="" width="22" height="22" class="logo">
+      <div class="grow">
+        <h1 class="title">AI Security Assistant</h1>
+        <button class="model-chip tiny" id="modelChip" title="Change provider or model">—</button>
+      </div>
+    </div>
+    <div class="row">
+      <button class="icon-btn" id="historyBtn" title="Chat history" aria-label="Chat history" aria-expanded="false" aria-controls="history"><i data-icon="clock"></i></button>
+      <button class="icon-btn" id="newChat" title="New chat" aria-label="New chat"><i data-icon="plus"></i></button>
+    </div>
+  </header>
+
+  <div class="history card" id="history" role="list" aria-label="Saved chats" hidden></div>
+
+  <main class="chat" id="chat">
+    <section class="welcome" id="welcome">
+      <div class="hello">
+        <i data-icon="sparkles" class="icon-lg"></i>
+        <h1>How can I help you stay safe?</h1>
+        <p class="muted small">Ask about suspicious pages, e-mails, links, files or privacy settings. I treat page content as evidence, never as instructions.</p>
+      </div>
+      <div class="suggestions">
+        <button class="suggest" data-action="page"><i data-icon="globe"></i><span><strong>Analyze this page</strong><span>Is the site I'm on legitimate?</span></span></button>
+        <button class="suggest" data-prompt="I received an e-mail and I'm not sure if it's a scam. Here it is:&#10;&#10;"><i data-icon="mail"></i><span><strong>Check an e-mail</strong><span>Paste a message to check for phishing</span></span></button>
+        <button class="suggest" data-prompt="Is this link safe to open? "><i data-icon="shield-check"></i><span><strong>Check a link</strong><span>Look-alike domains, redirects, red flags</span></span></button>
+        <button class="suggest" data-prompt="Give me a 10-minute privacy and account-security checkup: the most important things to fix first for my browser, passwords, 2FA and e-mail."><i data-icon="lock"></i><span><strong>Security checkup</strong><span>Prioritised steps to harden accounts</span></span></button>
+      </div>
+    </section>
+    <div class="messages" id="messages"></div>
+  </main>
+
+  <footer class="composer">
+    <form id="form" class="input-wrap">
+      <textarea id="input" rows="1" placeholder="Ask anything about security or privacy…" aria-label="Message"></textarea>
+      <button class="send" id="send" type="submit" title="Send (Enter)" aria-label="Send"><i data-icon="send"></i></button>
+    </form>
+    <p class="tiny muted disclaimer" id="disclaimer">AI can make mistakes. Verify anything important.</p>
+  </footer>
+
+  <script type="module" src="assistant.js"></script>
+</body>
+</html>

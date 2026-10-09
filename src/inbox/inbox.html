@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NULL VOID — Disposable Inbox</title>
+  <link rel="stylesheet" href="../ui/theme.css">
+  <link rel="stylesheet" href="inbox.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="boxes" aria-label="Your disposable addresses">
+      <div class="boxes-head">
+        <img src="../icons/icon48.png" alt="" width="24" height="24">
+        <h1>Disposable Email</h1>
+      </div>
+      <button class="btn btn-primary btn-block" id="newBox"><i data-icon="plus" class="icon-sm"></i>New address</button>
+      <div class="box-list" id="boxList" role="list"></div>
+      <p class="tiny muted attribution">Powered by <a href="https://mail.tm" target="_blank" rel="noopener">mail.tm</a></p>
+    </aside>
+
+    <section class="messages" aria-label="Messages">
+      <header class="pane-head">
+        <div class="addr-wrap">
+          <code class="truncate" id="currentAddr" title="Current address">—</code>
+          <button class="icon-btn" id="copyAddr" title="Copy address" aria-label="Copy address"><i data-icon="copy"></i></button>
+        </div>
+        <div class="row">
+          <span class="live" id="liveState" title="Live updates" role="status"><span class="dot"></span><span>offline</span></span>
+          <button class="icon-btn" id="refresh" title="Refresh" aria-label="Refresh"><i data-icon="refresh"></i></button>
+        </div>
+      </header>
+      <div class="msg-list" id="msgList" role="list" aria-label="Message list"></div>
+    </section>
+
+    <main class="reader" id="reader">
+      <div class="empty" id="readerEmpty">
+        <i data-icon="mail"></i>
+        <p>Select a message to read it.</p>
+        <p class="tiny">Messages open in a sandbox with scripts disabled and remote images blocked.</p>
+      </div>
+      <article class="message" id="message" hidden>
+        <header class="msg-head">
+          <div class="row-between">
+            <h2 id="msgSubject" tabindex="-1"></h2>
+            <div class="row">
+              <button class="btn btn-sm" id="askAi"><i data-icon="sparkles" class="icon-sm"></i>Is this phishing?</button>
+              <button class="icon-btn" id="viewSource" title="View raw source" aria-label="View raw source"><i data-icon="file-search"></i></button>
+              <button class="icon-btn" id="deleteMsg" title="Delete" aria-label="Delete message"><i data-icon="trash"></i></button>
+            </div>
+          </div>
+          <div class="meta">
+            <div><span class="muted">From</span> <strong id="msgFrom"></strong> <span class="muted mono small" id="msgFromAddr"></span></div>
+            <div><span class="muted">To</span> <span class="mono small" id="msgTo"></span></div>
+            <div><span class="muted">Date</span> <span id="msgDate"></span></div>
+          </div>
+          <div class="auth" id="authBadges" aria-label="Sender authentication"></div>
+        </header>
+        <div class="quick" id="quick" hidden></div>
+        <div class="remote-bar" id="remoteBar" hidden>
+          <i data-icon="image-off" class="icon-sm"></i>
+          <span class="grow" id="remoteText"></span>
+          <button class="btn btn-sm" id="loadRemote">Load images</button>
+        </div>
+        <div class="body-wrap">
+          <iframe id="bodyFrame" title="Message body" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>
+        </div>
+        <div class="attachments" id="attachments" hidden></div>
+      </article>
+    </main>
+  </div>
+
+  <dialog id="sourceDialog">
+    <div class="row-between"><h2>Raw message source</h2><button class="icon-btn" id="closeSource" aria-label="Close"><i data-icon="x"></i></button></div>
+    <pre id="sourceText" class="source"></pre>
+  </dialog>
+
+  <script type="module" src="inbox.js"></script>
+</body>
+</html>

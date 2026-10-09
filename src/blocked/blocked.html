@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>NULL VOID — Security check</title>
+  <link rel="stylesheet" href="../ui/theme.css">
+  <link rel="stylesheet" href="blocked.css">
+</head>
+<body>
+  <main class="wrap">
+    <section class="card panel" id="panel" aria-live="polite">
+      <div class="hero" id="hero">
+        <div class="shield" id="shield"><i data-icon="shield-alert" class="icon-xl"></i></div>
+        <div>
+          <p class="eyebrow" id="eyebrow">NULL VOID Smart Protection</p>
+          <h1 id="title">Checking…</h1>
+        </div>
+      </div>
+      <p class="lead" id="lead"></p>
+      <div class="target" id="target" hidden>
+        <span class="muted small">Address</span>
+        <code id="targetUrl"></code>
+      </div>
+      <div class="details" id="details"></div>
+      <div class="actions" id="actions"></div>
+      <details class="more" id="more" hidden>
+        <summary>Technical details</summary>
+        <div id="moreBody"></div>
+      </details>
+    </section>
+    <p class="foot muted tiny">Think this is a mistake? You can trust a site from the NULL VOID toolbar menu, or
+      <a href="https://github.com/nullvoidweb/nullvoid/issues/new?labels=false-positive" target="_blank" rel="noopener noreferrer">report a false positive</a>.</p>
+  </main>
+  <script type="module" src="blocked.js"></script>
+</body>
+</html>

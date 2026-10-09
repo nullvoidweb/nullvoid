@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>NULL VOID — Signing in</title>
+  <link rel="stylesheet" href="../ui/theme.css">
+  <style>
+    body { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+    .box { width: min(420px, 100%); padding: 32px; text-align: center; display: grid; gap: 12px; justify-items: center; }
+    .box img { border-radius: 50%; }
+  </style>
+</head>
+<body>
+  <main class="card box">
+    <img src="../icons/icon128.png" alt="" width="64" height="64">
+    <h1 id="title">Signing you in…</h1>
+    <p class="muted" id="message"><span class="spinner"></span></p>
+    <button class="btn" id="close" hidden>Close this tab</button>
+  </main>
+  <script type="module" src="callback.js"></script>
+</body>
+</html>

@@ -1,60 +1,137 @@
 {
   "manifest_version": 3,
-  "name": "NULL VOID",
-  "version": "1.0",
-  "description": "Enterprise-grade Remote Browser Isolation with disposable email and secure file viewing.",
+  "name": "__MSG_extName__",
+  "short_name": "__MSG_extShortName__",
+  "description": "__MSG_extDescription__",
+  "version": "2.0.0",
+  "default_locale": "en",
+  "minimum_chrome_version": "120",
+  "homepage_url": "https://github.com/nullvoidweb/nullvoid",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_popup": "popup.html",
+    "default_title": "NULL VOID",
+    "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
-      "48": "icons/icon48.png"
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
     }
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background/index.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "side_panel": {
+    "default_path": "assistant/assistant.html"
   },
   "permissions": [
-    "activeTab",
     "storage",
-    "scripting",
+    "unlimitedStorage",
+    "alarms",
+    "notifications",
     "tabs",
+    "scripting",
+    "webNavigation",
+    "downloads",
+    "contextMenus",
+    "sidePanel",
     "browsingData",
-    "https://chrome.browserless.io/*",
-    "https://*.browserless.io/*"
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback"
   ],
   "host_permissions": [
-    "<all_urls>",
-    "https://api.mail.tm/*",
-    "https://cors-anywhere.herokuapp.com/*",
-    "https://production-sfo.browserless.io/*",
-    "https://chrome.browserless.io/*",
-    "https://chrome-eu.browserless.io/*",
-    "https://sg-rbi-api.nullvoid.com/*",
-    "https://us-rbi-api.nullvoid.com/*",
-    "https://uk-rbi-api.nullvoid.com/*",
-    "https://ca-rbi-api.nullvoid.com/*",
-    "wss://sg-rbi-stream.nullvoid.com/*",
-    "wss://us-rbi-stream.nullvoid.com/*",
-    "wss://uk-rbi-stream.nullvoid.com/*",
-    "wss://ca-rbi-stream.nullvoid.com/*",
-    "https://*.browserless.io/*"
+    "<all_urls>"
   ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content/protect.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "nv_ads",
+        "enabled": true,
+        "path": "rules/ads.json"
+      },
+      {
+        "id": "nv_malware_1",
+        "enabled": true,
+        "path": "rules/malware-1.json"
+      },
+      {
+        "id": "nv_malware_2",
+        "enabled": true,
+        "path": "rules/malware-2.json"
+      },
+      {
+        "id": "nv_malware_3",
+        "enabled": true,
+        "path": "rules/malware-3.json"
+      },
+      {
+        "id": "nv_malware_4",
+        "enabled": true,
+        "path": "rules/malware-4.json"
+      }
+    ]
+  },
   "web_accessible_resources": [
     {
       "resources": [
-        "rbi-browser.html",
-        "file-viewer-secure.html",
-        "ai-chat-full.html",
-        "ai-chat-full.js",
-
-        "icons/*"
+        "blocked/blocked.html"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
+    },
+    {
+      "resources": [
+        "auth/callback.html"
+      ],
+      "matches": [
+        "https://nullvoid.zone.id/*",
+        "https://nullvoids.live/*",
+        "https://nullvoidweb.vercel.app/*"
+      ]
     }
-  ]
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+N"
+      }
+    },
+    "open-disposable-browser": {
+      "suggested_key": {
+        "default": "Alt+Shift+B"
+      },
+      "description": "__MSG_cmdOpenBrowser__"
+    },
+    "open-inbox": {
+      "description": "__MSG_cmdOpenInbox__"
+    },
+    "open-file-viewer": {
+      "description": "__MSG_cmdOpenViewer__"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self' data: blob: https:; media-src 'self' blob: data:; worker-src 'self'; font-src 'self' data:; frame-src 'self' blob: data:"
+  }
 }

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NULL VOID — Secure File Viewer</title>
+  <link rel="stylesheet" href="../ui/theme.css">
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="row">
+      <img src="../icons/icon48.png" alt="" width="26" height="26" class="logo">
+      <div>
+        <h1>Secure File Viewer</h1>
+        <p class="tiny muted">Static analysis on your device. Files are never executed or written to disk.</p>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn" id="openBtn"><i data-icon="upload" class="icon-sm"></i>Open file</button>
+      <input type="file" id="fileInput" hidden>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="drop card" id="drop">
+      <i data-icon="file-search" class="drop-icon"></i>
+      <h2>Drop a file to analyse it</h2>
+      <p class="muted">or <button class="link" id="dropPick">choose a file</button>, or paste one with <span class="kbd">Ctrl</span>+<span class="kbd">V</span></p>
+      <ul class="drop-points small muted">
+        <li>Detects the real file type, deceptive names and Office macros</li>
+        <li>Finds embedded scripts, packers, exploit artefacts and indicators (IOCs)</li>
+        <li>Safe previews for images, PDF, Office text, code, archives and media</li>
+        <li>Optional hash lookups on VirusTotal &amp; MalwareBazaar (the file is never uploaded)</li>
+      </ul>
+    </section>
+
+    <section class="result" id="result" hidden>
+      <div class="col-left">
+        <article class="card verdict" id="verdict"></article>
+        <article class="card card-pad stack" id="facts"></article>
+        <article class="card card-pad stack" id="findingsCard">
+          <div class="row-between"><h3>Findings</h3><span class="muted small" id="findingCount"></span></div>
+          <div class="findings" id="findings"></div>
+        </article>
+        <article class="card card-pad stack" id="intelCard">
+          <div class="row-between"><h3>Reputation</h3><button class="btn btn-sm" id="checkHash"><i data-icon="shield-check" class="icon-sm"></i>Check hash</button></div>
+          <div id="intel" class="small muted">Look up this file's SHA-256 with your enabled services. Only the hash is sent.</div>
+        </article>
+        <article class="card card-pad stack" id="iocCard" hidden>
+          <h3>Indicators (IOCs)</h3>
+          <div id="iocs" class="iocs"></div>
+        </article>
+        <div class="row actions">
+          <button class="btn btn-primary" id="askAi"><i data-icon="sparkles" class="icon-sm"></i>Explain with AI</button>
+          <button class="btn" id="exportReport"><i data-icon="download" class="icon-sm"></i>Report</button>
+          <button class="btn" id="cleanCopy" hidden><i data-icon="image-off" class="icon-sm"></i>Clean copy</button>
+          <button class="btn btn-ghost" id="closeFile"><i data-icon="x" class="icon-sm"></i>Close</button>
+        </div>
+      </div>
+      <div class="col-right card">
+        <div class="tabs" role="tablist" id="tabs">
+          <button class="tab" role="tab" data-tab="preview" aria-selected="true">Preview</button>
+          <button class="tab" role="tab" data-tab="structure">Structure</button>
+          <button class="tab" role="tab" data-tab="strings">Strings</button>
+          <button class="tab" role="tab" data-tab="hex">Hex</button>
+        </div>
+        <div class="pane" id="pane-preview"></div>
+        <div class="pane" id="pane-structure" hidden></div>
+        <div class="pane" id="pane-strings" hidden></div>
+        <div class="pane" id="pane-hex" hidden></div>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="viewer.js"></script>
+</body>
+</html>
